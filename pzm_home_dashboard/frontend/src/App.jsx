@@ -5,6 +5,7 @@ import SecurityCard from './components/SecurityCard.jsx';
 import SideMenu from './components/SideMenu.jsx';
 import SimpleTile from './components/SimpleTile.jsx';
 import TileEditor from './components/TileEditor.jsx';
+import PullToRefresh from './components/PullToRefresh.jsx';
 
 const LONG_PRESS_MS = 500;
 const DRAG_THRESHOLD_PX = 6;
@@ -441,6 +442,7 @@ export default function App() {
 
   return (
     <>
+      <PullToRefresh />
       <SideMenu
         editMode={editMode}
         onToggleEdit={() => setEditMode((v) => !v)}
@@ -522,6 +524,7 @@ export default function App() {
               onStartMove={(e) => startDrag(id, e, 'move')}
               onStartResize={(e) => startDrag(id, e, 'resize')}
               onRemove={removeCustomTile}
+              onEdit={(tid) => setEditingTileId(tid)}
             />
           );
         })}

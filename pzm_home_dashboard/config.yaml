@@ -1,5 +1,5 @@
 name: PZM Home Dashboard
-version: "0.2.4"
+version: "0.2.5"
 slug: pzm_home_dashboard
 description: >-
   RTSP camera streams (transcoded on-demand to HLS via ffmpeg) plus a live
@@ -61,6 +61,26 @@ options:
       p1_export_total: "sensor.p1_meter_energy_export"
       p1_export_t1:    "sensor.p1_meter_energy_export_tariff_1"
       p1_export_t2:    "sensor.p1_meter_energy_export_tariff_2"
+      # Toggle chips rendered inside the Electricity tile. Any HA domain
+      # works — switch / light / input_boolean / script / cover / lock.
+      # `icon` uses the shared tile-icon catalog (auto, light, lamp,
+      # torch, sign, switch, rgb, water, …).
+      controls:
+        - name: "Terrace torch"
+          entity: "switch.teresa_torch_switch_1"
+          icon: "torch"
+        - name: "Front torch"
+          entity: "switch.front_light_torch_switch_1"
+          icon: "torch"
+        - name: "Street sign"
+          entity: "switch.street_sign_switch_1"
+          icon: "sign"
+        - name: "Street lamp"
+          entity: "switch.street_lamp_switch_socket_1"
+          icon: "lamp"
+        - name: "Living RGB"
+          entity: "light.living_room_rgbic_led"
+          icon: "rgb"
     security:
       # alarm_control_panel entity. Defaults key to the Eldes ESIM364
       # integration's main "Namas" partition. Leave blank to hide the
@@ -183,6 +203,10 @@ schema:
       p1_export_total: str?
       p1_export_t1: str?
       p1_export_t2: str?
+      controls:
+        - name: str
+          entity: str
+          icon: str?
     security:
       alarm_panel: str?
       alarm_code: password?

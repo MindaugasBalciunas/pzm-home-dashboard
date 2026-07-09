@@ -100,6 +100,10 @@ html, body, #root {
   -webkit-user-select: none;
 }
 .tile-editing .tile-video { pointer-events: none; }
+/* In edit mode the inner button element must not consume pointer events,
+   otherwise Firefox / iOS Safari swallow pointerdown on `disabled` buttons
+   and the outer div never sees the drag / long-press start. */
+.tile-editing .custom-btn-inner { pointer-events: none; }
 
 .tile-video-wrap {
   position: relative;
@@ -148,6 +152,27 @@ html, body, #root {
   padding: 0.1rem 0.4rem;
   border-radius: 0;
 }
+
+.tile-edit-icon-btn {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border: none;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 0;
+  min-width: 26px;
+  min-height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+}
+.tile-edit-icon-btn:hover { background: rgba(255, 255, 255, 0.28); }
+.tile-edit-icon-btn:active { transform: scale(0.94); }
+.tile-edit-icon-danger { color: var(--danger); font-weight: 800; }
+.tile-edit-icon-danger:hover { background: rgba(255, 107, 107, 0.35); color: #fff; }
 
 .tile-edit-bottom {
   position: absolute;
@@ -825,6 +850,76 @@ html, body, #root {
   font-weight: 700;
 }
 
+/* ---------- Electric loads (Loads section inside SolarCard) ---------- */
+.electric-loads {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.electric-loads-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 0.3rem;
+}
+.electric-load {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.45rem 0.35rem;
+  min-height: 60px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: 0;
+  color: var(--text);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.08s ease;
+}
+@media (prefers-color-scheme: light) {
+  .electric-load { background: rgba(0, 0, 0, 0.02); }
+}
+.electric-load:hover:not(:disabled) { border-color: var(--accent); }
+.electric-load:active:not(:disabled) { transform: scale(0.97); }
+.electric-load.is-on {
+  background: rgba(87, 211, 140, 0.12);
+  border-left-color: var(--ok);
+  color: var(--ok);
+}
+.electric-load.is-off {
+  background: rgba(139, 147, 161, 0.06);
+  border-left-color: rgba(139, 147, 161, 0.5);
+  color: var(--muted);
+}
+.electric-load.is-unknown { border-left-color: var(--border); }
+.electric-load.is-busy { opacity: 0.7; }
+
+.electric-load-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+}
+.electric-load-icon svg { width: 100%; height: 100%; }
+.electric-load-name {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  line-height: 1;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  color: inherit;
+}
+
 .pv-string-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1110,6 +1205,42 @@ html, body, #root {
 .card-sub-lbl-bat {
   font-size: 7.5px;
   font-weight: 700;
+}
+
+/* ---------- Pull-to-refresh ---------- */
+.ptr {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  z-index: 15;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid var(--border);
+  pointer-events: none;
+  transition: opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  will-change: transform, opacity;
+}
+@media (prefers-color-scheme: light) {
+  .ptr { background: rgba(255, 255, 255, 0.85); }
+}
+.ptr svg { width: 24px; height: 24px; }
+.ptr.is-armed {
+  background: var(--accent);
+  color: #0b0f14;
+  border-color: var(--accent);
+}
+.ptr-spinner {
+  animation: ptr-spin 0.9s linear infinite;
+  transform-origin: center;
+}
+@keyframes ptr-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
 
 /* ---------- Side menu (swipe-in drawer) ---------- */

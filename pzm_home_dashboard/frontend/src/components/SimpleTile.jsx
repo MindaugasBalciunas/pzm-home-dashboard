@@ -32,6 +32,7 @@ export default function SimpleTile({
   onStartMove,
   onStartResize,
   onRemove,
+  onEdit,
 }) {
   const [state, setState] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -91,6 +92,7 @@ export default function SimpleTile({
     ? String(state.state)
     : '—';
 
+  const stopPropagation = (e) => { e.stopPropagation(); e.preventDefault?.(); };
   const editHeader = editMode && (
     <>
       <div className="tile-edit-top">
@@ -98,10 +100,23 @@ export default function SimpleTile({
         <span className="tile-edit-size">{colSpan}×{rowSpan}</span>
         <button
           type="button"
-          className="side-menu-close"
+          className="tile-edit-icon-btn"
+          title="Edit tile"
+          onPointerDown={stopPropagation}
+          onClick={(e) => { e.stopPropagation(); onEdit?.(id); }}
+          aria-label="Edit tile"
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden>
+            <path fill="currentColor" d="M14.06 4.94l3 3-9 9H5v-3l9-9zm2-2l1.94-1.94a1 1 0 0 1 1.41 0l1.59 1.59a1 1 0 0 1 0 1.41L19.06 6l-3-3z"/>
+          </svg>
+        </button>
+        <button
+          type="button"
+          className="tile-edit-icon-btn tile-edit-icon-danger"
           title="Remove tile"
+          onPointerDown={stopPropagation}
           onClick={(e) => { e.stopPropagation(); onRemove?.(id); }}
-          style={{ color: 'var(--danger)' }}
+          aria-label="Remove tile"
         >×</button>
       </div>
       <div

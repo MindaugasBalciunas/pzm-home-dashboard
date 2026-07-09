@@ -57,6 +57,21 @@ public sealed class HomeAssistantController : ControllerBase
         var results = await Task.WhenAll(tasks);
         var payload = new Dictionary<string, object?>();
         foreach (var r in results) payload[r.Key] = r.State;
+
+        // Attach live state for the user-configured electric loads so the
+        // Loads section in the Electricity tile can render on/off in the
+        // same round-trip.
+        var controlTasks = s.Controls.Select(async c => new
+        {
+            name = c.Name,
+            entity = c.Entity,
+            icon = c.Icon,
+            state = string.IsNullOrWhiteSpace(c.Entity)
+                ? null
+                : await _client.GetStateAsync(c.Entity, ct),
+        }).ToArray();
+        payload["controls"] = await Task.WhenAll(controlTasks);
+
         payload["configured"] = _client.IsConfigured;
         Response.Headers["Cache-Control"] = "no-store";
         return Ok(payload);

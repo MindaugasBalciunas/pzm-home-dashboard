@@ -158,6 +158,27 @@ public sealed class SolarEntities
 
     [JsonPropertyName("p1_export_t2")]
     public string? P1ExportT2 { get; set; }
+
+    // One-tap toggle chips rendered inside the Electricity tile. Any HA
+    // domain works — the backend service dispatch handles switch/light/
+    // input_boolean/script/cover/lock uniformly.
+    [JsonPropertyName("controls")]
+    public List<ElectricControl> Controls { get; set; } = new();
+}
+
+public sealed class ElectricControl
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = "";
+
+    [JsonPropertyName("entity")]
+    public string Entity { get; set; } = "";
+
+    // Optional icon key from the shared tile-icon catalog (auto, light,
+    // lamp, torch, sign, switch, rgb, …). "auto" or null falls back to a
+    // domain-derived glyph.
+    [JsonPropertyName("icon")]
+    public string? Icon { get; set; }
 }
 
 public sealed record HaStateDto(

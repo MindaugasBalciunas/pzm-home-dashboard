@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { TILE_ICON_KEYS, TileIcon } from './SimpleTile.jsx';
 
 // Modal shown after a long-press on a custom / template tile. Buttons get
@@ -7,11 +7,20 @@ export default function TileEditor({ id, entry, onSave, onDelete, onCancel }) {
   const spec = entry?.spec || {};
   const [name, setName] = useState(spec.name || '');
   const [icon, setIcon] = useState(spec.icon || 'auto');
+  // Guard against a synthetic click from the long-press touchend landing on
+  // the scrim and instantly closing us. Ignore clicks in the first ~350 ms.
+  const openedAtRef = useRef(Date.now());
 
   useEffect(() => {
     setName(spec.name || '');
     setIcon(spec.icon || 'auto');
+    openedAtRef.current = Date.now();
   }, [id, spec.name, spec.icon]);
+
+  const handleScrimClick = () => {
+    if (Date.now() - openedAtRef.current < 350) return;
+    onCancel();
+  };
 
   const canSave = name.trim().length > 0;
 
@@ -23,7 +32,7 @@ export default function TileEditor({ id, entry, onSave, onDelete, onCancel }) {
   };
 
   return (
-    <div className="picker-scrim" onClick={onCancel}>
+    <div className="picker-scrim" onClick={handleScrimClick}>
       <div className="picker" onClick={(e) => e.stopPropagation()}>
         <div className="picker-header">
           <span className="picker-title">

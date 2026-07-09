@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { TileIcon } from './SimpleTile.jsx';
 
 const HISTORY_LEN = 80;
 const POLL_MS = 3000;
@@ -664,6 +665,9 @@ export default function SolarCard({
   const timerRef = useRef(null);
   const historyTimerRef = useRef(null);
   const monthlyTimerRef = useRef(null);
+  // Ref so children (Loads) can request a refresh after toggling a switch
+  // without wiring the loader through props from mount.
+  const loadRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -691,9 +695,14 @@ export default function SolarCard({
         if (!cancelled) setError(String(e));
       }
     };
+    loadRef.current = load;
     load();
     timerRef.current = setInterval(load, POLL_MS);
-    return () => { cancelled = true; clearInterval(timerRef.current); };
+    return () => {
+      cancelled = true;
+      clearInterval(timerRef.current);
+      loadRef.current = null;
+    };
   }, []);
 
   useEffect(() => {
@@ -844,6 +853,13 @@ export default function SolarCard({
           <GridMeter data={data} />
         )}
 
+        {Array.isArray(data?.controls) && data.controls.length > 0 && (
+          <ElectricControls
+            controls={data.controls}
+            onChanged={() => loadRef.current?.()}
+          />
+        )}
+
         {(data?.runMode || data?.gridRuntime
           || data?.pv1Voltage || data?.pv2Voltage
           || data?.pv1Current || data?.pv2Current) && (
@@ -912,6 +928,61 @@ function GridMeter({ data }) {
       <div className="grid-meter-rows">
         <MeterRow label="Import" accent="bad" total={imp} t1={impT1} t2={impT2} />
         <MeterRow label="Export" accent="good" total={exp} t1={expT1} t2={expT2} />
+      </div>
+    </div>
+  );
+}
+
+// Electric loads — one-tap toggle chips inside the Electricity tile. Domain
+// dispatch (switch/light/input_boolean/script/cover/lock) is done server-side
+// in /api/ha/entity/action; we just POST the entityId and let it figure the
+// right service out.
+function ElectricControls({ controls, onChanged }) {
+  const [pending, setPending] = useState({});
+
+  const trigger = async (entity) => {
+    if (!entity || pending[entity]) return;
+    setPending((p) => ({ ...p, [entity]: true }));
+    try {
+      await fetch('api/ha/entity/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entityId: entity }),
+      });
+      setTimeout(() => onChanged?.(), 700);
+    } catch { /* transient */ }
+    finally {
+      setTimeout(() => setPending((p) => { const n = { ...p }; delete n[entity]; return n; }), 900);
+    }
+  };
+
+  return (
+    <div className="electric-loads">
+      <div className="solar-section-title">Loads</div>
+      <div className="electric-loads-grid">
+        {controls.map((c) => {
+          const s = c.state?.state;
+          const on = s === 'on' || s === 'open' || s === 'playing' || s === 'unlocked';
+          const off = s === 'off' || s === 'closed' || s === 'idle' || s === 'locked' || s === 'paused';
+          const busy = !!pending[c.entity];
+          const cls = on ? 'is-on' : off ? 'is-off' : 'is-unknown';
+          const domain = (c.entity || '').split('.')[0];
+          return (
+            <button
+              key={c.entity}
+              type="button"
+              className={`electric-load ${cls} ${busy ? 'is-busy' : ''}`}
+              onClick={() => trigger(c.entity)}
+              disabled={busy}
+              title={c.entity}
+            >
+              <span className="electric-load-icon">
+                <TileIcon iconKey={c.icon} domain={domain} on={on} />
+              </span>
+              <span className="electric-load-name">{c.name || c.entity}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
