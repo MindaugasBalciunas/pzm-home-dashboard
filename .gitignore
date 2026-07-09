@@ -1,0 +1,24 @@
+# .NET
+backend/bin/
+backend/obj/
+*.user
+
+# Local secrets — real HA token, camera passwords, etc.
+backend/appsettings.Development.json
+backend/appsettings.Local.json
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+
+# Runtime
+/data/
+/tmp/

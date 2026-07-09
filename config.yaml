@@ -1,0 +1,100 @@
+name: PZM Home Dashboard
+version: "0.1.0"
+slug: pzm_home_dashboard
+description: >-
+  RTSP camera streams (transcoded on-demand to HLS via ffmpeg) plus a live
+  Solar / Grid / House card driven by Home Assistant Solax entities.
+url: https://github.com/MindaugasBalciunas/pzm-home-dashboard
+arch:
+  - amd64
+  - aarch64
+  - armv7
+  - armhf
+  - i386
+init: false
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:solar-power
+panel_title: PZM Home
+homeassistant_api: true
+hassio_api: true
+ports:
+  8099/tcp: null
+ports_description:
+  8099/tcp: Web UI (leave null to use Ingress only)
+options:
+  cameras:
+    - name: Front Door
+      url: rtsp://192.168.0.186/h264Preview_01_sub
+      username: admin
+      password: ""
+      transport: tcp
+  hls_segment_seconds: 2
+  hls_list_size: 5
+  idle_shutdown_seconds: 30
+  home_assistant:
+    use_supervisor: true
+    base_url: ""
+    token: ""
+    solar:
+      import: "sensor.solax_inverter_solax_grid_import"
+      export: "sensor.solax_inverter_solax_grid_export"
+      house_use: "sensor.solax_inverter_solax_house_load"
+      pv_total: "sensor.solax_inverter_solax_pv_power_total"
+      pv1: "sensor.solax_inverter_solax_pv_power_1"
+      pv2: "sensor.solax_inverter_solax_pv_power_2"
+      today_solar: "sensor.solax_inverter_solax_today_s_solar_energy"
+      today_export: "sensor.solax_inverter_solax_today_s_export_energy"
+      today_import: "sensor.solax_inverter_solax_today_s_import_energy"
+      total_solar: "sensor.solax_inverter_solax_total_solar_energy"
+      pv1_voltage: "sensor.solax_inverter_solax_pv_voltage_1"
+      pv2_voltage: "sensor.solax_inverter_solax_pv_voltage_2"
+      pv1_current: "sensor.solax_inverter_solax_pv_current_1"
+      pv2_current: "sensor.solax_inverter_solax_pv_current_2"
+      measured_power: "sensor.solax_inverter_solax_measured_power"
+      run_mode: "sensor.solax_inverter_solax_run_mode"
+      grid_runtime: "sensor.solax_inverter_solax_grid_mode_runtime"
+# Notes:
+# - Set the RTSP camera password from the add-on configuration UI, not this
+#   file. `url` may embed `user:pass@host` inline; if so, the separate
+#   username/password fields are ignored.
+# - When `home_assistant.use_supervisor: true` and the add-on is running
+#   inside HAOS, the supervisor injects SUPERVISOR_TOKEN and the backend
+#   uses it — leave `base_url` and `token` empty in that case.
+# - For running the add-on against a remote HA install, set
+#   `use_supervisor: false`, `base_url: http://your-ha:8123`, and a
+#   long-lived access token.
+# - The Solax entity IDs default to the wills106/solax_modbus custom
+#   component naming for Gen4 X3-Hybrid. Edit them to match your setup.
+schema:
+  cameras:
+    - name: str
+      url: str
+      username: str?
+      password: password?
+      transport: list(tcp|udp)?
+  hls_segment_seconds: int(1,10)
+  hls_list_size: int(2,20)
+  idle_shutdown_seconds: int(5,600)
+  home_assistant:
+    use_supervisor: bool?
+    base_url: str?
+    token: password?
+    solar:
+      import: str?
+      export: str?
+      house_use: str?
+      pv_total: str?
+      pv1: str?
+      pv2: str?
+      today_solar: str?
+      today_export: str?
+      today_import: str?
+      total_solar: str?
+      pv1_voltage: str?
+      pv2_voltage: str?
+      pv1_current: str?
+      pv2_current: str?
+      measured_power: str?
+      run_mode: str?
+      grid_runtime: str?
