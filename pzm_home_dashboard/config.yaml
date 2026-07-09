@@ -55,11 +55,12 @@ options:
       run_mode: "sensor.solax_inverter_solax_run_mode"
       grid_runtime: "sensor.solax_inverter_solax_grid_mode_runtime"
     security:
-      # alarm_control_panel entity from the Eldes integration. Leave blank to
-      # hide the arm/disarm section.
-      alarm_panel: "alarm_control_panel.eldes_alarm"
-      # Optional shared PIN used by Disarm. Prefer sending it from the UI, but
-      # this lets a plain button work without prompting.
+      # alarm_control_panel entity. Defaults key to the Eldes ESIM364
+      # integration's main "Namas" partition. Leave blank to hide the
+      # arm/disarm section.
+      alarm_panel: "alarm_control_panel.esim364_namas"
+      # Optional shared PIN used by Disarm. Prefer sending it from the UI,
+      # but this lets a plain button work without prompting.
       alarm_code: ""
       # Named gates the user cares about. Any entity domain works — the
       # backend picks the right service (switch.turn_on / button.press /
@@ -67,15 +68,28 @@ options:
       # Add a `contact` entity_id (binary_sensor) to show open/closed state.
       gates:
         - name: "Garažo vartai"
-          entity: "switch.eldes_output_1"
-          contact: ""
+          entity: "switch.esim364_garazo_vartai"
+          contact: "binary_sensor.esim364_garazo_vartai"
           icon: "mdi:garage"
         - name: "Lauko vartai"
-          entity: "switch.eldes_output_2"
+          entity: "switch.esim364_lauko_vartai"
           contact: ""
           icon: "mdi:gate"
-      # Extra zones surfaced under the alarm panel — motion/door contacts etc.
-      zones: []
+      # Extra zones surfaced under the alarm panel — door/window contacts,
+      # gas / fire / glass-break sensors.
+      zones:
+        - name: "Durys"
+          entity: "binary_sensor.esim364_durys"
+        - name: "Terasa durys"
+          entity: "binary_sensor.esim364_terasa_durys"
+        - name: "Langas Darbo"
+          entity: "binary_sensor.esim364_langas_darbo"
+        - name: "Dujos"
+          entity: "binary_sensor.esim364_dujos"
+        - name: "Gaisras"
+          entity: "binary_sensor.esim364_gaisras"
+        - name: "Stikladužis"
+          entity: "binary_sensor.esim364_stikladuzis"
 # Notes:
 # - Set the RTSP camera password from the add-on configuration UI, not this
 #   file. `url` may embed `user:pass@host` inline; if so, the separate
