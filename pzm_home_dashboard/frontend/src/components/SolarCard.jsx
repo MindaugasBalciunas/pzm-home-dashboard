@@ -838,6 +838,12 @@ export default function SolarCard({
           ))}
         </div>
 
+        {(data?.p1ImportTotal || data?.p1ExportTotal
+          || data?.p1ImportT1 || data?.p1ImportT2
+          || data?.p1ExportT1 || data?.p1ExportT2) && (
+          <GridMeter data={data} />
+        )}
+
         {(data?.runMode || data?.gridRuntime
           || data?.pv1Voltage || data?.pv2Voltage
           || data?.pv1Current || data?.pv2Current) && (
@@ -881,6 +887,56 @@ export default function SolarCard({
           <div className="tile-resize" onPointerDown={handleResizeDown} title="Drag to resize" />
         </>
       )}
+    </div>
+  );
+}
+
+// P1 utility meter — grid-side lifetime totals with per-tariff breakdown.
+// Distinct from Solax's inverter counters (which are the strip above); the
+// values here are what the DSO bills.
+function GridMeter({ data }) {
+  const fmt = (state) => {
+    const n = toNumber(state);
+    if (n == null) return { text: '—', unit: '' };
+    return formatValue(n, state?.unit || 'kWh');
+  };
+  const imp = fmt(data?.p1ImportTotal);
+  const impT1 = fmt(data?.p1ImportT1);
+  const impT2 = fmt(data?.p1ImportT2);
+  const exp = fmt(data?.p1ExportTotal);
+  const expT1 = fmt(data?.p1ExportT1);
+  const expT2 = fmt(data?.p1ExportT2);
+  return (
+    <div className="grid-meter">
+      <div className="grid-meter-title">Grid meter</div>
+      <div className="grid-meter-rows">
+        <MeterRow label="Import" accent="bad" total={imp} t1={impT1} t2={impT2} />
+        <MeterRow label="Export" accent="good" total={exp} t1={expT1} t2={expT2} />
+      </div>
+    </div>
+  );
+}
+
+function MeterRow({ label, accent, total, t1, t2 }) {
+  return (
+    <div className={`grid-meter-row grid-meter-${accent}`}>
+      <div className="grid-meter-side">
+        <div className="grid-meter-label">{label}</div>
+        <div className="grid-meter-total">
+          <span className="grid-meter-num">{total.text}</span>
+          <span className="grid-meter-unit">{total.unit}</span>
+        </div>
+      </div>
+      <div className="grid-meter-tariffs">
+        <span className="grid-meter-tariff">
+          <span className="grid-meter-tariff-label">T1</span>
+          <span className="grid-meter-tariff-val">{t1.text}</span>
+        </span>
+        <span className="grid-meter-tariff">
+          <span className="grid-meter-tariff-label">T2</span>
+          <span className="grid-meter-tariff-val">{t2.text}</span>
+        </span>
+      </div>
     </div>
   );
 }

@@ -42,6 +42,12 @@ public sealed class HomeAssistantController : ControllerBase
             ("gridRuntime", s.GridRuntime),
             ("batteryPower", s.BatteryPower),
             ("batterySoc",   s.BatterySoc),
+            ("p1ImportTotal", s.P1ImportTotal),
+            ("p1ImportT1",    s.P1ImportT1),
+            ("p1ImportT2",    s.P1ImportT2),
+            ("p1ExportTotal", s.P1ExportTotal),
+            ("p1ExportT1",    s.P1ExportT1),
+            ("p1ExportT2",    s.P1ExportT2),
         };
         var tasks = pairs
             .Select(async p => (p.Key, State: string.IsNullOrWhiteSpace(p.EntityId)

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 // Domains that make sense for each tile kind. The backend accepts any but the
 // UI hides irrelevant entities so the list stays manageable.
@@ -13,6 +13,8 @@ export default function EntityPicker({ kind, onCancel, onConfirm }) {
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState(null);
   const [name, setName] = useState('');
+  const [livePreview, setLivePreview] = useState(null);
+  const previewTimerRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,6 +44,37 @@ export default function EntityPicker({ kind, onCancel, onConfirm }) {
     // picks a new one, but don't overwrite anything they've typed.
     if (selected && !name) setName(selected.friendlyName || selected.entityId);
   }, [selected, name]);
+
+  // Live-poll the selected entity so the preview panel reflects reality even
+  // if the initial /entities snapshot is stale.
+  useEffect(() => {
+    if (previewTimerRef.current) {
+      clearInterval(previewTimerRef.current);
+      previewTimerRef.current = null;
+    }
+    setLivePreview(null);
+    if (!selected) return undefined;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const r = await fetch('api/ha/entity/state', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: [selected.entityId] }),
+        });
+        if (!r.ok) return;
+        const data = await r.json();
+        const first = Array.isArray(data) ? data[0] : null;
+        if (!cancelled && first) setLivePreview(first);
+      } catch { /* transient */ }
+    };
+    load();
+    previewTimerRef.current = setInterval(load, 3000);
+    return () => {
+      cancelled = true;
+      if (previewTimerRef.current) clearInterval(previewTimerRef.current);
+    };
+  }, [selected]);
 
   const canSubmit = !!selected && name.trim().length > 0;
 
@@ -125,6 +158,28 @@ export default function EntityPicker({ kind, onCancel, onConfirm }) {
             </div>
           ))}
         </div>
+
+        {selected && (
+          <div className="picker-preview">
+            <div className="picker-preview-header">
+              <span className="picker-preview-label">Preview</span>
+              <code className="picker-preview-id">{selected.entityId}</code>
+            </div>
+            <div className="picker-preview-body">
+              <div className="picker-preview-name">
+                {(name || selected.friendlyName || selected.entityId)}
+              </div>
+              <div className="picker-preview-value">
+                <span className="n">
+                  {livePreview?.state ?? selected.state ?? '—'}
+                </span>
+                {(livePreview?.unit || selected.unit) && (
+                  <span className="u">{livePreview?.unit || selected.unit}</span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="picker-actions">
           <button

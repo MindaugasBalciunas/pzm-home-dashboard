@@ -137,6 +137,27 @@ public sealed class SolarEntities
 
     [JsonPropertyName("battery_soc")]
     public string? BatterySoc { get; set; }
+
+    // P1 utility meter (grid-side measurement). Solax figures are inverter-
+    // side; the P1 meter is what the DSO bills us on. Six sensors: total
+    // import/export plus per-tariff (day / night) breakdown.
+    [JsonPropertyName("p1_import_total")]
+    public string? P1ImportTotal { get; set; }
+
+    [JsonPropertyName("p1_import_t1")]
+    public string? P1ImportT1 { get; set; }
+
+    [JsonPropertyName("p1_import_t2")]
+    public string? P1ImportT2 { get; set; }
+
+    [JsonPropertyName("p1_export_total")]
+    public string? P1ExportTotal { get; set; }
+
+    [JsonPropertyName("p1_export_t1")]
+    public string? P1ExportT1 { get; set; }
+
+    [JsonPropertyName("p1_export_t2")]
+    public string? P1ExportT2 { get; set; }
 }
 
 public sealed record HaStateDto(

@@ -13,6 +13,60 @@ const SECURITY_ID = 'security';
 const FIT_MODES = ['fit', 'center', 'stretch'];
 const DEFAULT_FIT = 'fit';
 
+// Marker that the initial template has already been seeded. Once present in
+// `overrides`, we never re-seed even if the user deletes template tiles.
+const TEMPLATE_MARKER = '_seededTemplate';
+const TEMPLATE_VERSION = 'v1';
+
+// One-tap tiles seeded on the very first load (no existing user layout).
+// Stable IDs so the layout survives future template revisions without dupes.
+const TEMPLATE_TILES = [
+  // Outdoor switches — one big row.
+  { id: 'tpl-garden-hose',       kind: 'button', entityId: 'switch.garden_hose_switch_1',       domain: 'switch', name: 'Garden hose' },
+  { id: 'tpl-terrace-torch',     kind: 'button', entityId: 'switch.teresa_torch_switch_1',      domain: 'switch', name: 'Terrace torch' },
+  { id: 'tpl-front-torch',       kind: 'button', entityId: 'switch.front_light_torch_switch_1', domain: 'switch', name: 'Front torch' },
+  { id: 'tpl-street-sign',       kind: 'button', entityId: 'switch.street_sign_switch_1',       domain: 'switch', name: 'Street sign' },
+  { id: 'tpl-street-lamp',       kind: 'button', entityId: 'switch.street_lamp_switch_socket_1', domain: 'switch', name: 'Street lamp' },
+  { id: 'tpl-living-rgb',        kind: 'button', entityId: 'light.living_room_rgbic_led',       domain: 'light',  name: 'Living RGB' },
+  // Environment sensors — number tiles.
+  { id: 'tpl-outside-temp',      kind: 'number', entityId: 'sensor.outside_temperature_humidity_sensor_temperature',      domain: 'sensor', name: 'Outside temp',      unit: '°C' },
+  { id: 'tpl-outside-hum',       kind: 'number', entityId: 'sensor.outside_temperature_humidity_sensor_humidity',         domain: 'sensor', name: 'Outside humidity',  unit: '%' },
+  { id: 'tpl-greenhouse-temp',   kind: 'number', entityId: 'sensor.greenhouse_temperature_humidity_sensor_2_temperature', domain: 'sensor', name: 'Greenhouse temp',   unit: '°C' },
+  { id: 'tpl-greenhouse-hum',    kind: 'number', entityId: 'sensor.greenhouse_temperature_humidity_sensor_2_humidity',    domain: 'sensor', name: 'Greenhouse hum.',   unit: '%' },
+  { id: 'tpl-waste-tank',        kind: 'number', entityId: 'sensor.waste_tank_level_depth',                               domain: 'sensor', name: 'Waste tank',        unit: null },
+  { id: 'tpl-garage-door',       kind: 'number', entityId: 'binary_sensor.garage_gates_contact_sensor_door',              domain: 'binary_sensor', name: 'Garage door',  unit: null },
+];
+
+// Lay out template tiles in a clean strip beneath the top row of cameras/
+// solar/security. `startRow` is picked deep enough that existing defaults
+// (which top out around row 17) never clash.
+function seedTemplateLayout(startRow) {
+  const buttonsW = 6, buttonsH = 6;
+  const numbersW = 8, numbersH = 5;
+  const cols = GRID_COLS;
+  const out = {};
+  let col = 1, row = startRow;
+  const advance = (w, h) => {
+    if (col + w - 1 > cols) { col = 1; row += h; }
+    const pos = { col, row };
+    col += w;
+    return pos;
+  };
+  const buttons = TEMPLATE_TILES.filter((t) => t.kind === 'button');
+  const numbers = TEMPLATE_TILES.filter((t) => t.kind === 'number');
+  for (const t of buttons) {
+    const { col: c, row: r } = advance(buttonsW, buttonsH);
+    out[t.id] = { col: c, row: r, colSpan: buttonsW, rowSpan: buttonsH, spec: { kind: 'button', entityId: t.entityId, domain: t.domain, name: t.name } };
+  }
+  // Start a new row for the number strip.
+  col = 1; row += buttonsH;
+  for (const t of numbers) {
+    const { col: c, row: r } = advance(numbersW, numbersH);
+    out[t.id] = { col: c, row: r, colSpan: numbersW, rowSpan: numbersH, spec: { kind: 'number', entityId: t.entityId, domain: t.domain, name: t.name, unit: t.unit } };
+  }
+  return out;
+}
+
 // Defaults at 48-col density: everything doubled from the old 24-col defaults.
 function computeDefaults(cameras) {
   const byId = {};
@@ -147,10 +201,30 @@ export default function App() {
     ])
       .then(([camData, layoutData]) => {
         if (cancelled) return;
-        setCameras(Array.isArray(camData) ? camData : []);
-        if (layoutData && typeof layoutData === 'object') {
-          setOverrides(layoutData.layout && typeof layoutData.layout === 'object' ? layoutData.layout : {});
-          setRevision(typeof layoutData.revision === 'number' ? layoutData.revision : 0);
+        const cams = Array.isArray(camData) ? camData : [];
+        setCameras(cams);
+        const initial = layoutData?.layout && typeof layoutData.layout === 'object' ? layoutData.layout : {};
+        setRevision(typeof layoutData?.revision === 'number' ? layoutData.revision : 0);
+
+        // Seed the starter template on the very first load. Guard with a
+        // marker so template tiles never resurrect once the user deletes
+        // them. Persist immediately so every other client picks it up.
+        const marker = initial[TEMPLATE_MARKER];
+        if (!marker) {
+          const camDefaults = computeDefaults(cams);
+          // Determine the first row below the built-in tiles.
+          let maxRow = 1;
+          for (const v of Object.values(camDefaults)) {
+            if (v && v.row && v.rowSpan) maxRow = Math.max(maxRow, v.row + v.rowSpan);
+          }
+          for (const v of Object.values(initial)) {
+            if (v && v.row && v.rowSpan) maxRow = Math.max(maxRow, v.row + v.rowSpan);
+          }
+          const seeded = { ...initial, ...seedTemplateLayout(maxRow), [TEMPLATE_MARKER]: TEMPLATE_VERSION };
+          setOverrides(seeded);
+          saveLayout(seeded);
+        } else {
+          setOverrides(initial);
         }
         setLoading(false);
       })
@@ -160,7 +234,7 @@ export default function App() {
         setLoading(false);
       });
     return () => { cancelled = true; };
-  }, []);
+  }, [saveLayout]);
 
   // Subscribe to layout changes from other clients.
   useEffect(() => {
@@ -192,7 +266,7 @@ export default function App() {
     out[SECURITY_ID] = { ...defaults[SECURITY_ID], ...(overrides[SECURITY_ID] || {}) };
     for (const [id, entry] of Object.entries(overrides)) {
       if (!entry || typeof entry !== 'object') continue;
-      if (id.startsWith('custom-')) {
+      if (id.startsWith('custom-') || id.startsWith('tpl-')) {
         out[id] = { colSpan: 6, rowSpan: 6, ...entry };
       }
     }
@@ -223,8 +297,16 @@ export default function App() {
   };
 
   const resetLayout = () => {
-    setOverrides({});
-    persist.schedule({}, 0);
+    // Rebuild the starter template so an empty layout never actually reaches
+    // any client — users always see something on first paint.
+    const camDefaults = computeDefaults(cameras);
+    let maxRow = 1;
+    for (const v of Object.values(camDefaults)) {
+      if (v && v.row && v.rowSpan) maxRow = Math.max(maxRow, v.row + v.rowSpan);
+    }
+    const next = { ...seedTemplateLayout(maxRow), [TEMPLATE_MARKER]: TEMPLATE_VERSION };
+    setOverrides(next);
+    persist.schedule(next, 0);
   };
 
   const addCustomTile = (spec) => {
@@ -306,7 +388,7 @@ export default function App() {
   };
 
   const customEntries = Object.entries(overrides).filter(
-    ([id, v]) => id.startsWith('custom-') && v && v.spec
+    ([id, v]) => (id.startsWith('custom-') || id.startsWith('tpl-')) && v && v.spec
   );
 
   return (
