@@ -31,31 +31,34 @@ A Home Assistant OS add-on that renders:
 ### Custom house image
 
 The Electricity card overlays live callouts (`Solar`, `PV 1`, `PV 2`, `Home`,
-`Grid`) on top of an image at `/house.png` (served from `frontend/public/`).
-Drop your own transparent-background isometric render there; if you keep the
-aspect ratio close to 2682 × 1600 the callout positions in
-`src/components/SolarCard.jsx` map cleanly to the roof panels / garage /
-fence corner. Otherwise adjust the numbers inside `<HouseView>`.
+`Grid`) on top of an image at `/house.png` (served from
+`pzm_home_dashboard/frontend/public/`). Drop your own transparent-background
+isometric render there; if you keep the aspect ratio close to 2682 × 1600 the
+callout positions in `pzm_home_dashboard/frontend/src/components/SolarCard.jsx`
+map cleanly to the roof panels / garage / fence corner. Otherwise adjust the
+numbers inside `<HouseView>`.
 
 ## Repository layout
 
 ```
-config.yaml             HAOS add-on manifest
-Dockerfile              Multi-stage build (Node → .NET → runtime + ffmpeg)
-run.sh                  Add-on entrypoint
-backend/                ASP.NET Core 8 API
-  Program.cs
-  Controllers/          /api/cameras · /hls · /api/ha/solar[/history|/monthly]
-  Services/             StreamManager (ffmpeg-per-camera), HomeAssistantClient
-  Models/
-frontend/               React 18 + Vite + hls.js
-  src/
-    App.jsx             Grid layout with drag/resize
-    components/
-      CameraTile.jsx    HLS video tile
-      SolarCard.jsx     HouseView + energy chips
-  public/
-    house.png           Isometric house image (drop your own here)
+repository.yaml                    HAOS add-on repository manifest
+pzm_home_dashboard/                The add-on itself
+  config.yaml                        HAOS add-on manifest
+  Dockerfile                         Multi-stage build (Node → .NET → runtime + ffmpeg)
+  run.sh                             Add-on entrypoint
+  backend/                           ASP.NET Core 8 API
+    Program.cs
+    Controllers/                     /api/cameras · /hls · /api/ha/solar[/history|/monthly]
+    Services/                        StreamManager (ffmpeg-per-camera), HomeAssistantClient
+    Models/
+  frontend/                          React 18 + Vite + hls.js
+    src/
+      App.jsx                        Grid layout with drag/resize
+      components/
+        CameraTile.jsx               HLS video tile
+        SolarCard.jsx                HouseView + energy chips
+    public/
+      house.png                      Isometric house image (drop your own here)
 ```
 
 ## Local development
@@ -70,21 +73,21 @@ and camera passwords there.
 brew install ffmpeg dotnet@8
 
 # Backend
-cd backend
+cd pzm_home_dashboard/backend
 ASPNETCORE_URLS=http://0.0.0.0:8099 \
 ASPNETCORE_ENVIRONMENT=Development \
 HLS_ROOT=/tmp/pzm-hls \
 dotnet run --no-launch-profile
 
 # Frontend (in another shell)
-cd frontend
+cd pzm_home_dashboard/frontend
 npm install
 npm run dev   # http://localhost:5173/
 ```
 
 Vite proxies `/api` and `/hls` to `:8099` so both work seamlessly.
 
-`frontend/src/components/SolarCard.jsx` fetches history for
+`pzm_home_dashboard/frontend/src/components/SolarCard.jsx` fetches history for
 `hours = hours-since-local-midnight` from `/api/ha/solar/history`. `Total Solar`
 uses the long-term-statistics WebSocket API (`recorder/statistics_during_period`)
 and shows 12 monthly bars.

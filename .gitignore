@@ -1,16 +1,16 @@
 # .NET
-backend/bin/
-backend/obj/
+**/bin/
+**/obj/
 *.user
 
 # Local secrets — real HA token, camera passwords, etc.
-backend/appsettings.Development.json
-backend/appsettings.Local.json
+**/appsettings.Development.json
+**/appsettings.Local.json
 
 # Frontend
-frontend/node_modules/
-frontend/dist/
-frontend/.vite/
+**/node_modules/
+**/dist/
+**/.vite/
 
 # Editors / OS
 .vscode/
