@@ -148,3 +148,11 @@ public sealed record HaStateDto(
 public sealed record HaSample(
     [property: JsonPropertyName("t")] long T,
     [property: JsonPropertyName("v")] double V);
+
+public sealed record HaEntitySummary(
+    [property: JsonPropertyName("entityId")] string EntityId,
+    [property: JsonPropertyName("domain")] string Domain,
+    [property: JsonPropertyName("state")] string? State,
+    [property: JsonPropertyName("unit")] string? Unit,
+    [property: JsonPropertyName("friendlyName")] string? FriendlyName,
+    [property: JsonPropertyName("deviceClass")] string? DeviceClass);

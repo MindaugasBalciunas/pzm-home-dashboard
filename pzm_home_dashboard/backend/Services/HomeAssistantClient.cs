@@ -30,6 +30,63 @@ public sealed class HomeAssistantClient
         }
     }
 
+    public async Task<IReadOnlyList<HaEntitySummary>> GetAllStatesAsync(CancellationToken ct)
+    {
+        var (baseUrl, token) = ResolveCreds();
+        if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(token))
+            return Array.Empty<HaEntitySummary>();
+
+        var http = _factory.CreateClient();
+        http.Timeout = TimeSpan.FromSeconds(10);
+        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        try
+        {
+            using var resp = await http.GetAsync(baseUrl + "states", ct);
+            if (!resp.IsSuccessStatusCode) return Array.Empty<HaEntitySummary>();
+            await using var stream = await resp.Content.ReadAsStreamAsync(ct);
+            using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+                return Array.Empty<HaEntitySummary>();
+
+            var list = new List<HaEntitySummary>();
+            foreach (var item in doc.RootElement.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.Object) continue;
+                if (!item.TryGetProperty("entity_id", out var eid)
+                    || eid.ValueKind != JsonValueKind.String) continue;
+                var entityId = eid.GetString();
+                if (string.IsNullOrEmpty(entityId)) continue;
+                var dot = entityId.IndexOf('.');
+                if (dot <= 0) continue;
+                var domain = entityId[..dot];
+
+                string? state = null;
+                if (item.TryGetProperty("state", out var st) && st.ValueKind == JsonValueKind.String)
+                    state = st.GetString();
+
+                string? unit = null, friendly = null, deviceClass = null;
+                if (item.TryGetProperty("attributes", out var attrs)
+                    && attrs.ValueKind == JsonValueKind.Object)
+                {
+                    if (attrs.TryGetProperty("unit_of_measurement", out var u)
+                        && u.ValueKind == JsonValueKind.String) unit = u.GetString();
+                    if (attrs.TryGetProperty("friendly_name", out var f)
+                        && f.ValueKind == JsonValueKind.String) friendly = f.GetString();
+                    if (attrs.TryGetProperty("device_class", out var d)
+                        && d.ValueKind == JsonValueKind.String) deviceClass = d.GetString();
+                }
+                list.Add(new HaEntitySummary(entityId, domain, state, unit, friendly, deviceClass));
+            }
+            return list;
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "HA getAllStates failed");
+            return Array.Empty<HaEntitySummary>();
+        }
+    }
+
     public async Task<HaStateDto?> GetStateAsync(string entityId, CancellationToken ct)
     {
         var (baseUrl, token) = ResolveCreds();

@@ -1,42 +1,29 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import CameraTile from './components/CameraTile.jsx';
 import SolarCard from './components/SolarCard.jsx';
 import SecurityCard from './components/SecurityCard.jsx';
+import SideMenu from './components/SideMenu.jsx';
+import SimpleTile from './components/SimpleTile.jsx';
 
-const LS_KEY = 'pzm-layout-v8';
-const GRID_COLS = 24;
+const GRID_COLS = 48;
 const HERO_ID = 'frontgate';
 const SOLAR_ID = 'solar';
 const SECURITY_ID = 'security';
 
-function loadStored() {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' && parsed.byId ? parsed.byId : {};
-  } catch {
-    return {};
-  }
-}
-
-function saveStored(byId) {
-  try { localStorage.setItem(LS_KEY, JSON.stringify({ byId })); } catch { /* ignore */ }
-}
-
 const FIT_MODES = ['fit', 'center', 'stretch'];
 const DEFAULT_FIT = 'fit';
 
+// Defaults at 48-col density: everything doubled from the old 24-col defaults.
 function computeDefaults(cameras) {
   const byId = {};
-  const NORMAL_W = 6;
-  const NORMAL_H = 4;
-  const SOLAR_W = 8;
-  const SOLAR_H = 8;
-  const SECURITY_W = 5;
-  const SECURITY_H = 7;
+  const NORMAL_W = 12;
+  const NORMAL_H = 8;
+  const SOLAR_W = 16;
+  const SOLAR_H = 16;
+  const SECURITY_W = 10;
+  const SECURITY_H = 14;
   const HERO_W = GRID_COLS - SOLAR_W - SECURITY_W;
-  const HERO_H = 8;
+  const HERO_H = 16;
   const hero = cameras.find((c) => c.id === HERO_ID);
   let rowCursor = 1;
   if (hero) {
@@ -62,21 +49,109 @@ function computeDefaults(cameras) {
 
 function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
 
+// Debounced PUT so a drag gesture doesn't spam the backend.
+function useDebouncedPersist(saveFn) {
+  const timerRef = useRef(null);
+  const latestRef = useRef(null);
+  const cancel = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+  const schedule = (value, delayMs = 400) => {
+    latestRef.current = value;
+    cancel();
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null;
+      saveFn(latestRef.current);
+    }, delayMs);
+  };
+  const flush = () => {
+    if (timerRef.current == null) return;
+    cancel();
+    saveFn(latestRef.current);
+  };
+  useEffect(() => cancel, []);
+  return { schedule, flush };
+}
+
+// Find a free spot for a new tile, size wxh, scanning the grid top-to-bottom.
+function findFreeSpot(overrides, w, h) {
+  const occupied = new Map(); // row -> Set<col>
+  const mark = (col, row, colSpan, rowSpan) => {
+    for (let r = row; r < row + rowSpan; r++) {
+      let set = occupied.get(r);
+      if (!set) { set = new Set(); occupied.set(r, set); }
+      for (let c = col; c < col + colSpan; c++) set.add(c);
+    }
+  };
+  for (const v of Object.values(overrides)) {
+    if (!v || v.hidden) continue;
+    if (v.col && v.row && v.colSpan && v.rowSpan) mark(v.col, v.row, v.colSpan, v.rowSpan);
+  }
+  for (let row = 1; row < 200; row++) {
+    for (let col = 1; col <= GRID_COLS - w + 1; col++) {
+      let free = true;
+      outer: for (let r = row; r < row + h; r++) {
+        const set = occupied.get(r);
+        if (!set) continue;
+        for (let c = col; c < col + w; c++) {
+          if (set.has(c)) { free = false; break outer; }
+        }
+      }
+      if (free) return { col, row };
+    }
+  }
+  return { col: 1, row: 1 };
+}
+
 export default function App() {
   const [cameras, setCameras] = useState([]);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
-  const [overrides, setOverrides] = useState(loadStored);
+  // `overrides` is the full layout object stored server-side. Keys are tile
+  // ids: camera ids, "solar", "security", or user-added "custom-*" ids.
+  // Values include position/size plus per-type extras (fit for cameras,
+  // spec for custom tiles).
+  const [overrides, setOverrides] = useState({});
+  const [revision, setRevision] = useState(0);
   const gridRef = useRef(null);
+  const overridesRef = useRef(overrides);
+  useEffect(() => { overridesRef.current = overrides; }, [overrides]);
+
+  const saveLayout = useCallback(async (payload) => {
+    try {
+      const r = await fetch('api/layout', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ layout: payload }),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const data = await r.json();
+      if (typeof data.revision === 'number') setRevision(data.revision);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('layout PUT failed', e);
+    }
+  }, []);
+
+  const persist = useDebouncedPersist(saveLayout);
 
   useEffect(() => {
     let cancelled = false;
-    fetch('api/cameras')
-      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-      .then((data) => {
+    Promise.all([
+      fetch('api/cameras').then((r) => { if (!r.ok) throw new Error(`cameras HTTP ${r.status}`); return r.json(); }),
+      fetch('api/layout').then((r) => { if (!r.ok) throw new Error(`layout HTTP ${r.status}`); return r.json(); }),
+    ])
+      .then(([camData, layoutData]) => {
         if (cancelled) return;
-        setCameras(Array.isArray(data) ? data : []);
+        setCameras(Array.isArray(camData) ? camData : []);
+        if (layoutData && typeof layoutData === 'object') {
+          setOverrides(layoutData.layout && typeof layoutData.layout === 'object' ? layoutData.layout : {});
+          setRevision(typeof layoutData.revision === 'number' ? layoutData.revision : 0);
+        }
         setLoading(false);
       })
       .catch((e) => {
@@ -87,45 +162,95 @@ export default function App() {
     return () => { cancelled = true; };
   }, []);
 
+  // Subscribe to layout changes from other clients.
+  useEffect(() => {
+    if (typeof EventSource === 'undefined') return undefined;
+    const es = new EventSource('api/layout/events');
+    es.onmessage = (ev) => {
+      try {
+        const data = JSON.parse(ev.data);
+        if (!data || typeof data.revision !== 'number') return;
+        // Only accept newer revisions than what we already have.
+        setRevision((current) => {
+          if (data.revision <= current) return current;
+          setOverrides(data.layout && typeof data.layout === 'object' ? data.layout : {});
+          return data.revision;
+        });
+      } catch { /* ignore */ }
+    };
+    es.onerror = () => { /* browser auto-reconnects */ };
+    return () => es.close();
+  }, []);
+
+  const defaults = useMemo(() => computeDefaults(cameras), [cameras]);
   const layout = useMemo(() => {
-    const defaults = computeDefaults(cameras);
     const out = {};
     for (const cam of cameras) {
       out[cam.id] = { ...defaults[cam.id], ...(overrides[cam.id] || {}) };
     }
     out[SOLAR_ID] = { ...defaults[SOLAR_ID], ...(overrides[SOLAR_ID] || {}) };
     out[SECURITY_ID] = { ...defaults[SECURITY_ID], ...(overrides[SECURITY_ID] || {}) };
+    for (const [id, entry] of Object.entries(overrides)) {
+      if (!entry || typeof entry !== 'object') continue;
+      if (id.startsWith('custom-')) {
+        out[id] = { colSpan: 6, rowSpan: 6, ...entry };
+      }
+    }
     return out;
-  }, [cameras, overrides]);
+  }, [cameras, overrides, defaults]);
 
-  const updateTile = (id, patch, persist) => {
+  // Merge a patch into overrides for one tile and (optionally) persist.
+  const updateTile = (id, patch, persistNow) => {
     setOverrides((prev) => {
-      const next = {
-        ...prev,
-        [id]: { ...(prev[id] || {}), ...(layout[id] || {}), ...patch },
-      };
-      if (persist) saveStored(next);
+      const existing = prev[id] || {};
+      const merged = { ...(layout[id] || {}), ...existing, ...patch };
+      const next = { ...prev, [id]: merged };
+      if (persistNow) persist.schedule(next, 400);
       return next;
     });
   };
 
-  const commitLayoutSnapshot = () => { saveStored(overrides); };
+  const commitLayoutSnapshot = () => persist.flush();
 
   const setFit = (id, fit) => {
     if (!FIT_MODES.includes(fit)) return;
     setOverrides((prev) => {
-      const next = {
-        ...prev,
-        [id]: { ...(prev[id] || {}), ...(layout[id] || {}), fit },
-      };
-      saveStored(next);
+      const merged = { ...(layout[id] || {}), ...(prev[id] || {}), fit };
+      const next = { ...prev, [id]: merged };
+      persist.schedule(next, 200);
       return next;
     });
   };
 
   const resetLayout = () => {
     setOverrides({});
-    try { localStorage.removeItem(LS_KEY); } catch { /* ignore */ }
+    persist.schedule({}, 0);
+  };
+
+  const addCustomTile = (spec) => {
+    // Default sizes tuned for the 48-col grid.
+    const w = spec.kind === 'number' ? 8 : 6;
+    const h = spec.kind === 'number' ? 5 : 6;
+    const { col, row } = findFreeSpot(overridesRef.current, w, h);
+    const id = `custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    const entry = { col, row, colSpan: w, rowSpan: h, spec };
+    setOverrides((prev) => {
+      const next = { ...prev, [id]: entry };
+      persist.schedule(next, 0);
+      return next;
+    });
+    // Open edit mode so the user can immediately position it.
+    setEditMode(true);
+  };
+
+  const removeCustomTile = (id) => {
+    setOverrides((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      persist.schedule(next, 0);
+      return next;
+    });
   };
 
   const getCellMetrics = () => {
@@ -162,11 +287,11 @@ export default function App() {
       if (kind === 'move') {
         const col = clamp(startCol + dCol, 1, GRID_COLS - startColSpan + 1);
         const row = Math.max(1, startRow + dRow);
-        if (col !== eff.col || row !== eff.row) updateTile(id, { col, row });
+        if (col !== eff.col || row !== eff.row) updateTile(id, { col, row }, true);
       } else {
         const colSpan = clamp(startColSpan + dCol, 1, GRID_COLS - startCol + 1);
         const rowSpan = Math.max(1, startRowSpan + dRow);
-        if (colSpan !== eff.colSpan || rowSpan !== eff.rowSpan) updateTile(id, { colSpan, rowSpan });
+        if (colSpan !== eff.colSpan || rowSpan !== eff.rowSpan) updateTile(id, { colSpan, rowSpan }, true);
       }
     };
     const onUp = () => {
@@ -180,20 +305,31 @@ export default function App() {
     window.addEventListener('pointercancel', onUp);
   };
 
+  const customEntries = Object.entries(overrides).filter(
+    ([id, v]) => id.startsWith('custom-') && v && v.spec
+  );
+
   return (
     <>
+      <SideMenu
+        editMode={editMode}
+        onToggleEdit={() => setEditMode((v) => !v)}
+        onResetLayout={resetLayout}
+        onAddTile={addCustomTile}
+      />
+
       <main
         ref={gridRef}
         className={`grid ${editMode ? 'grid-edit' : ''}`}
       >
-        {loading && <div className="notice" style={{ gridColumn: `1 / -1` }}>Loading cameras…</div>}
+        {loading && <div className="notice" style={{ gridColumn: `1 / -1` }}>Loading dashboard…</div>}
         {error && (
           <div className="notice notice-error" style={{ gridColumn: `1 / -1` }}>
-            Failed to load cameras: {error}
+            Failed to load: {error}
           </div>
         )}
-        {!loading && !error && cameras.length === 0 && (
-          <div className="notice" style={{ gridColumn: `1 / -1` }}>No cameras configured.</div>
+        {!loading && !error && cameras.length === 0 && customEntries.length === 0 && (
+          <div className="notice" style={{ gridColumn: `1 / -1` }}>No cameras or tiles configured.</div>
         )}
         {cameras.map((cam) => {
           const l = layout[cam.id];
@@ -240,13 +376,28 @@ export default function App() {
             onStartResize={(e) => startDrag(SECURITY_ID, e, 'resize')}
           />
         )}
+        {customEntries.map(([id, entry]) => {
+          const l = layout[id];
+          if (!l) return null;
+          return (
+            <SimpleTile
+              key={id}
+              id={id}
+              spec={entry.spec}
+              col={l.col}
+              row={l.row}
+              colSpan={l.colSpan}
+              rowSpan={l.rowSpan}
+              editMode={editMode}
+              onStartMove={(e) => startDrag(id, e, 'move')}
+              onStartResize={(e) => startDrag(id, e, 'resize')}
+              onRemove={removeCustomTile}
+            />
+          );
+        })}
       </main>
+
       <div className="edit-toolbar">
-        {editMode && (
-          <button type="button" className="edit-btn edit-btn-secondary" onClick={resetLayout}>
-            Reset
-          </button>
-        )}
         <button
           type="button"
           className={`edit-btn ${editMode ? 'edit-btn-active' : ''}`}

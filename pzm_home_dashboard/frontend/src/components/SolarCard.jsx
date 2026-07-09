@@ -427,7 +427,13 @@ function HouseView({
 
   return (
     <div className="house-view">
-      <div className="house-view-bg" />
+      {/* Background is set inline so the URL resolves against the document base
+          rather than the CSS file location — under HAOS ingress the stylesheet
+          lives in /assets/, but house.png sits next to index.html. */}
+      <div
+        className="house-view-bg"
+        style={{ backgroundImage: "url('house.png')" }}
+      />
 
       {/*
         Straight vertical/horizontal segments only, junction at (63, 55) near the
