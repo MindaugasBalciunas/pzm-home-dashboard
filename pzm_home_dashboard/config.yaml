@@ -76,20 +76,51 @@ options:
           contact: ""
           icon: "mdi:gate"
       # Extra zones surfaced under the alarm panel — door/window contacts,
-      # gas / fire / glass-break sensors.
+      # gas / fire / glass-break sensors. `kind` drives the localised status
+      # label (contact / door / window / motion / fire / gas / glass / flood).
       zones:
         - name: "Durys"
           entity: "binary_sensor.esim364_durys"
-        - name: "Terasa durys"
+          kind: "door"
+        - name: "Terasa"
           entity: "binary_sensor.esim364_terasa_durys"
-        - name: "Langas Darbo"
+          kind: "door"
+        - name: "Langas"
           entity: "binary_sensor.esim364_langas_darbo"
+          kind: "window"
         - name: "Dujos"
           entity: "binary_sensor.esim364_dujos"
+          kind: "gas"
         - name: "Gaisras"
           entity: "binary_sensor.esim364_gaisras"
+          kind: "fire"
         - name: "Stikladužis"
           entity: "binary_sensor.esim364_stikladuzis"
+          kind: "glass"
+        - name: "Įėjimas"
+          entity: "binary_sensor.esim364_pir_iejimas"
+          kind: "motion"
+        - name: "Salė"
+          entity: "binary_sensor.esim364_sale_pir"
+          kind: "motion"
+        - name: "Virtuvė"
+          entity: "binary_sensor.esim364_pir_virtuve"
+          kind: "motion"
+        - name: "Darbo"
+          entity: "binary_sensor.esim364_pir_darbo"
+          kind: "motion"
+        - name: "Miegamasis"
+          entity: "binary_sensor.esim364_pir_miegamas"
+          kind: "motion"
+        - name: "2a. #1"
+          entity: "binary_sensor.esim364_pir_2_a_kambaris_1"
+          kind: "motion"
+        - name: "2a. #2"
+          entity: "binary_sensor.esim364_pir_2_a_kambaris2"
+          kind: "motion"
+        - name: "Garažas"
+          entity: "binary_sensor.esim364_garazo_pir"
+          kind: "motion"
 # Notes:
 # - Set the RTSP camera password from the add-on configuration UI, not this
 #   file. `url` may embed `user:pass@host` inline; if so, the separate
@@ -145,3 +176,4 @@ schema:
       zones:
         - name: str
           entity: str
+          kind: str?

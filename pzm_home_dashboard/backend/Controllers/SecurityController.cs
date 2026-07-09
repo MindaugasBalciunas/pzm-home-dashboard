@@ -44,6 +44,7 @@ public sealed class SecurityController : ControllerBase
         {
             z.Name,
             z.Entity,
+            z.Kind,
             state = string.IsNullOrWhiteSpace(z.Entity)
                 ? null
                 : await _client.GetStateAsync(z.Entity, ct),

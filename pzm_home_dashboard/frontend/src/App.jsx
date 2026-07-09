@@ -3,7 +3,7 @@ import CameraTile from './components/CameraTile.jsx';
 import SolarCard from './components/SolarCard.jsx';
 import SecurityCard from './components/SecurityCard.jsx';
 
-const LS_KEY = 'pzm-layout-v7';
+const LS_KEY = 'pzm-layout-v8';
 const GRID_COLS = 24;
 const HERO_ID = 'frontgate';
 const SOLAR_ID = 'solar';
@@ -34,7 +34,7 @@ function computeDefaults(cameras) {
   const SOLAR_W = 8;
   const SOLAR_H = 8;
   const SECURITY_W = 5;
-  const SECURITY_H = 6;
+  const SECURITY_H = 7;
   const HERO_W = GRID_COLS - SOLAR_W - SECURITY_W;
   const HERO_H = 8;
   const hero = cameras.find((c) => c.id === HERO_ID);

@@ -815,87 +815,6 @@ html, body, #root {
   gap: 0.5rem;
 }
 
-.security-alarm {
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.03);
-  padding: 0.4rem 0.55rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-@media (prefers-color-scheme: light) {
-  .security-alarm { background: rgba(0, 0, 0, 0.02); }
-}
-.security-alarm-ok      { border-color: rgba(87, 211, 140, 0.55); }
-.security-alarm-armed   { border-color: rgba(74, 163, 255, 0.6); }
-.security-alarm-pending { border-color: rgba(245, 159, 0, 0.6); }
-.security-alarm-bad     {
-  border-color: rgba(255, 107, 107, 0.75);
-  background: rgba(255, 107, 107, 0.09);
-  animation: security-alarm-pulse 1.1s ease-in-out infinite;
-}
-@keyframes security-alarm-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.55); }
-  50%      { box-shadow: 0 0 0 6px rgba(255, 107, 107, 0); }
-}
-.security-alarm-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.6rem;
-}
-.security-alarm-label {
-  font-size: 0.6rem;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-weight: 800;
-}
-.security-alarm-state {
-  font-size: 0.85rem;
-  font-weight: 800;
-  color: var(--text);
-  letter-spacing: 0.02em;
-}
-.security-alarm-bad .security-alarm-state { color: var(--danger); }
-.security-alarm-ok  .security-alarm-state { color: var(--ok); }
-
-.security-alarm-actions {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.3rem;
-}
-.security-btn {
-  appearance: none;
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text);
-  border-radius: 7px;
-  padding: 0.3rem 0.25rem;
-  font-size: 0.66rem;
-  font-weight: 700;
-  cursor: pointer;
-  letter-spacing: 0.02em;
-  transition: transform 0.08s ease, background 0.15s ease, border-color 0.15s ease;
-}
-.security-btn:hover:not(:disabled) {
-  border-color: var(--accent);
-  background: rgba(74, 163, 255, 0.12);
-}
-.security-btn:active:not(:disabled) { transform: translateY(1px); }
-.security-btn:disabled { opacity: 0.4; cursor: default; }
-.security-btn-disarm:hover:not(:disabled) {
-  border-color: var(--ok);
-  background: rgba(87, 211, 140, 0.15);
-  color: var(--ok);
-}
-.security-btn-home:hover:not(:disabled),
-.security-btn-away:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
 /* --- Gate buttons (the primary action of this card) --- */
 .gates-grid {
   display: grid;
@@ -982,7 +901,11 @@ html, body, #root {
 .gate-state-ok  { color: var(--ok); }
 .gate-state-bad { color: var(--danger); }
 
-/* --- Zones (extra chips) --- */
+/* --- Zones (pill chips, content-sized) ---
+   State is communicated by colour, not text:
+     • ok  → green name only
+     • bad → red name + red alert badge
+     • neutral (unknown) → muted name only                                */
 .security-zones {
   display: flex;
   flex-direction: column;
@@ -991,49 +914,59 @@ html, body, #root {
   flex: 1 1 auto;
 }
 .zones-grid {
-  display: grid;
-  /* Narrow enough that 3-4 chips fit per row on the default 5-col-wide tile;
-     labels wrap over two lines so long names like "Terasa durys" and
-     "Stikladužis" are never clipped. */
-  grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.3rem;
+  align-content: flex-start;
 }
 .zone-chip {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.26rem 0.6rem;
+  border-radius: 999px;
   border: 1px solid var(--border);
-  border-left-width: 3px;
-  border-radius: 7px;
-  padding: 0.3rem 0.45rem;
-  background: rgba(255, 255, 255, 0.02);
-  font-size: 0.68rem;
-  min-width: 0;
+  background: rgba(255, 255, 255, 0.03);
+  line-height: 1;
+  white-space: nowrap;
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
 @media (prefers-color-scheme: light) {
-  .zone-chip { background: rgba(0, 0, 0, 0.015); }
+  .zone-chip { background: rgba(0, 0, 0, 0.02); }
 }
-.zone-chip-ok      { border-left-color: var(--ok); }
-.zone-chip-bad     { border-left-color: var(--danger); }
-.zone-chip-neutral { border-left-color: var(--accent); }
+.zone-chip-ok {
+  border-color: rgba(87, 211, 140, 0.4);
+  background: rgba(87, 211, 140, 0.08);
+}
+.zone-chip-bad {
+  border-color: rgba(255, 107, 107, 0.65);
+  background: rgba(255, 107, 107, 0.14);
+  animation: zone-chip-pulse 1.6s ease-in-out infinite;
+}
+@keyframes zone-chip-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.45); }
+  50%      { box-shadow: 0 0 0 4px rgba(255, 107, 107, 0); }
+}
+.zone-chip-neutral { }
+
 .zone-name {
-  color: var(--muted);
+  font-size: 0.72rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-size: 0.56rem;
-  line-height: 1.15;
-  word-break: break-word;
-  hyphens: auto;
-  white-space: normal;
+  letter-spacing: 0.005em;
+  color: var(--muted);
 }
-.zone-state {
-  color: var(--text);
+.zone-chip-ok  .zone-name { color: var(--ok); }
+.zone-chip-bad .zone-name { color: var(--danger); }
+
+.zone-alert {
+  font-size: 0.62rem;
   font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  font-size: 0.7rem;
-  line-height: 1;
+  color: var(--danger);
+  background: rgba(255, 107, 107, 0.22);
+  padding: 0.14rem 0.42rem;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 /* Custom Flow Diagram Value Nodes & PV percentages */

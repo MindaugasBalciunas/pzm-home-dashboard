@@ -61,6 +61,12 @@ public sealed class ZoneEntity
 
     [JsonPropertyName("entity")]
     public string Entity { get; set; } = "";
+
+    // Semantic kind used by the client to pick a localised status label.
+    // Recognised: contact, door, window, motion, fire, gas, glass, flood.
+    // Anything else falls through to a generic on/off translation.
+    [JsonPropertyName("kind")]
+    public string? Kind { get; set; }
 }
 
 public sealed class SolarEntities
