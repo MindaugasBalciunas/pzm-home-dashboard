@@ -11,7 +11,7 @@ function contactOpen(state) {
   return null;
 }
 
-// Localise a zone/contact state (on/off) into a Lithuanian label whose wording
+// Localise a zone/contact state (on/off) into a status label whose wording
 // matches what the sensor actually measures. `kind` is a hint from options;
 // anything unknown falls back to a generic active/idle pair.
 function zoneStateLabel(kind, isOn) {
@@ -25,34 +25,34 @@ function zoneStateLabel(kind, isOn) {
     case 'garage':
     case 'garage_door':
     case 'opening':
-      return isOn ? 'Atidaryta' : 'Uždaryta';
+      return isOn ? 'Open' : 'Closed';
     case 'motion':
     case 'occupancy':
     case 'presence':
     case 'pir':
-      return isOn ? 'Judesys' : 'Ramu';
+      return isOn ? 'Motion' : 'Quiet';
     case 'fire':
     case 'smoke':
     case 'heat':
-      return isOn ? 'Gaisras!' : 'Švaru';
+      return isOn ? 'Fire!' : 'Clear';
     case 'gas':
     case 'carbon_monoxide':
     case 'co':
-      return isOn ? 'Nutekėjimas!' : 'Švaru';
+      return isOn ? 'Leak!' : 'Clear';
     case 'glass':
     case 'glass_break':
     case 'sound':
     case 'vibration':
-      return isOn ? 'Suduzo!' : 'Švaru';
+      return isOn ? 'Break!' : 'Clear';
     case 'flood':
     case 'moisture':
     case 'water':
-      return isOn ? 'Vanduo!' : 'Sausa';
+      return isOn ? 'Water!' : 'Dry';
     case 'safety':
     case 'tamper':
-      return isOn ? 'Pavojus!' : 'Gerai';
+      return isOn ? 'Alarm!' : 'OK';
     default:
-      return isOn ? 'Aktyvu' : 'Ramu';
+      return isOn ? 'Active' : 'Idle';
   }
 }
 
