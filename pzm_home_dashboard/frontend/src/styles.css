@@ -989,8 +989,19 @@ html, body, #root {
   container-name: sec;
 }
 .security-inner {
-  padding: 0.55rem 0.65rem;
-  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  gap: 0.35rem;
+}
+/* Compact section titles inside the Security card so they don't push
+   Zones / PIR out of the visible area on small tile heights. */
+.security-inner .solar-section-title {
+  margin-top: 0;
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+}
+.security-inner .solar-title {
+  padding-bottom: 0;
+  font-size: 0.58rem;
 }
 
 /* Landscape: at least 30% wider than tall.
@@ -1034,33 +1045,36 @@ html, body, #root {
   .security-tile .zones-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-/* --- Gate buttons (the primary action of this card) --- */
+/* --- Gate buttons (the primary action of this card) ---
+   Always laid out as one horizontal row: the button count drives the column
+   count so every gate stays on the same line, regardless of tile aspect. */
 .gates-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.3rem;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 0.25rem;
   flex: 0 0 auto;
   min-height: 0;
 }
 .gate-btn {
   appearance: none;
   display: grid;
-  grid-template-columns: 32px 1fr;
+  grid-template-columns: 26px 1fr;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
   text-align: left;
   border-radius: 0;
   border: 1px solid var(--border);
   border-left-width: 3px;
   background: linear-gradient(145deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02));
   color: var(--text);
-  padding: 0.35rem 0.45rem;
+  padding: 0.3rem 0.4rem;
   cursor: pointer;
-  min-height: 42px;
+  min-height: 38px;
   min-width: 0;
   transition: transform 0.1s ease, background 0.2s ease, border-color 0.2s ease,
               box-shadow 0.2s ease;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 @media (prefers-color-scheme: light) {
   .gate-btn {
@@ -1086,15 +1100,15 @@ html, body, #root {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 26px;
+  height: 26px;
   border-radius: 0;
   background: rgba(74, 163, 255, 0.14);
   color: var(--accent);
 }
 .gate-btn-ok  .gate-icon { background: rgba(87, 211, 140, 0.16); color: var(--ok); }
 .gate-btn-bad .gate-icon { background: rgba(255, 107, 107, 0.16); color: var(--danger); }
-.gate-icon svg { width: 20px; height: 20px; }
+.gate-icon svg { width: 18px; height: 18px; }
 
 .gate-body {
   display: flex;
@@ -1103,7 +1117,7 @@ html, body, #root {
   min-width: 0;
 }
 .gate-name {
-  font-size: 0.78rem;
+  font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.01em;
   color: var(--text);
@@ -1113,7 +1127,7 @@ html, body, #root {
   line-height: 1.1;
 }
 .gate-state {
-  font-size: 0.55rem;
+  font-size: 0.5rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -1131,25 +1145,25 @@ html, body, #root {
 .security-zones {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.2rem;
   min-height: 0;
   flex: 1 1 auto;
 }
 .zones-grid {
   display: grid;
-  /* Uniform pill widths so the panel scans as a neat grid regardless of
+  /* Uniform slot widths so the panel scans as a neat grid regardless of
      label length. Three columns fit the default 5-col-wide security tile
      cleanly and stay legible for the longest labels ("Office window"). */
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.3rem;
+  gap: 0.2rem;
   align-content: flex-start;
 }
 .zone-chip {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.4rem;
-  padding: 0.26rem 0.6rem;
+  gap: 0.3rem;
+  padding: 0.18rem 0.45rem;
   border-radius: 0;
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.03);
@@ -1176,7 +1190,7 @@ html, body, #root {
 .zone-chip-neutral { }
 
 .zone-name {
-  font-size: 0.72rem;
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.005em;
   color: var(--muted);
@@ -1189,11 +1203,11 @@ html, body, #root {
 .zone-chip-bad .zone-name { color: var(--danger); }
 
 .zone-alert {
-  font-size: 0.62rem;
+  font-size: 0.54rem;
   font-weight: 800;
   color: var(--danger);
   background: rgba(255, 107, 107, 0.22);
-  padding: 0.14rem 0.42rem;
+  padding: 0.1rem 0.32rem;
   border-radius: 0;
   text-transform: uppercase;
   letter-spacing: 0.03em;
