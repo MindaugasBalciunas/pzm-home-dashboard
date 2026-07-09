@@ -15,6 +15,52 @@ public sealed class HomeAssistantOptions
 
     [JsonPropertyName("solar")]
     public SolarEntities Solar { get; set; } = new();
+
+    [JsonPropertyName("security")]
+    public SecurityEntities Security { get; set; } = new();
+}
+
+public sealed class SecurityEntities
+{
+    [JsonPropertyName("alarm_panel")]
+    public string? AlarmPanel { get; set; }
+
+    [JsonPropertyName("alarm_code")]
+    public string? AlarmCode { get; set; }
+
+    [JsonPropertyName("gates")]
+    public List<GateEntity> Gates { get; set; } = new();
+
+    [JsonPropertyName("zones")]
+    public List<ZoneEntity> Zones { get; set; } = new();
+}
+
+public sealed class GateEntity
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = "";
+
+    // The controlled entity (e.g. switch.eldes_output_1, cover.gate,
+    // button.gate, script.gate_toggle, input_boolean.gate).
+    [JsonPropertyName("entity")]
+    public string Entity { get; set; } = "";
+
+    // Optional contact sensor showing open/closed (binary_sensor).
+    [JsonPropertyName("contact")]
+    public string? Contact { get; set; }
+
+    // Optional icon override (mdi:garage / mdi:gate). Client-side hint.
+    [JsonPropertyName("icon")]
+    public string? Icon { get; set; }
+}
+
+public sealed class ZoneEntity
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = "";
+
+    [JsonPropertyName("entity")]
+    public string Entity { get; set; } = "";
 }
 
 public sealed class SolarEntities

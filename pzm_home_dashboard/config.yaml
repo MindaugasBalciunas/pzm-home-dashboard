@@ -54,6 +54,28 @@ options:
       measured_power: "sensor.solax_inverter_solax_measured_power"
       run_mode: "sensor.solax_inverter_solax_run_mode"
       grid_runtime: "sensor.solax_inverter_solax_grid_mode_runtime"
+    security:
+      # alarm_control_panel entity from the Eldes integration. Leave blank to
+      # hide the arm/disarm section.
+      alarm_panel: "alarm_control_panel.eldes_alarm"
+      # Optional shared PIN used by Disarm. Prefer sending it from the UI, but
+      # this lets a plain button work without prompting.
+      alarm_code: ""
+      # Named gates the user cares about. Any entity domain works — the
+      # backend picks the right service (switch.turn_on / button.press /
+      # cover.open_cover / script.turn_on / input_boolean.turn_on).
+      # Add a `contact` entity_id (binary_sensor) to show open/closed state.
+      gates:
+        - name: "Garažo vartai"
+          entity: "switch.eldes_output_1"
+          contact: ""
+          icon: "mdi:garage"
+        - name: "Lauko vartai"
+          entity: "switch.eldes_output_2"
+          contact: ""
+          icon: "mdi:gate"
+      # Extra zones surfaced under the alarm panel — motion/door contacts etc.
+      zones: []
 # Notes:
 # - Set the RTSP camera password from the add-on configuration UI, not this
 #   file. `url` may embed `user:pass@host` inline; if so, the separate
@@ -98,3 +120,14 @@ schema:
       measured_power: str?
       run_mode: str?
       grid_runtime: str?
+    security:
+      alarm_panel: str?
+      alarm_code: password?
+      gates:
+        - name: str
+          entity: str
+          contact: str?
+          icon: str?
+      zones:
+        - name: str
+          entity: str

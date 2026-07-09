@@ -7,6 +7,9 @@ A Home Assistant OS add-on that renders:
 - A live **Solar / Grid / House card** driven by your Home Assistant Solax
   Modbus entities, with an animated flow diagram over an isometric render of
   your house.
+- A **Home Security panel** with big one-tap buttons for user-configurable
+  gates (default: *Garažo vartai* and *Lauko vartai*, both driven through
+  the Eldes integration), plus arm / disarm controls for the alarm panel.
 
 ## Install as a HAOS add-on
 
@@ -21,6 +24,13 @@ A Home Assistant OS add-on that renders:
    - **home_assistant.solar** — the entity IDs for your inverter. Defaults
      match the [wills106 solax_modbus](https://github.com/wills106/homeassistant-solax-modbus)
      naming for a Gen4 X3-Hybrid. Change any that differ.
+   - **home_assistant.security** — set `alarm_panel` to your
+     `alarm_control_panel.*` entity (Eldes integration), and edit each `gates`
+     entry so `entity` points to the switch / button / cover / script that
+     triggers your gate. Any of those domains works — the backend picks the
+     correct service (`switch.turn_on`, `button.press`, `cover.open_cover`,
+     `script.turn_on`, `input_boolean.turn_on`, `lock.unlock`). Add
+     `contact:` (a `binary_sensor` entity) to show open/closed state.
    - Leave `home_assistant.use_supervisor: true`, and leave `base_url` and
      `token` blank — the supervisor injects a scoped token via
      `homeassistant_api: true`.
@@ -48,7 +58,7 @@ pzm_home_dashboard/                The add-on itself
   run.sh                             Add-on entrypoint
   backend/                           ASP.NET Core 8 API
     Program.cs
-    Controllers/                     /api/cameras · /hls · /api/ha/solar[/history|/monthly]
+    Controllers/                     /api/cameras · /hls · /api/ha/solar[/history|/monthly] · /api/ha/security
     Services/                        StreamManager (ffmpeg-per-camera), HomeAssistantClient
     Models/
   frontend/                          React 18 + Vite + hls.js
@@ -57,6 +67,7 @@ pzm_home_dashboard/                The add-on itself
       components/
         CameraTile.jsx               HLS video tile
         SolarCard.jsx                HouseView + energy chips
+        SecurityCard.jsx             Alarm + gate buttons (Garažo / Lauko vartai)
     public/
       house.png                      Isometric house image (drop your own here)
 ```

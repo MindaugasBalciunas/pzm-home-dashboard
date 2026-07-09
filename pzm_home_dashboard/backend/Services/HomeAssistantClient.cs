@@ -71,6 +71,44 @@ public sealed class HomeAssistantClient
         }
     }
 
+    // Fire a HA service call. `data` becomes the JSON body; entity_id is
+    // conventionally included there. Returns true on 2xx.
+    public async Task<bool> CallServiceAsync(
+        string domain, string service, object? data, CancellationToken ct)
+    {
+        var (baseUrl, token) = ResolveCreds();
+        if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(token))
+        {
+            _log.LogWarning("HA service call skipped: not configured.");
+            return false;
+        }
+
+        var http = _factory.CreateClient();
+        http.Timeout = TimeSpan.FromSeconds(8);
+        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var url = baseUrl + "services/" + domain + "/" + service;
+        var json = data is null ? "{}" : JsonSerializer.Serialize(data);
+        using var body = new StringContent(json, Encoding.UTF8, "application/json");
+        try
+        {
+            using var resp = await http.PostAsync(url, body, ct);
+            if (!resp.IsSuccessStatusCode)
+            {
+                var text = await resp.Content.ReadAsStringAsync(ct);
+                _log.LogWarning("HA service {Domain}.{Service} -> HTTP {Code}: {Body}",
+                    domain, service, (int)resp.StatusCode, text);
+                return false;
+            }
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "HA service {Domain}.{Service} failed", domain, service);
+            return false;
+        }
+    }
+
     public async Task<Dictionary<string, IReadOnlyList<HaSample>>> GetHistoryAsync(
         IReadOnlyList<string> entityIds, DateTime since, CancellationToken ct)
     {

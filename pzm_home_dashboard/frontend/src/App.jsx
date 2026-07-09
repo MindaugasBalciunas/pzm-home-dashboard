@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import CameraTile from './components/CameraTile.jsx';
 import SolarCard from './components/SolarCard.jsx';
+import SecurityCard from './components/SecurityCard.jsx';
 
-const LS_KEY = 'pzm-layout-v5';
+const LS_KEY = 'pzm-layout-v6';
 const GRID_COLS = 24;
 const HERO_ID = 'frontgate';
 const SOLAR_ID = 'solar';
+const SECURITY_ID = 'security';
 
 function loadStored() {
   try {
@@ -31,17 +33,21 @@ function computeDefaults(cameras) {
   const NORMAL_H = 4;
   const SOLAR_W = 8;
   const SOLAR_H = 8;
-  const HERO_W = GRID_COLS - SOLAR_W;
+  const SECURITY_W = 6;
+  const SECURITY_H = 8;
+  const HERO_W = GRID_COLS - SOLAR_W - SECURITY_W;
   const HERO_H = 8;
   const hero = cameras.find((c) => c.id === HERO_ID);
   let rowCursor = 1;
   if (hero) {
     byId[hero.id] = { col: 1, row: 1, colSpan: HERO_W, rowSpan: HERO_H, fit: DEFAULT_FIT };
     byId[SOLAR_ID] = { col: HERO_W + 1, row: 1, colSpan: SOLAR_W, rowSpan: SOLAR_H };
-    rowCursor = 1 + Math.max(HERO_H, SOLAR_H);
+    byId[SECURITY_ID] = { col: HERO_W + SOLAR_W + 1, row: 1, colSpan: SECURITY_W, rowSpan: SECURITY_H };
+    rowCursor = 1 + Math.max(HERO_H, SOLAR_H, SECURITY_H);
   } else {
     byId[SOLAR_ID] = { col: 1, row: 1, colSpan: SOLAR_W, rowSpan: SOLAR_H };
-    rowCursor = 1 + SOLAR_H;
+    byId[SECURITY_ID] = { col: SOLAR_W + 1, row: 1, colSpan: SECURITY_W, rowSpan: SECURITY_H };
+    rowCursor = 1 + Math.max(SOLAR_H, SECURITY_H);
   }
   let col = 1;
   let row = rowCursor;
@@ -88,6 +94,7 @@ export default function App() {
       out[cam.id] = { ...defaults[cam.id], ...(overrides[cam.id] || {}) };
     }
     out[SOLAR_ID] = { ...defaults[SOLAR_ID], ...(overrides[SOLAR_ID] || {}) };
+    out[SECURITY_ID] = { ...defaults[SECURITY_ID], ...(overrides[SECURITY_ID] || {}) };
     return out;
   }, [cameras, overrides]);
 
@@ -219,6 +226,18 @@ export default function App() {
             editMode={editMode}
             onStartMove={(e) => startDrag(SOLAR_ID, e, 'move')}
             onStartResize={(e) => startDrag(SOLAR_ID, e, 'resize')}
+          />
+        )}
+        {layout[SECURITY_ID] && (
+          <SecurityCard
+            key={SECURITY_ID}
+            col={layout[SECURITY_ID].col}
+            row={layout[SECURITY_ID].row}
+            colSpan={layout[SECURITY_ID].colSpan}
+            rowSpan={layout[SECURITY_ID].rowSpan}
+            editMode={editMode}
+            onStartMove={(e) => startDrag(SECURITY_ID, e, 'move')}
+            onStartResize={(e) => startDrag(SECURITY_ID, e, 'resize')}
           />
         )}
       </main>
