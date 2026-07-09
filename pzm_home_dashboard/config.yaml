@@ -77,8 +77,9 @@ options:
           icon: "mdi:gate"
         - name: "Gate opener"
           entity: "switch.gate_opener_switch_1"
-          contact: ""
-          icon: "mdi:gate"
+          contact: "binary_sensor.access_control_lock"
+          contact_kind: "lock"
+          icon: "mdi:door"
       # Extra zones surfaced under the alarm panel — door/window contacts,
       # gas / fire / glass-break sensors. `kind` drives the localised status
       # label (contact / door / window / motion / fire / gas / glass / flood).
@@ -176,6 +177,7 @@ schema:
         - name: str
           entity: str
           contact: str?
+          contact_kind: str?
           icon: str?
       zones:
         - name: str

@@ -32,6 +32,7 @@ public sealed class SecurityController : ControllerBase
             g.Entity,
             g.Icon,
             g.Contact,
+            g.ContactKind,
             state = string.IsNullOrWhiteSpace(g.Entity)
                 ? null
                 : await _client.GetStateAsync(g.Entity, ct),

@@ -49,6 +49,12 @@ public sealed class GateEntity
     [JsonPropertyName("contact")]
     public string? Contact { get; set; }
 
+    // Optional kind for the contact sensor. Same set as ZoneEntity.Kind
+    // (contact / door / window / lock / …); drives the label the client
+    // shows on the button. Defaults to a generic contact (Open/Closed).
+    [JsonPropertyName("contact_kind")]
+    public string? ContactKind { get; set; }
+
     // Optional icon override (mdi:garage / mdi:gate). Client-side hint.
     [JsonPropertyName("icon")]
     public string? Icon { get; set; }

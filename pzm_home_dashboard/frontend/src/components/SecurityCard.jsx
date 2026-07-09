@@ -51,14 +51,12 @@ function zoneStateLabel(kind, isOn) {
     case 'safety':
     case 'tamper':
       return isOn ? 'Alarm!' : 'OK';
+    case 'lock':
+      // HA convention for a lock binary_sensor: on = unlocked, off = locked.
+      return isOn ? 'Unlocked' : 'Locked';
     default:
       return isOn ? 'Active' : 'Idle';
   }
-}
-
-// Same mapper for the (contact) sensor tied to a gate.
-function gateContactLabel(isOn) {
-  return zoneStateLabel('contact', isOn);
 }
 
 export default function SecurityCard({
@@ -146,7 +144,7 @@ export default function SecurityCard({
             const open = contactOpen(g.contactState);
             const busy = !!pending[i];
             const stateText = open != null
-              ? gateContactLabel(open)
+              ? zoneStateLabel(g.contactKind || 'contact', open)
               : (g.state?.state && g.state.state !== 'unknown' && g.state.state !== 'unavailable')
                 ? String(g.state.state)
                 : '—';
@@ -239,6 +237,15 @@ function GateIcon({ icon }) {
     return (
       <svg viewBox="0 0 24 24" width="100%" height="100%">
         <path fill="currentColor" d="M3 20V6h2v3h4V6h2v3h2V6h2v3h4V6h2v14H3zm2-2h4v-7H5v7zm6 0h2v-7h-2v7zm4 0h4v-7h-4v7z" />
+      </svg>
+    );
+  }
+  if (kind === 'door' || kind === 'door-closed' || kind === 'door-open' || kind === 'fence-door') {
+    // A pedestrian gate through a fence: two flanking fence posts with a
+    // distinct door panel and handle between them.
+    return (
+      <svg viewBox="0 0 24 24" width="100%" height="100%">
+        <path fill="currentColor" d="M3 4v16h2V4H3zm16 0v16h2V4h-2zM7 4v16h10V4H7zm2 2h6v12H9V6zm5 5v2h1v-2h-1z" />
       </svg>
     );
   }
