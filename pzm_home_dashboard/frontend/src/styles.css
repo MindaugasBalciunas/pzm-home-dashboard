@@ -885,29 +885,6 @@ html, body, #root {
   font-variant-numeric: tabular-nums;
 }
 
-.edit-toolbar {
-  position: fixed;
-  right: 0.75rem;
-  bottom: 0.75rem;
-  display: flex;
-  gap: 0.5rem;
-  z-index: 10;
-}
-.edit-btn {
-  background: var(--panel);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 0;
-  padding: 0.45rem 0.9rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.25);
-}
-.edit-btn:hover { border-color: var(--accent); }
-.edit-btn-active { background: var(--accent); color: #0b0f14; border-color: var(--accent); }
-.edit-btn-secondary { opacity: 0.85; }
-
 /* ---------- Home Security tile ---------- */
 .security-tile { }
 .security-inner {
@@ -1136,28 +1113,42 @@ html, body, #root {
 }
 
 /* ---------- Side menu (swipe-in drawer) ---------- */
+/* Ghost hamburger — deliberately faint so it doesn't compete with the tiles.
+   Becomes solid on hover/focus so it stays discoverable. */
 .side-menu-btn {
   position: fixed;
-  top: 0.6rem;
-  left: 0.6rem;
+  top: 0.5rem;
+  left: 0.5rem;
   z-index: 12;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 0;
-  background: var(--panel);
+  background: transparent;
   color: var(--text);
-  border: 1px solid var(--border);
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-  opacity: 0.85;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  box-shadow: none;
+  opacity: 0.35;
+  transition: opacity 0.2s ease, background 0.2s ease, transform 0.15s ease;
 }
-.side-menu-btn:hover { opacity: 1; }
-.side-menu-btn:active { transform: scale(0.96); }
-.side-menu-btn svg { width: 22px; height: 22px; }
+.side-menu-btn:hover,
+.side-menu-btn:focus-visible {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.35);
+  outline: none;
+}
+@media (prefers-color-scheme: light) {
+  .side-menu-btn:hover,
+  .side-menu-btn:focus-visible { background: rgba(255, 255, 255, 0.6); }
+}
+.side-menu-btn:active { transform: scale(0.94); }
+.side-menu-btn svg { width: 22px; height: 22px; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6)); }
+@media (prefers-color-scheme: light) {
+  .side-menu-btn svg { filter: drop-shadow(0 1px 2px rgba(255, 255, 255, 0.8)); }
+}
 
 .side-menu-edge {
   position: fixed;
@@ -1657,15 +1648,6 @@ html, body, #root {
   line-height: 1;
 }
 
-/* Mobile/tablet: keep tap targets big and drawer full-height. */
-@media (max-width: 900px) {
-  .edit-toolbar {
-    right: 0.5rem;
-    bottom: 0.5rem;
-  }
-  .edit-btn {
-    padding: 0.55rem 1rem;
-    font-size: 0.95rem;
-  }
-}
+/* Mobile/tablet: nothing needed here yet — kept as a hook for future
+   touch-only overrides. */
 

@@ -527,17 +527,6 @@ export default function App() {
         })}
       </main>
 
-      <div className="edit-toolbar">
-        <button
-          type="button"
-          className={`edit-btn ${editMode ? 'edit-btn-active' : ''}`}
-          onClick={() => setEditMode((v) => !v)}
-          title="Toggle edit mode"
-        >
-          {editMode ? 'Done' : 'Edit'}
-        </button>
-      </div>
-
       {editingTileId && overrides[editingTileId] && (
         <TileEditor
           id={editingTileId}
