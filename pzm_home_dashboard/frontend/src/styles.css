@@ -94,6 +94,10 @@ html, body, #root {
   cursor: move;
   user-select: none;
   touch-action: none;
+  /* iOS: suppress the long-press share/copy callout so our own long-press
+     to open the tile editor doesn't fight the system UI. */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
 }
 .tile-editing .tile-video { pointer-events: none; }
 

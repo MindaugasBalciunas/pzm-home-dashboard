@@ -147,7 +147,8 @@ export default function SimpleTile({
       className={`tile custom-tile ${tileStateCls} ${editMode ? 'tile-editing' : ''}`}
       style={style}
       onPointerDown={editMode ? (e) => e.button === 0 && onStartMove(e) : undefined}
-      title={spec.entityId}
+      onContextMenu={editMode ? (e) => e.preventDefault() : undefined}
+      title={editMode ? `${spec.entityId}\nLong-press to edit` : spec.entityId}
     >
       <button
         type="button"

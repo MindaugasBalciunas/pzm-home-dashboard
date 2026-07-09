@@ -4,6 +4,10 @@ import SolarCard from './components/SolarCard.jsx';
 import SecurityCard from './components/SecurityCard.jsx';
 import SideMenu from './components/SideMenu.jsx';
 import SimpleTile from './components/SimpleTile.jsx';
+import TileEditor from './components/TileEditor.jsx';
+
+const LONG_PRESS_MS = 500;
+const DRAG_THRESHOLD_PX = 6;
 
 const GRID_COLS = 48;
 const HERO_ID = 'frontgate';
@@ -171,6 +175,7 @@ export default function App() {
   // spec for custom tiles).
   const [overrides, setOverrides] = useState({});
   const [revision, setRevision] = useState(0);
+  const [editingTileId, setEditingTileId] = useState(null);
   const gridRef = useRef(null);
   const overridesRef = useRef(overrides);
   useEffect(() => { overridesRef.current = overrides; }, [overrides]);
@@ -335,6 +340,17 @@ export default function App() {
     });
   };
 
+  const updateTileSpec = (id, nextSpec) => {
+    setOverrides((prev) => {
+      const cur = prev[id];
+      if (!cur) return prev;
+      const next = { ...prev, [id]: { ...cur, spec: nextSpec } };
+      persist.schedule(next, 0);
+      return next;
+    });
+    setEditingTileId(null);
+  };
+
   const getCellMetrics = () => {
     const el = gridRef.current;
     if (!el) return null;
@@ -361,7 +377,31 @@ export default function App() {
     const startRowSpan = eff.rowSpan;
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
 
+    // Long-press to edit — only for user-owned tiles (custom / template),
+    // only on the move gesture. If the pointer moves before the timer fires
+    // we treat the gesture as a drag; if the timer wins we abort the drag
+    // and open the editor instead.
+    const isEditable = kind === 'move'
+      && (id.startsWith('custom-') || id.startsWith('tpl-'));
+    let longPressFired = false;
+    let moved = false;
+    let longPressTimer = null;
+
+    const teardown = () => {
+      if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+    };
+
     const onMove = (ev) => {
+      if (!moved
+          && (Math.abs(ev.clientX - startX) > DRAG_THRESHOLD_PX
+              || Math.abs(ev.clientY - startY) > DRAG_THRESHOLD_PX)) {
+        moved = true;
+        if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+      }
+      if (longPressFired) return;
       const stepX = metrics.cellW + metrics.gap;
       const stepY = metrics.cellH + metrics.gap;
       const dCol = Math.round((ev.clientX - startX) / stepX);
@@ -377,11 +417,19 @@ export default function App() {
       }
     };
     const onUp = () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-      window.removeEventListener('pointercancel', onUp);
-      commitLayoutSnapshot();
+      teardown();
+      if (!longPressFired) commitLayoutSnapshot();
     };
+
+    if (isEditable) {
+      longPressTimer = setTimeout(() => {
+        if (moved) return;
+        longPressFired = true;
+        teardown();
+        setEditingTileId(id);
+      }, LONG_PRESS_MS);
+    }
+
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
     window.addEventListener('pointercancel', onUp);
@@ -489,6 +537,16 @@ export default function App() {
           {editMode ? 'Done' : 'Edit'}
         </button>
       </div>
+
+      {editingTileId && overrides[editingTileId] && (
+        <TileEditor
+          id={editingTileId}
+          entry={overrides[editingTileId]}
+          onSave={updateTileSpec}
+          onDelete={(id) => { removeCustomTile(id); setEditingTileId(null); }}
+          onCancel={() => setEditingTileId(null)}
+        />
+      )}
     </>
   );
 }
