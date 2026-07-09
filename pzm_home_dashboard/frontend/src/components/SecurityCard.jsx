@@ -173,10 +173,10 @@ export default function SecurityCard({
         </div>
 
         {otherZones.length > 0 && (
-          <ZoneSection title="Zones" zones={otherZones} />
+          <ZoneSection title="Zones" zones={otherZones} variant="zones" />
         )}
         {motionZones.length > 0 && (
-          <ZoneSection title="PIR" zones={motionZones} />
+          <ZoneSection title="PIR" zones={motionZones} variant="pir" />
         )}
       </div>
 
@@ -196,9 +196,9 @@ export default function SecurityCard({
   );
 }
 
-function ZoneSection({ title, zones }) {
+function ZoneSection({ title, zones, variant }) {
   return (
-    <div className="security-zones">
+    <div className={`security-zones security-zones--${variant || 'zones'}`}>
       <div className="solar-section-title">{title}</div>
       <div className="zones-grid">
         {zones.map((z) => {

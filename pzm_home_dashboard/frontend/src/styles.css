@@ -981,10 +981,57 @@ html, body, #root {
 }
 
 /* ---------- Home Security tile ---------- */
-.security-tile { }
+/* The tile is a size container so its Gates / Zones / PIR sections can
+   re-flow based on the tile's own aspect ratio: portrait stays stacked,
+   landscape splits left/right, wide splits into three columns. */
+.security-tile {
+  container-type: size;
+  container-name: sec;
+}
 .security-inner {
   padding: 0.55rem 0.65rem;
   gap: 0.5rem;
+}
+
+/* Landscape: at least 30% wider than tall.
+   Grid layout with the gate stack on the left and the two zone panels
+   stacked on the right in a single wider column. */
+@container sec (min-aspect-ratio: 1.3) {
+  .security-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+      "title  title"
+      "gates  zones"
+      "gates  pir";
+    gap: 0.4rem;
+    align-items: start;
+  }
+  .security-inner > .solar-title { grid-area: title; }
+  .security-inner > .solar-note  { grid-column: 1 / -1; }
+  .security-inner > .gates-grid {
+    grid-area: gates;
+    grid-template-columns: 1fr;
+    align-content: flex-start;
+    min-height: 0;
+  }
+  .security-inner > .security-zones--zones { grid-area: zones; min-height: 0; }
+  .security-inner > .security-zones--pir   { grid-area: pir;   min-height: 0; }
+  .security-tile .zones-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Wide: at least 2.2× wider than tall. Zones and PIR each get their
+   own column so nothing has to scroll and the gate column stays compact. */
+@container sec (min-aspect-ratio: 2.2) {
+  .security-inner {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      "title title title"
+      "gates zones pir";
+  }
+  .security-tile .zones-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* --- Gate buttons (the primary action of this card) --- */
