@@ -116,6 +116,8 @@ export default function SecurityCard({
   const gates = snapshot?.gates ?? [];
   const zones = snapshot?.zones ?? [];
   const configured = snapshot?.configured ?? false;
+  const motionZones = zones.filter((z) => String(z.kind || '').toLowerCase() === 'motion');
+  const otherZones  = zones.filter((z) => String(z.kind || '').toLowerCase() !== 'motion');
 
   return (
     <div
@@ -172,30 +174,11 @@ export default function SecurityCard({
           })}
         </div>
 
-        {zones.length > 0 && (
-          <div className="security-zones">
-            <div className="solar-section-title">Zones</div>
-            <div className="zones-grid">
-              {zones.map((z) => {
-                const open = contactOpen(z.state);
-                const cls = open === true ? 'bad' : open === false ? 'ok' : 'neutral';
-                return (
-                  <div
-                    key={z.entity}
-                    className={`zone-chip zone-chip-${cls}`}
-                    title={z.entity}
-                  >
-                    <span className="zone-name">{z.name || z.entity}</span>
-                    {open === true && (
-                      <span className="zone-alert">
-                        {zoneStateLabel(z.kind, true)}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+        {otherZones.length > 0 && (
+          <ZoneSection title="Zones" zones={otherZones} />
+        )}
+        {motionZones.length > 0 && (
+          <ZoneSection title="PIR" zones={motionZones} />
         )}
       </div>
 
@@ -211,6 +194,32 @@ export default function SecurityCard({
           />
         </>
       )}
+    </div>
+  );
+}
+
+function ZoneSection({ title, zones }) {
+  return (
+    <div className="security-zones">
+      <div className="solar-section-title">{title}</div>
+      <div className="zones-grid">
+        {zones.map((z) => {
+          const open = contactOpen(z.state);
+          const cls = open === true ? 'bad' : open === false ? 'ok' : 'neutral';
+          return (
+            <div
+              key={z.entity}
+              className={`zone-chip zone-chip-${cls}`}
+              title={z.entity}
+            >
+              <span className="zone-name">{z.name || z.entity}</span>
+              {open === true && (
+                <span className="zone-alert">{zoneStateLabel(z.kind, true)}</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
