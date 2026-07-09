@@ -914,21 +914,25 @@ html, body, #root {
   flex: 1 1 auto;
 }
 .zones-grid {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  /* Uniform pill widths so the panel scans as a neat grid regardless of
+     label length. Three columns fit the default 5-col-wide security tile
+     cleanly and stay legible for the longest labels ("Office window"). */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.3rem;
   align-content: flex-start;
 }
 .zone-chip {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.4rem;
   padding: 0.26rem 0.6rem;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.03);
   line-height: 1;
-  white-space: nowrap;
+  min-width: 0;
   transition: background 0.2s ease, border-color 0.2s ease;
 }
 @media (prefers-color-scheme: light) {
@@ -954,6 +958,10 @@ html, body, #root {
   font-weight: 700;
   letter-spacing: 0.005em;
   color: var(--muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .zone-chip-ok  .zone-name { color: var(--ok); }
 .zone-chip-bad .zone-name { color: var(--danger); }

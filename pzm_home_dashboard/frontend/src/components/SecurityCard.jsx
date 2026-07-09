@@ -208,7 +208,7 @@ function ZoneSection({ title, zones }) {
             <div
               key={z.entity}
               className={`zone-chip zone-chip-${cls}`}
-              title={z.entity}
+              title={`${z.name || z.entity}\n${z.entity}`}
             >
               <span className="zone-name">{z.name || z.entity}</span>
               {open === true && (
