@@ -75,7 +75,7 @@ html, body, #root {
   padding: 1rem 1.25rem;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 0;
   color: var(--muted);
 }
 .notice-error { color: var(--danger); border-color: var(--danger); }
@@ -83,7 +83,7 @@ html, body, #root {
 .tile {
   position: relative;
   background: #000;
-  border-radius: 8px;
+  border-radius: 0;
   overflow: hidden;
   min-width: 0;
   min-height: 0;
@@ -142,7 +142,7 @@ html, body, #root {
   font-variant-numeric: tabular-nums;
   background: rgba(255,255,255,0.15);
   padding: 0.1rem 0.4rem;
-  border-radius: 6px;
+  border-radius: 0;
 }
 
 .tile-edit-bottom {
@@ -160,7 +160,7 @@ html, body, #root {
   background: rgba(255,255,255,0.14);
   color: #fff;
   border: 1px solid rgba(255,255,255,0.2);
-  border-radius: 6px;
+  border-radius: 0;
   padding: 0.15rem 0.55rem;
   font-size: 0.75rem;
   font-weight: 600;
@@ -183,7 +183,7 @@ html, body, #root {
   cursor: nwse-resize;
   background:
     linear-gradient(135deg, transparent 0 50%, rgba(74,163,255,0.85) 50% 100%);
-  border-bottom-right-radius: 8px;
+  border-bottom-right-radius: 0;
   z-index: 3;
 }
 
@@ -192,7 +192,7 @@ html, body, #root {
   color: var(--text);
   border: 1px solid var(--border);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
-  border-radius: 12px;
+  border-radius: 0;
 }
 @media (prefers-color-scheme: light) {
   .solar-tile {
@@ -238,7 +238,7 @@ html, body, #root {
   max-height: 48%;
   flex-shrink: 0;
   background: rgba(255, 255, 255, 0.01);
-  border-radius: 8px;
+  border-radius: 0;
   border: 1px dashed rgba(255, 255, 255, 0.03);
   padding: 0.4rem;
   margin-bottom: 0.2rem;
@@ -303,7 +303,7 @@ html, body, #root {
   position: absolute;
   min-width: 76px;
   padding: 0.28rem 0.55rem;
-  border-radius: 8px;
+  border-radius: 0;
   background: rgba(10, 14, 20, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.22);
   backdrop-filter: blur(14px) saturate(150%);
@@ -430,7 +430,7 @@ html, body, #root {
   bottom: 3%;
   left: 2%;
   padding: 0.1rem 0.55rem;
-  border-radius: 999px;
+  border-radius: 0;
   background: rgba(87, 211, 140, 0.22);
   color: var(--ok);
   border: 1px solid rgba(87, 211, 140, 0.5);
@@ -487,7 +487,7 @@ html, body, #root {
   background: rgba(255, 255, 255, 0.015);
   border: 1px solid var(--border);
   border-left: 3px solid var(--border-accent);
-  border-radius: 6px;
+  border-radius: 0;
   padding: 0.5rem 0.6rem;
   overflow: hidden;
   display: flex;
@@ -581,7 +581,7 @@ html, body, #root {
   gap: 0;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 0;
   padding: 0.4rem 0;
 }
 @media (prefers-color-scheme: light) {
@@ -640,7 +640,7 @@ html, body, #root {
   min-height: 54px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 0;
   overflow: hidden;
 }
 @media (prefers-color-scheme: light) {
@@ -733,7 +733,7 @@ html, body, #root {
   padding: 0.35rem 0.5rem;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 0;
 }
 @media (prefers-color-scheme: light) {
   .grid-meter { background: rgba(0, 0, 0, 0.015); }
@@ -755,7 +755,7 @@ html, body, #root {
   align-items: center;
   gap: 0.5rem;
   padding: 0.3rem 0.5rem;
-  border-radius: 6px;
+  border-radius: 0;
   background: rgba(255, 255, 255, 0.02);
   border-left: 3px solid var(--border);
   min-width: 0;
@@ -833,7 +833,7 @@ html, body, #root {
   gap: 0.4rem;
   padding: 0.15rem 0.4rem;
   background: rgba(255,255,255,0.03);
-  border-radius: 6px;
+  border-radius: 0;
 }
 .pv-string-label {
   font-size: 0.6rem;
@@ -861,7 +861,7 @@ html, body, #root {
   gap: 0.35rem;
   background: rgba(255,255,255,0.05);
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 0;
   padding: 0.18rem 0.65rem;
   font-size: 0.7rem;
   line-height: 1.05;
@@ -893,7 +893,7 @@ html, body, #root {
   background: var(--panel);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 0;
   padding: 0.45rem 0.9rem;
   font-size: 0.85rem;
   font-weight: 600;
@@ -926,7 +926,7 @@ html, body, #root {
   align-items: center;
   gap: 0.4rem;
   text-align: left;
-  border-radius: 8px;
+  border-radius: 0;
   border: 1px solid var(--border);
   border-left-width: 3px;
   background: linear-gradient(145deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02));
@@ -965,7 +965,7 @@ html, body, #root {
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 7px;
+  border-radius: 0;
   background: rgba(74, 163, 255, 0.14);
   color: var(--accent);
 }
@@ -1027,7 +1027,7 @@ html, body, #root {
   justify-content: space-between;
   gap: 0.4rem;
   padding: 0.26rem 0.6rem;
-  border-radius: 999px;
+  border-radius: 0;
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.03);
   line-height: 1;
@@ -1071,7 +1071,7 @@ html, body, #root {
   color: var(--danger);
   background: rgba(255, 107, 107, 0.22);
   padding: 0.14rem 0.42rem;
-  border-radius: 999px;
+  border-radius: 0;
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -1139,7 +1139,7 @@ html, body, #root {
   z-index: 12;
   width: 40px;
   height: 40px;
-  border-radius: 999px;
+  border-radius: 0;
   background: var(--panel);
   color: var(--text);
   border: 1px solid var(--border);
@@ -1256,7 +1256,7 @@ html, body, #root {
   background: rgba(74, 163, 255, 0.14);
   color: var(--accent);
   padding: 0.55rem 0.9rem;
-  border-radius: 8px;
+  border-radius: 0;
   font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
@@ -1272,7 +1272,7 @@ html, body, #root {
   background: transparent;
   color: var(--text);
   padding: 0.55rem 0.9rem;
-  border-radius: 8px;
+  border-radius: 0;
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
@@ -1304,7 +1304,7 @@ html, body, #root {
   max-height: 82vh;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1324,7 +1324,7 @@ html, body, #root {
   background: rgba(255, 255, 255, 0.04);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 0;
   padding: 0.5rem 0.65rem;
   font-size: 0.9rem;
   min-height: 40px;
@@ -1336,6 +1336,50 @@ html, body, #root {
   outline: none;
   border-color: var(--accent);
 }
+.icon-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 0.35rem;
+  max-height: 158px;
+  overflow-y: auto;
+  padding: 0.15rem;
+}
+.icon-picker-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0.35rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 0;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+@media (prefers-color-scheme: light) {
+  .icon-picker-btn { background: rgba(0, 0, 0, 0.03); }
+}
+.icon-picker-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.icon-picker-btn.is-active {
+  background: rgba(74, 163, 255, 0.18);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.icon-picker-btn svg {
+  width: 24px;
+  height: 24px;
+}
+.icon-picker-auto {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .picker-list {
   flex: 1 1 auto;
   overflow-y: auto;
@@ -1436,17 +1480,21 @@ html, body, #root {
   font-weight: 700;
 }
 
-/* ---------- Custom (user-added) tiles ---------- */
+/* ---------- Custom (user-added) tiles ----------
+   Sized by the grid, contents (numbers, labels, icon) scale to the tile
+   itself via container queries instead of the viewport. */
 .custom-tile {
   position: relative;
   background: linear-gradient(145deg, #0f131a 0%, #151922 100%);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 0;
   overflow: hidden;
   min-width: 0;
   min-height: 0;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  container-type: size;
+  container-name: tile;
 }
 @media (prefers-color-scheme: light) {
   .custom-tile {
@@ -1469,12 +1517,34 @@ html, body, #root {
   padding: 0.6rem;
   cursor: pointer;
   text-align: center;
+  /* Remove the 300 ms tap delay + prevent double-tap zoom on mobile. */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  transition: background 0.15s ease, transform 0.08s ease, box-shadow 0.15s ease;
 }
 .custom-btn-inner:disabled { cursor: default; opacity: 0.6; }
+.custom-btn-inner:not(:disabled):active {
+  transform: scale(0.97);
+  box-shadow: inset 0 0 0 3px rgba(74, 163, 255, 0.35);
+}
+/* Whole-tile tint reflects the on/off state — trivial to read at a glance
+   and gives the tap target a much bigger hit-visible-area than an icon. */
+.custom-tile-on  .custom-btn-inner { background: rgba(87, 211, 140, 0.10); }
+.custom-tile-off .custom-btn-inner { background: rgba(139, 147, 161, 0.06); }
+.custom-tile-on  { border-color: rgba(87, 211, 140, 0.45); }
+.custom-tile-off { border-color: rgba(139, 147, 161, 0.35); }
 .custom-btn-icon {
-  width: clamp(28px, 30%, 68px);
-  height: clamp(28px, 30%, 68px);
-  border-radius: 999px;
+  /* Sized to the tile itself, not the viewport: the smaller of 30% width
+     or 45% height keeps a big icon on square tiles and a proportional
+     icon on wide/tall ones. */
+  width: min(30cqi, 45cqb);
+  height: min(30cqi, 45cqb);
+  min-width: 24px;
+  min-height: 24px;
+  max-width: 96px;
+  max-height: 96px;
+  border-radius: 0;
   background: rgba(74, 163, 255, 0.14);
   color: var(--accent);
   display: flex;
@@ -1484,10 +1554,11 @@ html, body, #root {
 }
 .custom-btn-icon.is-on { background: rgba(87, 211, 140, 0.20); color: var(--ok); }
 .custom-btn-icon.is-off { background: rgba(139, 147, 161, 0.20); color: var(--muted); }
-.custom-btn-icon svg { width: 60%; height: 60%; }
+.custom-btn-icon svg { width: 62%; height: 62%; }
 .custom-btn-name {
   font-weight: 800;
-  font-size: clamp(0.7rem, 1.6vw, 1rem);
+  font-size: clamp(0.65rem, min(11cqi, 14cqb), 1.3rem);
+  line-height: 1.1;
   letter-spacing: 0.02em;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1495,11 +1566,12 @@ html, body, #root {
   max-width: 100%;
 }
 .custom-btn-state {
-  font-size: clamp(0.6rem, 1.2vw, 0.75rem);
+  font-size: clamp(0.5rem, min(7cqi, 9cqb), 0.85rem);
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   font-weight: 700;
+  line-height: 1;
 }
 .custom-btn-state.is-on { color: var(--ok); }
 .custom-btn-state.is-off { color: var(--muted); }
@@ -1507,16 +1579,23 @@ html, body, #root {
 .custom-num-inner {
   position: absolute;
   inset: 0;
-  padding: 0.6rem;
+  padding: 0.5rem 0.6rem;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;
   justify-content: center;
-  gap: 0.2rem;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.custom-num-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
   min-width: 0;
 }
 .custom-num-label {
-  font-size: clamp(0.6rem, 1.2vw, 0.75rem);
+  font-size: clamp(0.55rem, min(7cqi, 10cqb), 0.85rem);
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -1524,26 +1603,54 @@ html, body, #root {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 100%;
+  line-height: 1.1;
+  flex: 1 1 auto;
+  min-width: 0;
 }
+.custom-num-icon {
+  flex: 0 0 auto;
+  width: min(18cqi, 26cqb);
+  height: min(18cqi, 26cqb);
+  min-width: 18px;
+  min-height: 18px;
+  max-width: 44px;
+  max-height: 44px;
+  color: var(--accent);
+  opacity: 0.9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.custom-num-icon svg { width: 100%; height: 100%; }
+.custom-num-icon-temp { color: #f59f00; }
+.custom-num-icon-hum  { color: #4aa3ff; }
+.custom-num-icon-waste { color: #f5a623; }
+.custom-num-icon-door { color: var(--accent); }
+
 .custom-num-value {
   display: flex;
   align-items: baseline;
-  gap: 0.25rem;
+  gap: 0.2rem;
   min-width: 0;
 }
 .custom-num-value .n {
-  font-size: clamp(1.4rem, 5vw, 3rem);
+  /* The big number is capped by both tile width and height so it never
+     overflows the tile, while still filling a compact 6x5 cell nicely. */
+  font-size: clamp(1rem, min(26cqi, 46cqb), 5.5rem);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
   color: var(--text);
   line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .custom-num-value .u {
-  font-size: clamp(0.7rem, 1.6vw, 1rem);
+  font-size: clamp(0.55rem, min(9cqi, 15cqb), 1.2rem);
   font-weight: 700;
   color: var(--muted);
+  line-height: 1;
 }
 
 /* Mobile/tablet: keep tap targets big and drawer full-height. */

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { TILE_ICON_KEYS, TileIcon } from './SimpleTile.jsx';
 
 // Domains that make sense for each tile kind. The backend accepts any but the
 // UI hides irrelevant entities so the list stays manageable.
@@ -13,6 +14,7 @@ export default function EntityPicker({ kind, onCancel, onConfirm }) {
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState(null);
   const [name, setName] = useState('');
+  const [icon, setIcon] = useState('auto');
   const [livePreview, setLivePreview] = useState(null);
   const previewTimerRef = useRef(null);
 
@@ -86,6 +88,7 @@ export default function EntityPicker({ kind, onCancel, onConfirm }) {
       domain: selected.domain,
       name: name.trim(),
       unit: selected.unit || null,
+      icon: kind === 'button' ? icon : undefined,
     });
   };
 
@@ -123,6 +126,30 @@ export default function EntityPicker({ kind, onCancel, onConfirm }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
+
+          {kind === 'button' && (
+            <>
+              <label>Icon</label>
+              <div className="icon-picker">
+                {TILE_ICON_KEYS.map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    className={`icon-picker-btn ${icon === k ? 'is-active' : ''}`}
+                    onClick={() => setIcon(k)}
+                    title={k}
+                    aria-label={`Icon: ${k}`}
+                  >
+                    {k === 'auto' ? (
+                      <span className="icon-picker-auto">Auto</span>
+                    ) : (
+                      <TileIcon iconKey={k} domain={selected?.domain} on={true} />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         <div className="picker-list">
