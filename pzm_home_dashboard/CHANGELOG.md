@@ -4,6 +4,26 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.22
+
+- **Number tile display modes.** Besides the big value, number tiles can
+  now render a **today history graph** (sparkline of the sensor since
+  midnight, with min/max, backed by a new generic
+  `api/ha/entity/history` endpoint) or a **progress bar** between a
+  configurable min and max — made for tank levels like the waste tank.
+- **Warn / alert thresholds.** Optional "warn above" and "alert above"
+  values per number tile turn the number, bar and graph amber / red.
+- **Icon effects.** Tiles can animate their icon — Spin, Pulse, Glow or
+  Bounce. Buttons animate only while the entity is on; number tiles
+  animate continuously. Honours `prefers-reduced-motion`.
+- **Dashboard background colour.** New Appearance section in the side
+  menu (edit mode): preset palette + custom colour, shared with every
+  client via the layout. Tiles get their own background picker in the
+  tile editor (subtle tints or any custom colour).
+- **Security strip fits one-row tiles.** A short Security tile now
+  shaves padding and button chrome so the gate row always fits without
+  scrolling, staying a single horizontal row even when narrow.
+
 ## 0.2.21
 
 - **Dynamic Security card layout.** The internal grid only carves out

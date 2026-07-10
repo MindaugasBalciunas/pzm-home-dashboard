@@ -25,6 +25,11 @@ const DEFAULT_FIT = 'fit';
 const TEMPLATE_MARKER = '_seededTemplate';
 const TEMPLATE_VERSION = 'v1';
 
+// Dashboard-wide appearance settings ride along in the shared layout under
+// this key (like the template marker, it's not a tile). Currently: `bg`,
+// the dashboard background colour behind all tiles.
+const THEME_KEY = '_theme';
+
 // One-tap tiles seeded on the very first load (no existing user layout).
 // Stable IDs so the layout survives future template revisions without dupes.
 const TEMPLATE_TILES = [
@@ -462,6 +467,31 @@ export default function App() {
     ([id, v]) => (id.startsWith('custom-') || id.startsWith('tpl-')) && v && v.spec
   );
 
+  // Dashboard background colour (shared appearance setting). Overrides the
+  // theme's --bg variable at the root, so the grid, gaps and the page edge
+  // all follow; clearing it restores the stylesheet default (incl. the
+  // automatic light/dark switch).
+  const themeBg = overrides[THEME_KEY]?.bg || null;
+  useEffect(() => {
+    const root = document.documentElement;
+    if (themeBg) root.style.setProperty('--bg', themeBg);
+    else root.style.removeProperty('--bg');
+    return () => root.style.removeProperty('--bg');
+  }, [themeBg]);
+
+  const setThemeBg = (bg) => {
+    setOverrides((prev) => {
+      const theme = { ...(prev[THEME_KEY] || {}) };
+      if (bg) theme.bg = bg;
+      else delete theme.bg;
+      const next = { ...prev };
+      if (Object.keys(theme).length > 0) next[THEME_KEY] = theme;
+      else delete next[THEME_KEY];
+      persist.schedule(next, 200);
+      return next;
+    });
+  };
+
   return (
     <>
       <PullToRefresh />
@@ -472,6 +502,8 @@ export default function App() {
         onAddTile={addCustomTile}
         bgDemo={bgDemo}
         onToggleBgDemo={() => setBgDemo((v) => !v)}
+        themeBg={themeBg}
+        onSetThemeBg={setThemeBg}
       />
 
       <main

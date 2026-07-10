@@ -24,6 +24,108 @@ function formatNumber(state, unit) {
   return { n: num.toFixed(precision), u: unit || '' };
 }
 
+// Threshold level for a numeric value: '' | 'warn' | 'crit'. Thresholds are
+// optional spec fields ("warn above" / "alert above") — colouring applies to
+// the value text, the progress-bar fill and the icon tint alike, so a waste
+// tank creeping towards full goes amber, then red, everywhere at once.
+function levelFor(num, warnAbove, alertAbove) {
+  if (!Number.isFinite(num)) return '';
+  const crit = Number(alertAbove);
+  if (Number.isFinite(crit) && alertAbove !== '' && alertAbove != null && num >= crit) return 'crit';
+  const warn = Number(warnAbove);
+  if (Number.isFinite(warn) && warnAbove !== '' && warnAbove != null && num >= warn) return 'warn';
+  return '';
+}
+
+// Poll today's sample history for one entity (recorder data via the
+// backend's generic history endpoint). Only active for tiles whose display
+// mode needs it; refreshes every minute — sensor history moves slowly.
+function useTodayHistory(entityId, enabled) {
+  const [samples, setSamples] = useState(null);
+  useEffect(() => {
+    if (!enabled || !entityId) return undefined;
+    let stop = false;
+    const load = async () => {
+      try {
+        const now = new Date();
+        const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const hours = Math.max(1, Math.ceil((now - midnight) / 3600000));
+        const r = await fetch(
+          `api/ha/entity/history?entity=${encodeURIComponent(entityId)}&hours=${hours}`,
+          { cache: 'no-store' },
+        );
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const data = await r.json();
+        if (!stop) setSamples(Array.isArray(data.samples) ? data.samples : []);
+      } catch {
+        if (!stop) setSamples((prev) => prev || []);
+      }
+    };
+    load();
+    const t = setInterval(load, 60000);
+    return () => { stop = true; clearInterval(t); };
+  }, [entityId, enabled]);
+  return samples;
+}
+
+// Compact area sparkline of today's samples. Scales to its own min/max so
+// small fluctuations stay readable; the exact numbers live in the value
+// line above it. Rendered with preserveAspectRatio="none" so it stretches
+// to whatever box the tile gives it.
+function Sparkline({ samples, level }) {
+  if (!samples) return <div className="num-graph-note">Loading history…</div>;
+  if (samples.length < 2) return <div className="num-graph-note">No history yet today</div>;
+  const W = 100;
+  const H = 32;
+  let min = Infinity;
+  let max = -Infinity;
+  for (const s of samples) {
+    if (s.v < min) min = s.v;
+    if (s.v > max) max = s.v;
+  }
+  if (!(max > min)) { max = min + 1; min -= 1; }
+  const t0 = samples[0].t;
+  const t1 = samples[samples.length - 1].t;
+  const spanT = (t1 - t0) || 1;
+  const x = (t) => (((t - t0) / spanT) * W).toFixed(1);
+  const y = (v) => (H - 2 - ((v - min) / (max - min)) * (H - 4)).toFixed(1);
+  const pts = samples.map((s) => `${x(s.t)},${y(s.v)}`).join(' ');
+  return (
+    <div className={`num-graph num-level-${level || 'ok'}`}>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden>
+        <polygon className="num-graph-area" points={`0,${H} ${pts} ${W},${H}`} />
+        <polyline className="num-graph-line" points={pts} />
+      </svg>
+      <div className="num-graph-minmax">
+        <span>↓ {formatNumber(min).n}</span>
+        <span>↑ {formatNumber(max).n}</span>
+      </div>
+    </div>
+  );
+}
+
+// Horizontal progress bar for range sensors (tank levels, battery, valve
+// positions). Fill fraction comes from spec min/max; colour follows the
+// warn/alert thresholds like the value text.
+function ProgressBar({ num, min, max, level }) {
+  const lo = Number.isFinite(Number(min)) && min !== '' && min != null ? Number(min) : 0;
+  const hi = Number.isFinite(Number(max)) && max !== '' && max != null ? Number(max) : 100;
+  const span = hi - lo || 1;
+  const frac = Number.isFinite(num) ? Math.max(0, Math.min(1, (num - lo) / span)) : 0;
+  return (
+    <div className={`num-bar num-level-${level || 'ok'}`}>
+      <div className="num-bar-track">
+        <div className="num-bar-fill" style={{ width: `${(frac * 100).toFixed(1)}%` }} />
+      </div>
+      <div className="num-bar-scale">
+        <span>{formatNumber(lo).n}</span>
+        <span className="num-bar-pct">{Number.isFinite(num) ? `${Math.round(frac * 100)}%` : '—'}</span>
+        <span>{formatNumber(hi).n}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function SimpleTile({
   id,
   spec,
@@ -130,24 +232,38 @@ export default function SimpleTile({
     </>
   );
 
+  // History polling only runs for number tiles in graph mode; the hook is
+  // unconditional (spec.kind is stable for a mounted tile) so hook order
+  // stays consistent.
+  const display = spec.kind === 'number' ? (spec.display || 'value') : 'value';
+  const samples = useTodayHistory(spec.entityId, spec.kind === 'number' && display === 'graph');
+  const tileBg = spec.bg ? { background: spec.bg } : null;
+
   if (spec.kind === 'number') {
     const { n, u } = formatNumber(state?.state, spec.unit || state?.unit);
+    const num = Number(state?.state);
+    const level = levelFor(num, spec.warnAbove, spec.alertAbove);
+    const fx = spec.iconFx && spec.iconFx !== 'none' ? `iconfx iconfx-${spec.iconFx}` : '';
     return (
       <div
         className={`tile custom-tile ${editMode ? 'tile-editing' : ''}`}
-        style={style}
+        style={{ ...style, ...tileBg }}
         onPointerDown={editMode ? (e) => e.button === 0 && onStartMove(e) : undefined}
         title={spec.entityId}
       >
         <div className="custom-num-inner">
           <div className="custom-num-head">
             <div className="custom-num-label">{spec.name}</div>
-            <NumberTileIcon spec={spec} unit={u} />
+            <span className={fx}><NumberTileIcon spec={spec} unit={u} /></span>
           </div>
-          <div className="custom-num-value">
+          <div className={`custom-num-value ${level ? `num-value-${level}` : ''}`}>
             <span className="n">{n}</span>
             {u && <span className="u">{u}</span>}
           </div>
+          {display === 'graph' && <Sparkline samples={samples} level={level} />}
+          {display === 'bar' && (
+            <ProgressBar num={num} min={spec.min} max={spec.max} level={level} />
+          )}
           {error && <div className="side-menu-note" style={{ color: 'var(--danger)' }}>{error}</div>}
         </div>
         {editHeader}
@@ -155,6 +271,11 @@ export default function SimpleTile({
     );
   }
 
+  // Icon effects only animate while the entity is ON — a spinning fan that
+  // never stops reads as "always running" and defeats the point.
+  const fxCls = spec.iconFx && spec.iconFx !== 'none' && on === true
+    ? `iconfx iconfx-${spec.iconFx}`
+    : '';
   const iconCls = busy
     ? ''
     : on === true ? 'is-on' : on === false ? 'is-off' : '';
@@ -205,7 +326,7 @@ export default function SimpleTile({
   return (
     <div
       className={`tile custom-tile ${tileStateCls} ${editMode ? 'tile-editing' : ''}`}
-      style={style}
+      style={{ ...style, ...tileBg }}
       onPointerDown={editMode ? (e) => e.button === 0 && onStartMove(e) : undefined}
       onContextMenu={editMode ? (e) => e.preventDefault() : undefined}
       title={editMode
@@ -220,7 +341,7 @@ export default function SimpleTile({
         disabled={editMode || busy}
         {...btnHandlers}
       >
-        <div className={`custom-btn-icon ${iconCls}`}>
+        <div className={`custom-btn-icon ${iconCls} ${fxCls}`}>
           <TileIcon iconKey={spec.icon} domain={spec.domain} on={on} />
         </div>
         <div className="custom-btn-name">{spec.name}</div>

@@ -4,6 +4,18 @@ import EntityPicker from './EntityPicker.jsx';
 // Slide-in drawer. Opens via the hamburger button or a swipe that starts
 // within `.side-menu-edge` (a thin strip anchored to the left viewport edge).
 // Closes on backdrop tap, swipe-left, or the ✕ button.
+// Dashboard background presets. `null` restores the stylesheet default
+// (which also keeps the automatic light/dark switch working).
+const DASH_BG_PRESETS = [
+  { key: null,      label: 'Default' },
+  { key: '#0b101c', label: 'Midnight' },
+  { key: '#101822', label: 'Slate' },
+  { key: '#140f1e', label: 'Plum' },
+  { key: '#0e1712', label: 'Forest' },
+  { key: '#1a1410', label: 'Ember' },
+  { key: '#000000', label: 'Black' },
+];
+
 export default function SideMenu({
   editMode,
   onToggleEdit,
@@ -11,6 +23,8 @@ export default function SideMenu({
   onAddTile,
   bgDemo,
   onToggleBgDemo,
+  themeBg,
+  onSetThemeBg,
 }) {
   const [open, setOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -188,6 +202,37 @@ export default function SideMenu({
               Numbers display a live sensor reading.
             </div>
           </section>
+
+          {editMode && (
+            <section className="side-menu-section">
+              <div className="side-menu-section-title">Appearance</div>
+              <div className="swatch-row">
+                {DASH_BG_PRESETS.map((p) => (
+                  <button
+                    key={p.label}
+                    type="button"
+                    className={`bg-swatch ${themeBg === p.key ? 'is-active' : ''} ${p.key == null ? 'bg-swatch-none' : ''}`}
+                    style={p.key ? { background: p.key } : undefined}
+                    title={p.label}
+                    aria-label={`Dashboard background: ${p.label}`}
+                    onClick={() => onSetThemeBg?.(p.key)}
+                  />
+                ))}
+                <input
+                  type="color"
+                  className="bg-swatch bg-swatch-custom"
+                  title="Custom colour"
+                  aria-label="Custom dashboard background"
+                  value={typeof themeBg === 'string' && themeBg.startsWith('#') ? themeBg : '#0f1216'}
+                  onChange={(e) => onSetThemeBg?.(e.target.value)}
+                />
+              </div>
+              <div className="side-menu-note">
+                Dashboard background colour, shared with every client.
+                Tile backgrounds live in each tile's editor.
+              </div>
+            </section>
+          )}
 
           <section className="side-menu-section">
             <div className="side-menu-section-title">Experiments</div>

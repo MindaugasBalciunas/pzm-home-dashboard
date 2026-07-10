@@ -68,6 +68,31 @@ public sealed class EntitiesController : ControllerBase
         return Ok(results);
     }
 
+    // Raw sample history for one entity, used by number tiles' "today
+    // graph" display mode. Same recorder API as the solar history endpoint
+    // but entity-agnostic, so any user-added sensor tile can chart itself.
+    [HttpGet("entity/history")]
+    public async Task<IActionResult> History(
+        [FromQuery] string? entity,
+        [FromQuery] int hours = 24,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(entity))
+            return BadRequest(new { error = "entity required" });
+        hours = Math.Clamp(hours, 1, 168);
+        var since = DateTime.UtcNow.AddHours(-hours);
+        var histories = await _client.GetHistoryAsync(new[] { entity }, since, ct);
+        Response.Headers["Cache-Control"] = "no-store";
+        return Ok(new
+        {
+            entity,
+            hours,
+            samples = histories.TryGetValue(entity, out var samples)
+                ? samples
+                : (IReadOnlyList<HaSample>)Array.Empty<HaSample>(),
+        });
+    }
+
     public sealed record ActionReq(
         string? EntityId,
         string? Domain,
