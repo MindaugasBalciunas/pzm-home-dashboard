@@ -533,6 +533,47 @@ export const TILE_ICONS = [
   { key: 'beer',        aliases: 'drink pint pub lager alcohol', pack: 'food' },
   { key: 'cocktail',    aliases: 'drink martini bar party alcohol', pack: 'food' },
   { key: 'ice-cream',   aliases: 'dessert cone gelato summer', pack: 'food' },
+
+  // --- Security extras ---
+  { key: 'siren',       aliases: 'alarm horn strobe security sound', pack: 'security' },
+  { key: 'key',         aliases: 'unlock access door spare', pack: 'security' },
+  { key: 'safe',        aliases: 'vault valuables lock storage', pack: 'security' },
+  { key: 'fence',       aliases: 'perimeter yard boundary picket', pack: 'security' },
+  { key: 'intercom',    aliases: 'doorphone entry audio talk', pack: 'security' },
+  { key: 'contact',     aliases: 'door window magnet reed sensor', pack: 'security' },
+  { key: 'vibration',   aliases: 'shake shock tamper sensor', pack: 'security' },
+  { key: 'sound',       aliases: 'noise audio level decibel sensor', pack: 'security' },
+
+  // --- Energy extras ---
+  { key: 'pylon',       aliases: 'grid power line utility transmission electricity', pack: 'energy' },
+  { key: 'generator',   aliases: 'backup power engine petrol diesel', pack: 'energy' },
+  { key: 'power-strip', aliases: 'extension sockets outlets multi plug', pack: 'energy' },
+
+  // --- Lighting extras ---
+  { key: 'street-lamp', aliases: 'pole outdoor path drive light', pack: 'lighting' },
+  { key: 'ceiling-light',aliases: 'flush mount dome plafond light', pack: 'lighting' },
+
+  // --- Outdoor extras ---
+  { key: 'greenhouse',  aliases: 'garden plants glass grow house', pack: 'outdoor' },
+  { key: 'well',        aliases: 'water borehole pump garden', pack: 'outdoor' },
+  { key: 'fountain',    aliases: 'water feature pond garden', pack: 'outdoor' },
+  { key: 'swing',       aliases: 'playground kids garden play', pack: 'outdoor' },
+  { key: 'doghouse',    aliases: 'kennel dog pet outdoor', pack: 'outdoor' },
+
+  // --- Kitchen / rooms extras ---
+  { key: 'range-hood',  aliases: 'extractor kitchen vent cooker exhaust', pack: 'kitchen' },
+  { key: 'balcony',     aliases: 'terrace railing outdoor room', pack: 'rooms' },
+  { key: 'mirror',      aliases: 'dressing bathroom hallway glass', pack: 'rooms' },
+  { key: 'home',        aliases: 'house main building dashboard', pack: 'rooms' },
+
+  // --- Media extras ---
+  { key: 'remote',      aliases: 'control tv media buttons', pack: 'media' },
+  { key: 'radio',       aliases: 'fm receiver tuner music', pack: 'media' },
+  { key: 'microphone',  aliases: 'mic voice assistant record', pack: 'media' },
+
+  // --- Misc extras ---
+  { key: 'robot',       aliases: 'bot assistant ai android automation', pack: 'misc' },
+  { key: 'map-pin',     aliases: 'location gps place marker zone', pack: 'misc' },
 ];
 
 export const TILE_ICON_KEYS = TILE_ICONS.map((i) => i.key);
@@ -832,6 +873,47 @@ const ICON_PATHS = {
   beer:         'M5 3h11v18H5V3zm2 2v14h7V5H7zm9 3h2.5A2.5 2.5 0 0 1 21 10.5v5a2.5 2.5 0 0 1-2.5 2.5H16V8zm2 2v6h.5a.5.5 0 0 0 .5-.5v-5a.5.5 0 0 0-.5-.5H18zM8 7h2v10H8V7zm3.5 0h2v10h-2V7z',
   cocktail:     'M3 4h18l-8 9v7h4v2H7v-2h4v-7L3 4z',
   'ice-cream':  'M12 2a5 5 0 0 1 5 5v1H7V7a5 5 0 0 1 5-5zM7.5 10h9L12 22 7.5 10z',
+
+  // Security extras
+  siren:        'M12 3a6 6 0 0 1 6 6v8H6V9a6 6 0 0 1 6-6zm0 2a4 4 0 0 0-4 4v6h8V9a4 4 0 0 0-4-4zm-1 2h2v4h-2V7zM4 18h16v3H4v-3z',
+  key:          'M14 4h6v6h-4l-8 8v3H4v-4l8-8V4h2zm4 2h-2v2h2V6z',
+  safe:         'M3 4h18v14H3V4zm2 2v10h14V6H5zm4 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm0 2a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm7-2h2v6h-2V8zM5 19h4v2H5v-2zm10 0h4v2h-4v-2z',
+  fence:        'M5 3 7 6v14H3V6l2-3zm7 0 2 3v14h-4V6l2-3zm7 0 2 3v14h-4V6l2-3zM3 10h18v2H3v-2z',
+  intercom:     'M7 2h10v20H7V2zm2 2v16h6V4H9zm1 2h4v5h-4V6zm2 7a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z',
+  contact:      'M4 3h7v18H4V3zm2 2v14h3V5H6zm8-2h6v8h-6V3zm2 2v4h2V5h-2zm-2 8h6v8h-6v-8zm2 2v4h2v-4h-2z',
+  vibration:    'M8 4h8v16H8V4zm2 2v12h4V6h-4zM2 7l2 2.5L2 12l2 2.5L2 17V7zm20 0v10l-2-2.5 2-2.5-2-2.5L22 7z',
+  sound:        'M4 9h4l5-4v14l-5-4H4V9zM16 8c2 1.5 2 6.5 0 8M19 5c3.5 3 3.5 11 0 14',
+
+  // Energy extras
+  pylon:        'M11 2h2v2h5v2h-5v1.5l7 12.5h-2.3L12 12l-5.7 8H4L11 7.5V6H6V4h5V2z',
+  generator:    'M3 6h18v12H3V6zm2 2v8h14V8H5zm2 2h4v4H7v-4zm7 0h4v1.5h-4V10zm0 2.5h4V14h-4v-1.5zM2 20h20v2H2v-2z',
+  'power-strip':'M2 8h20v8H2V8zm2 2v4h11v-4H4zm2 1h2v2H6v-2zm4 0h2v2h-2v-2zm7-1v4h3v-4h-3z',
+
+  // Lighting extras
+  'street-lamp':'M8 2h8l2 5H6l2-5zm3 6h2v12h3v2H8v-2h3V8z',
+  'ceiling-light':'M3 3h18v2H3V3zm4 3h10v2a5 5 0 0 1-10 0V6z',
+
+  // Outdoor extras
+  greenhouse:   'M12 2l9 7v13H3V9l9-7zm0 2.5L5 10v10h2v-7h10v7h2V10l-7-5.5zM9 15h2v5H9v-5zm4 0h2v5h-2v-5z',
+  well:         'M12 2l8 5v2h-3v7h-2V9H9v7H7V9H4V7l8-5zm-1 8h2v3h-2v-3zM5 17h14l1 4H4l1-4z',
+  fountain:     'M11 2h2v5h-2V2zM7 4l1.4 1.4L7 6.8 5.6 5.4 7 4zm10 0 1.4 1.4L17 6.8l-1.4-1.4L17 4zM9 8h6v2a3 3 0 0 1-6 0V8zm-3 4h12v2H6v-2zm-2 3h16l-2 6H6l-2-6z',
+  swing:        'M4 3h16v2h-1v16h-2V5H7v16H5V5H4V3zm5 2h1v8H9V5zm5 0h1v8h-1V5zm-6 8h8v2H8v-2z',
+  doghouse:     'M12 2l9 7v12H3V9l9-7zm3 19v-8H9v8h6z',
+
+  // Kitchen / rooms extras
+  'range-hood': 'M10 2h4v4h-4V2zM6 7h12l3 7H3l3-7zm-1 9h14v2H5v-2z',
+  balcony:      'M6 3h12v4h-2V5H8v2H6V3zM3 8h18v2H3V8zm1 3h2v5H4v-5zm4 0h2v5H8v-5zm4 0h2v5h-2v-5zm4 0h2v5h-2v-5zM3 17h18v3H3v-3z',
+  mirror:       'M12 2a7 9 0 0 1 7 9 7 9 0 0 1-6 8.9V21h3v2H8v-2h3v-1.1A7 9 0 0 1 5 11a7 9 0 0 1 7-9zm0 2a5 7 0 0 0-5 7 5 7 0 0 0 10 0 5 7 0 0 0-5-7z',
+  home:         'M12 3l9 8h-2v10h-5v-6h-4v6H5V11H3l9-8z',
+
+  // Media extras
+  remote:       'M8 2h8v20H8V2zm2 2v16h4V4h-4zm1 1h2v2h-2V5zm-.5 4a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm3 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2z',
+  radio:        'M17 3l1 1.7L8 7.4 7.5 5.6 17 3zM3 8h18v13H3V8zm2 2v9h14v-9H5zm2 1h5v2H7v-2zm0 4h5v2H7v-2zm9-4a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm0 2a1 1 0 1 0 0 2 1 1 0 0 0 0-2z',
+  microphone:   'M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3zM6 11h2a4 4 0 0 0 8 0h2a6 6 0 0 1-5 5.9V20h3v2H8v-2h3v-3.1A6 6 0 0 1 6 11z',
+
+  // Misc extras
+  robot:        'M11 2h2v3h-2V2zM5 7h14v10H5V7zm2 2v6h10V9H7zm1 1h2v2H8v-2zm6 0h2v2h-2v-2zM2 9h2v6H2V9zm18 0h2v6h-2V9zM8 19h8v3H8v-3z',
+  'map-pin':    'M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7zm0 4a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
 };
 
 const DOMAIN_TO_ICON = {
@@ -854,6 +936,7 @@ const STROKE_ICONS = new Set([
   'sun', 'wifi', 'router', 'led-strip', 'wind', 'snow',
   'string-light', 'hammock',
   'snowflake', 'fireworks', 'pulse',
+  'sound',
 ]);
 
 function TileIcon({ iconKey, domain, on }) {

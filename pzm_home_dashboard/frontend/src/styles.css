@@ -1312,77 +1312,69 @@ html, body, #root {
   font-size: 0.56rem;
   letter-spacing: 0.1em;
 }
-.security-inner .solar-title {
-  padding-bottom: 0;
-  font-size: 0.56rem;
-}
-/* Slightly denser zone / PIR grid so labels get more room to breathe
-   inside each cell (the chip itself no longer eats padding on borders). */
-.security-tile .zones-grid { gap: 0.1rem 0.35rem; }
-.security-zones { gap: 0.1rem; }
-
 /* Portrait: clearly taller than wide — height is abundant, width is not.
    Gates stack as a vertical column with their full labels visible
-   (instead of squeezing into icon-only pills), and zone chips go two-up
-   so the long PIR list fills the height in an even rhythm. */
+   (instead of squeezing into icon-only pills); the zone chips reflow
+   to however many columns the tile width allows (see .zones-grid). */
 @container sec (max-aspect-ratio: 0.8) {
   .security-inner > .gates-grid {
     grid-auto-flow: row;
     grid-template-columns: 1fr;
   }
-  .security-tile .zones-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* Landscape: at least 30% wider than tall.
-   Grid layout with the gate stack on the left (as a vertical column of
-   buttons — more thumb-friendly on wide layouts) and Zones over PIR on
-   the right. */
+   The split is dynamic: React stamps data-zones / data-pir on
+   .security-inner for sections that actually render, and the grid only
+   carves out a side column when at least one is present. A section
+   hidden via options (or with no sensors of its kind) frees its area
+   instead of leaving a blank region; with neither present the card
+   stays a plain column and gates keep their horizontal row. */
 @container sec (min-aspect-ratio: 1.3) {
-  .security-inner {
+  .security-inner[data-zones],
+  .security-inner[data-pir] {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
-    grid-template-rows: auto auto 1fr;
-    grid-template-areas:
-      "title  title"
-      "gates  zones"
-      "gates  pir";
+    grid-template-rows: minmax(0, 1fr);
+    grid-template-areas: "gates side";
     gap: 0.3rem;
     align-items: start;
   }
-  .security-inner > .solar-title { grid-area: title; }
-  .security-inner > .solar-note  { grid-column: 1 / -1; }
-  .security-inner > .gates-grid {
+  .security-inner[data-zones][data-pir] {
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+      "gates zones"
+      "gates pir";
+  }
+  .security-inner > .solar-note { grid-column: 1 / -1; }
+  .security-inner[data-zones] > .gates-grid,
+  .security-inner[data-pir]   > .gates-grid {
     grid-area: gates;
-    /* Vertical column of gates in landscape — override the horizontal
-       `grid-auto-flow: column` from the base rule so gates stack. */
+    /* Vertical column of gates when a side column exists — override the
+       horizontal `grid-auto-flow: column` from the base rule so gates
+       stack next to the zone lists. */
     grid-auto-flow: row;
     grid-template-columns: 1fr;
     grid-auto-columns: auto;
     align-content: flex-start;
     min-height: 0;
   }
-  .security-inner > .security-zones--zones { grid-area: zones; min-height: 0; }
-  .security-inner > .security-zones--pir   { grid-area: pir;   min-height: 0; }
-  /* Let the chip columns follow the tile width instead of a fixed 2-up,
-     so wide-but-shallow tiles spread chips out rather than stacking. */
-  .security-tile .zones-grid {
-    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
-  }
+  /* A lone section takes the whole side area; when both render, the
+     more specific rules below split it into zones-over-pir. */
+  .security-inner > .security-zones { grid-area: side; min-height: 0; }
+  .security-inner[data-zones][data-pir] > .security-zones--zones { grid-area: zones; }
+  .security-inner[data-zones][data-pir] > .security-zones--pir   { grid-area: pir; }
 }
 
-/* Wide: at least 2.2× wider than tall. Zones and PIR each get their
-   own column so nothing has to scroll and the gate column stays
-   compact — the vertical stack of gates carries over from landscape. */
+/* Wide: at least 2.2× wider than tall. When both zone sections render
+   they each get their own column so nothing has to scroll and the gate
+   column stays compact; with a single section the landscape two-column
+   split above already fits. */
 @container sec (min-aspect-ratio: 2.2) {
-  .security-inner {
+  .security-inner[data-zones][data-pir] {
     grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: auto 1fr;
-    grid-template-areas:
-      "title title title"
-      "gates zones pir";
-  }
-  .security-tile .zones-grid {
-    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+    grid-template-rows: minmax(0, 1fr);
+    grid-template-areas: "gates zones pir";
   }
 }
 
@@ -1419,17 +1411,28 @@ html, body, #root {
               box-shadow 0.2s ease;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
-/* Narrow gate button → icon only; below ~110 px the label truncates
-   with an ellipsis, so we hide it and keep the icon centred instead.
-   Tooltip / title still exposes the full name. */
+/* Narrow gate button → stack the icon over the label and shrink the
+   type instead of dropping the text. The name is the primary affordance
+   on a security panel, so it survives down to genuinely tiny pills;
+   only when there is no room for even a short word does the button fall
+   back to icon-only. Tooltip / title always carries the full name. */
 @container gb (max-width: 110px) {
   .gate-btn {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     justify-items: center;
-    padding: 0.35rem;
+    gap: 0.15rem;
+    padding: 0.28rem 0.2rem;
   }
+  .gate-btn > .gate-icon { width: 22px; height: 22px; }
+  .gate-btn > .gate-icon svg { width: 16px; height: 16px; }
+  .gate-body { align-items: center; text-align: center; }
+  .gate-name { font-size: 0.6rem; }
+  .gate-state { font-size: 0.5rem; }
+}
+@container gb (max-width: 56px) {
   .gate-btn > .gate-body { display: none; }
   .gate-btn > .gate-icon { width: 26px; height: 26px; }
+  .gate-btn > .gate-icon svg { width: 20px; height: 20px; }
 }
 @media (prefers-color-scheme: light) {
   .gate-btn {
@@ -1502,11 +1505,7 @@ html, body, #root {
 .gate-state-ok  { color: var(--ok); }
 .gate-state-bad { color: var(--danger); }
 
-/* --- Zones (pill chips, content-sized) ---
-   State is communicated by colour, not text:
-     • ok  → green name only
-     • bad → red name + red alert badge
-     • neutral (unknown) → muted name only                                */
+/* --- Zones / PIR (status cells) --- */
 .security-zones {
   display: flex;
   flex-direction: column;
@@ -1517,85 +1516,113 @@ html, body, #root {
 .zones-grid {
   display: grid;
   /* Uniform slot widths so the panel scans as a neat grid regardless of
-     label length. Three columns fit the default 5-col-wide security tile
-     cleanly and stay legible for the longest labels ("Office window"). */
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+     label length. Column count follows the space the grid actually gets
+     (auto-fill) rather than a hard-coded per-breakpoint count; 100px keeps
+     the longest labels ("Office window") legible, and cells degrade
+     gracefully via their own container query when squeezed further. */
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   gap: 0.2rem;
   align-content: flex-start;
 }
-/* Zones + PIR are status indicators, not clickable buttons. No border,
-   no tinted background — just a coloured icon + label (never both an
-   ellipsis and a truncated word). Each chip is its own inline-size
-   container so the icon-only fallback is pure CSS, no JS / no flicker.
-   Text is clipped without an ellipsis; when the chip is genuinely
-   narrower than the smallest legible label we hide the text entirely
-   and render an icon-only chip instead. */
+/* Zone / PIR cells share the gate buttons' visual language so the whole
+   panel reads as one system: bordered cell, 3 px state edge on the left,
+   tinted icon box, then the name over a small uppercase state line.
+   Colour carries the state (green ok / red alert / grey unknown) and the
+   text repeats it, so the panel is scannable at a glance and unambiguous
+   up close. The cells are indicators, not buttons — no hover, no cursor.
+   Each cell is its own inline-size container so the degrade steps
+   (drop state line → icon only) are pure CSS, no JS / no flicker. */
 .zone-chip {
-  display: flex;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
   align-items: center;
   gap: 0.3rem;
-  padding: 0.15rem 0.3rem;
-  min-height: 22px;
-  border: none;
-  background: transparent;
-  line-height: 1.15;
+  padding: 0.2rem 0.3rem;
+  min-height: 30px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  background: linear-gradient(145deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015));
   min-width: 0;
   container-type: inline-size;
   container-name: zc;
+}
+.zone-chip-ok      { border-left-color: var(--ok); }
+.zone-chip-bad     { border-left-color: var(--danger); animation: zone-chip-pulse 1.6s ease-in-out infinite; }
+.zone-chip-neutral { border-left-color: var(--border); }
+@keyframes zone-chip-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+@media (prefers-color-scheme: light) {
+  .zone-chip {
+    background: linear-gradient(145deg, rgba(0,0,0,0.025), rgba(0,0,0,0.004));
+  }
 }
 .zone-icon {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  width: 14px;
-  height: 14px;
+  width: 20px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.06);
   color: var(--muted);
 }
-.zone-chip-ok  .zone-icon { color: var(--ok); }
-.zone-chip-bad .zone-icon { color: var(--danger); }
-.zone-icon svg { width: 100%; height: 100%; }
-
-/* --- Fallback: chip too narrow for even a partial word → icon only.
-   Threshold picked so labels win almost always in the default
-   security tile; the swap only happens when the tile is really
-   squeezed. */
-@container zc (max-width: 62px) {
-  .zone-chip {
-    justify-content: center;
-    padding: 0.25rem;
-    min-height: 26px;
-  }
-  .zone-icon { width: 18px; height: 18px; }
-  .zone-name { display: none; }
-}
-@container zc (max-width: 40px) {
-  .zone-icon { width: 70%; height: 70%; }
-}
+.zone-chip-ok  .zone-icon { background: rgba(87, 211, 140, 0.14); color: var(--ok); }
+.zone-chip-bad .zone-icon { background: rgba(255, 107, 107, 0.16); color: var(--danger); }
 @media (prefers-color-scheme: light) {
-  .zone-chip { background: rgba(0, 0, 0, 0.02); }
+  .zone-chip-neutral .zone-icon { background: rgba(0, 0, 0, 0.05); }
 }
-.zone-chip-ok { }
-.zone-chip-bad { animation: zone-chip-pulse 1.6s ease-in-out infinite; }
-@keyframes zone-chip-pulse {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.55; }
-}
-.zone-chip-neutral { }
+.zone-icon svg { width: 14px; height: 14px; }
 
+.zone-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
+}
 .zone-name {
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.01em;
-  color: var(--muted);
+  color: var(--text);
   min-width: 0;
   overflow: hidden;
-  text-overflow: clip;    /* never draw the "…" — icon fallback handles narrow */
+  text-overflow: ellipsis;
   white-space: nowrap;
-  flex: 1 1 auto;
+  line-height: 1.1;
 }
-.zone-chip-ok  .zone-name { color: var(--ok); }
-.zone-chip-bad .zone-name { color: var(--danger); }
+.zone-state {
+  font-size: 0.5rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.zone-state-ok  { color: var(--ok); }
+.zone-state-bad { color: var(--danger); }
+
+/* Squeezed cell → drop the state line first (the coloured edge and icon
+   still carry the state), then fall back to a centred icon-only cell
+   when even the name can't fit a short word. */
+@container zc (max-width: 88px) {
+  .zone-state { display: none; }
+}
+@container zc (max-width: 58px) {
+  .zone-chip {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    padding: 0.25rem;
+  }
+  .zone-body { display: none; }
+  .zone-icon { width: 22px; height: 22px; }
+  .zone-icon svg { width: 16px; height: 16px; }
+}
 
 
 /* Custom Flow Diagram Value Nodes & PV percentages */

@@ -127,6 +127,12 @@ export default function SecurityCard({
   const configured = snapshot?.configured ?? false;
   const motionZones = zones.filter((z) => String(z.kind || '').toLowerCase() === 'motion');
   const otherZones  = zones.filter((z) => String(z.kind || '').toLowerCase() !== 'motion');
+  // Section presence drives the card's internal grid: the CSS container
+  // queries only carve out a column/area for sections that actually render,
+  // so hiding Zones/PIR (or having no such sensors) frees the space for the
+  // rest instead of leaving a blank region.
+  const hasZones = showZones && otherZones.length > 0;
+  const hasPir   = showPir && motionZones.length > 0;
 
   return (
     <div
@@ -136,9 +142,11 @@ export default function SecurityCard({
         ? { onPointerDown: (e) => e.button === 0 && onStartMove(e) }
         : {})}
     >
-      <div className="solar-inner security-inner">
-        <div className="solar-title">Home Security</div>
-
+      <div
+        className="solar-inner security-inner"
+        data-zones={hasZones ? '' : undefined}
+        data-pir={hasPir ? '' : undefined}
+      >
         {error && <div className="solar-note solar-note-error">{error}</div>}
         {!error && !configured && (
           <div className="solar-note">Home Assistant not configured.</div>
@@ -183,12 +191,8 @@ export default function SecurityCard({
           })}
         </div>
 
-        {showZones && otherZones.length > 0 && (
-          <ZoneSection title="Zones" zones={otherZones} variant="zones" />
-        )}
-        {showPir && motionZones.length > 0 && (
-          <ZoneSection title="PIR" zones={motionZones} variant="pir" />
-        )}
+        {hasZones && <ZoneSection title="Zones" zones={otherZones} variant="zones" />}
+        {hasPir && <ZoneSection title="PIR" zones={motionZones} variant="pir" />}
       </div>
 
       {editMode && (
@@ -220,26 +224,32 @@ function ZoneSection({ title, zones, variant }) {
   );
 }
 
-// Individual zone chip. Renders an icon + name, and switches to icon-only
-// via CSS container queries when the chip itself gets too narrow — the
-// icon still conveys the sensor kind and the outline colour the state.
-// Container queries are stable: no measurement loop, no React re-render
-// flicker as the layout settles.
+// Individual zone cell. Mirrors the gate buttons' anatomy (tinted icon
+// box, name over a small state line, coloured left edge) so the whole
+// panel reads as one system — but it's an indicator, not a button.
+// Degrades via CSS container queries when the cell gets too narrow:
+// the state line goes first (colour still carries it), then the text
+// entirely. Container queries are stable: no measurement loop, no React
+// re-render flicker as the layout settles.
 function ZoneChip({ zone }) {
   const open = contactOpen(zone.state);
   const cls = open === true ? 'bad' : open === false ? 'ok' : 'neutral';
   const kindKey = String(zone.kind || '').toLowerCase();
   const label = zone.name || zone.entity;
+  const stateText = zoneStateLabel(zone.kind, open);
 
   return (
     <div
       className={`zone-chip zone-chip-${cls}`}
-      title={`${label}\n${zone.entity}\n${zoneStateLabel(zone.kind, open)}`}
+      title={`${label}\n${zone.entity}\n${stateText}`}
     >
       <span className="zone-icon" aria-hidden>
         <ZoneKindIcon kind={kindKey} name={label} open={open} />
       </span>
-      <span className="zone-name">{label}</span>
+      <span className="zone-body">
+        <span className="zone-name">{label}</span>
+        <span className={`zone-state zone-state-${cls}`}>{stateText}</span>
+      </span>
     </div>
   );
 }

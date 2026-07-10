@@ -4,6 +4,32 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.21
+
+- **Dynamic Security card layout.** The internal grid only carves out
+  columns for sections that actually render: hiding Zones or PIR (or
+  having no sensors of that kind) frees the space instead of leaving a
+  blank region, and a gates-only card keeps its full-width horizontal
+  row. Zone-chip columns follow the tile width (`auto-fill`) rather than
+  hard-coded per-breakpoint counts.
+- **"Home Security" heading removed** — the card content starts at the
+  top edge; edit mode still labels the tile.
+- **Zones / PIR redesigned as status cells.** Each sensor now mirrors the
+  gate buttons' anatomy: bordered cell, colour-coded left edge (green
+  ok / red alert with pulse / grey unknown), tinted icon box, and the
+  name over a small uppercase state line (Closed / Open / Motion /
+  Quiet / Clear). Squeezed cells drop the state line first, then fall
+  back to icon-only.
+- **Gate button labels survive narrow tiles.** Below ~110 px the button
+  stacks the icon over the name and shrinks the type instead of hiding
+  the text; icon-only kicks in only under ~56 px.
+- **27 new icons to choose from** across the picker packs: siren, key,
+  safe, fence, intercom, contact, vibration, sound (security); pylon,
+  generator, power-strip (energy); street-lamp, ceiling-light
+  (lighting); greenhouse, well, fountain, swing, doghouse (outdoor);
+  range-hood (kitchen); balcony, mirror, home (rooms); remote, radio,
+  microphone (media); robot, map-pin (misc).
+
 ## 0.2.20
 
 - **Grid callout Solax block can no longer vanish.** The cells fall back
