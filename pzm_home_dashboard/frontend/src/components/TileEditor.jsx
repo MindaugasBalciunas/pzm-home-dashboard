@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { TILE_ICON_KEYS, TileIcon } from './SimpleTile.jsx';
+import IconPicker from './IconPicker.jsx';
 
 // Modal shown after a long-press on a custom / template tile. Buttons get
 // name + icon; numbers get name only. Delete removes the tile outright.
@@ -64,24 +64,11 @@ export default function TileEditor({ id, entry, onSave, onDelete, onCancel }) {
           {spec.kind === 'button' && (
             <>
               <label>Icon</label>
-              <div className="icon-picker">
-                {TILE_ICON_KEYS.map((k) => (
-                  <button
-                    key={k}
-                    type="button"
-                    className={`icon-picker-btn ${icon === k ? 'is-active' : ''}`}
-                    onClick={() => setIcon(k)}
-                    title={k}
-                    aria-label={`Icon: ${k}`}
-                  >
-                    {k === 'auto' ? (
-                      <span className="icon-picker-auto">Auto</span>
-                    ) : (
-                      <TileIcon iconKey={k} domain={spec.domain} on={true} />
-                    )}
-                  </button>
-                ))}
-              </div>
+              <IconPicker
+                value={icon}
+                onChange={setIcon}
+                domain={spec.domain}
+              />
             </>
           )}
         </div>

@@ -1,5 +1,5 @@
 name: PZM Home Dashboard
-version: "0.2.7"
+version: "0.2.9"
 slug: pzm_home_dashboard
 description: >-
   RTSP camera streams (transcoded on-demand to HLS via ffmpeg) plus a live

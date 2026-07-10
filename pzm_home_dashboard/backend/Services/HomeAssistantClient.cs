@@ -114,18 +114,91 @@ public sealed class HomeAssistantClient
 
             string? unit = null;
             string? friendly = null;
+            LightAttrs? light = null;
             if (raw.Attributes is { } attrs)
             {
                 if (attrs.TryGetValue("unit_of_measurement", out var u) && u.ValueKind == JsonValueKind.String) unit = u.GetString();
                 if (attrs.TryGetValue("friendly_name", out var f) && f.ValueKind == JsonValueKind.String) friendly = f.GetString();
+                if (entityId.StartsWith("light.", StringComparison.OrdinalIgnoreCase))
+                {
+                    light = ExtractLightAttrs(attrs);
+                }
             }
-            return new HaStateDto(entityId, raw.State, unit, friendly);
+            return new HaStateDto(entityId, raw.State, unit, friendly, light);
         }
         catch (Exception ex)
         {
             _log.LogWarning(ex, "HA fetch failed for {Entity}", entityId);
             return new HaStateDto(entityId, null, null, null);
         }
+    }
+
+    // Pull the small set of light-domain attributes the frontend cares
+    // about (dim slider + colour picker). `supported_color_modes` /
+    // `supported_features` tell us which controls to render — a plain
+    // on/off bulb reports neither. Home Assistant sends brightness as
+    // 0-255; keep it that way and let the UI scale.
+    private static LightAttrs ExtractLightAttrs(Dictionary<string, JsonElement> attrs)
+    {
+        int? brightness = null;
+        if (attrs.TryGetValue("brightness", out var b) && b.ValueKind == JsonValueKind.Number)
+        {
+            brightness = b.TryGetInt32(out var bi) ? bi : (int)b.GetDouble();
+        }
+
+        int[]? rgb = null;
+        if (attrs.TryGetValue("rgb_color", out var rc) && rc.ValueKind == JsonValueKind.Array)
+        {
+            var list = new List<int>(3);
+            foreach (var el in rc.EnumerateArray())
+            {
+                if (el.ValueKind == JsonValueKind.Number)
+                    list.Add(el.TryGetInt32(out var i) ? i : (int)el.GetDouble());
+            }
+            if (list.Count >= 3) rgb = new[] { list[0], list[1], list[2] };
+        }
+
+        int? colorTemp = TryReadInt(attrs, "color_temp_kelvin")
+                         ?? TryReadInt(attrs, "color_temp");
+        int? minColorTemp = TryReadInt(attrs, "min_color_temp_kelvin")
+                            ?? TryReadInt(attrs, "min_mireds");
+        int? maxColorTemp = TryReadInt(attrs, "max_color_temp_kelvin")
+                            ?? TryReadInt(attrs, "max_mireds");
+
+        var modes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (attrs.TryGetValue("supported_color_modes", out var scm)
+            && scm.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var el in scm.EnumerateArray())
+                if (el.ValueKind == JsonValueKind.String)
+                    modes.Add(el.GetString() ?? "");
+        }
+        var currentMode = attrs.TryGetValue("color_mode", out var cm)
+            && cm.ValueKind == JsonValueKind.String ? cm.GetString() : null;
+
+        bool colorish(string m) =>
+            m.Equals("rgb", StringComparison.OrdinalIgnoreCase)
+            || m.Equals("rgbw", StringComparison.OrdinalIgnoreCase)
+            || m.Equals("rgbww", StringComparison.OrdinalIgnoreCase)
+            || m.Equals("hs", StringComparison.OrdinalIgnoreCase)
+            || m.Equals("xy", StringComparison.OrdinalIgnoreCase);
+
+        bool supportsBrightness = modes.Any(m => !m.Equals("onoff", StringComparison.OrdinalIgnoreCase))
+                                  || brightness != null;
+        bool supportsColor = modes.Any(colorish) || rgb != null;
+        bool supportsColorTemp = modes.Contains("color_temp")
+                                 || (currentMode != null && currentMode.Equals("color_temp", StringComparison.OrdinalIgnoreCase))
+                                 || colorTemp != null;
+
+        return new LightAttrs(
+            brightness, rgb, colorTemp, minColorTemp, maxColorTemp,
+            supportsBrightness, supportsColor, supportsColorTemp);
+    }
+
+    private static int? TryReadInt(Dictionary<string, JsonElement> attrs, string key)
+    {
+        if (!attrs.TryGetValue(key, out var el) || el.ValueKind != JsonValueKind.Number) return null;
+        return el.TryGetInt32(out var i) ? i : (int)el.GetDouble();
     }
 
     // Fire a HA service call. `data` becomes the JSON body; entity_id is

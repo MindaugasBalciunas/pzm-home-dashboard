@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { TileIcon } from './SimpleTile.jsx';
 
 const HISTORY_LEN = 80;
 const POLL_MS = 3000;
@@ -22,11 +21,6 @@ const ENERGY_METRICS = [
   { key: 'totalSolar',  label: 'Total Solar',  accent: 'good' },
 ];
 
-const HEALTH_METRICS = [
-  // runMode is rendered as a pill overlaid on the house image; don't duplicate here.
-  { key: 'gridRuntime', label: 'Runtime' },
-];
-
 function toNumber(state) {
   if (!state || state.state == null) return null;
   if (state.state === 'unknown' || state.state === 'unavailable') return null;
@@ -47,23 +41,6 @@ function formatValue(v, unit) {
   return { text: String(v), unit: unit || '' };
 }
 
-function formatRuntimeHours(state) {
-  const n = toNumber(state);
-  if (n == null) {
-    return state?.state && state.state !== 'unknown' && state.state !== 'unavailable'
-      ? String(state.state)
-      : '—';
-  }
-  const unit = (state?.unit || '').toLowerCase();
-  let hours = n;
-  if (unit === 'min' || unit === 'minutes') hours = n / 60;
-  else if (unit === 's' || unit === 'seconds') hours = n / 3600;
-  else if (unit === 'days' || unit === 'd') hours = n * 24;
-  if (hours < 1) return `${(hours * 60).toFixed(0)} min`;
-  if (hours < 48) return `${hours.toFixed(0)} h`;
-  return `${Math.floor(hours / 24)} d`;
-}
-
 function formatMode(state) {
   if (!state || state.state == null) return '—';
   if (state.state === 'unknown' || state.state === 'unavailable') return '—';
@@ -71,13 +48,14 @@ function formatMode(state) {
   return s.length ? s.charAt(0).toUpperCase() + s.slice(1) : '—';
 }
 
-function formatPvPair(voltageState, currentState) {
+function formatPvSubBits(voltageState, currentState) {
   const v = toNumber(voltageState);
   const a = toNumber(currentState);
-  if (v == null && a == null) return '—';
-  const vText = v != null ? `${v.toFixed(0)} V` : '—';
-  const aText = a != null ? `${a.toFixed(2)} A` : '—';
-  return `${vText} · ${aText}`;
+  return {
+    v: v != null ? `${v.toFixed(0)} V` : null,
+    a: a != null ? `${a.toFixed(2)} A` : null,
+    any: v != null || a != null,
+  };
 }
 
 function Sparkline({ values, accent, metricKey }) {
@@ -382,9 +360,19 @@ function HouseView({
   pvState,
   pv1State,
   pv2State,
+  pv1VoltageState,
+  pv2VoltageState,
+  pv1CurrentState,
+  pv2CurrentState,
   importState,
   exportState,
   houseState,
+  p1ImportTotal,
+  p1ExportTotal,
+  p1ImportT1,
+  p1ImportT2,
+  p1ExportT1,
+  p1ExportT2,
   runModeText,
 }) {
   const pv = toNumber(pvState) ?? 0;
@@ -393,6 +381,18 @@ function HouseView({
   const imp = toNumber(importState) ?? 0;
   const exp = toNumber(exportState) ?? 0;
   const house = toNumber(houseState) ?? 0;
+  const pv1Sub = formatPvSubBits(pv1VoltageState, pv1CurrentState);
+  const pv2Sub = formatPvSubBits(pv2VoltageState, pv2CurrentState);
+  const p1ImpFmt = p1ImportTotal ? formatValue(toNumber(p1ImportTotal), p1ImportTotal?.unit || 'kWh') : null;
+  const p1ExpFmt = p1ExportTotal ? formatValue(toNumber(p1ExportTotal), p1ExportTotal?.unit || 'kWh') : null;
+  const fmtOrNull = (s) => (s ? formatValue(toNumber(s), s?.unit || 'kWh') : null);
+  const p1ImpT1Fmt = fmtOrNull(p1ImportT1);
+  const p1ImpT2Fmt = fmtOrNull(p1ImportT2);
+  const p1ExpT1Fmt = fmtOrNull(p1ExportT1);
+  const p1ExpT2Fmt = fmtOrNull(p1ExportT2);
+  const hasP1 = (p1ImpFmt && p1ImpFmt.text !== '—') || (p1ExpFmt && p1ExpFmt.text !== '—');
+  const hasImpTariff = (p1ImpT1Fmt && p1ImpT1Fmt.text !== '—') || (p1ImpT2Fmt && p1ImpT2Fmt.text !== '—');
+  const hasExpTariff = (p1ExpT1Fmt && p1ExpT1Fmt.text !== '—') || (p1ExpT2Fmt && p1ExpT2Fmt.text !== '—');
 
   const active = (v) => (v || 0) > 5;
   const isImporting = imp > 5;
@@ -472,7 +472,7 @@ function HouseView({
         <div className="hv-callout-label">Solar</div>
       </div>
 
-      {/* PV 2 — top-left, near left panels */}
+      {/* PV 2 — top-left, near left panels. V/A rendered as compact sub-line. */}
       <div className="hv-callout hv-callout-pv2">
         <div className="hv-callout-value">
           <span className="hv-callout-num">{pv2Fmt.text}</span>
@@ -482,9 +482,15 @@ function HouseView({
           <span>PV 2</span>
           <span className="hv-callout-pct">{sum > 5 ? `${pv2Pct}%` : '—'}</span>
         </div>
+        {pv2Sub.any && (
+          <div className="hv-callout-sub">
+            {pv2Sub.v && <span className="hv-sub-chip">{pv2Sub.v}</span>}
+            {pv2Sub.a && <span className="hv-sub-chip">{pv2Sub.a}</span>}
+          </div>
+        )}
       </div>
 
-      {/* PV 1 — top-right, near right panels */}
+      {/* PV 1 — top-right, near right panels. V/A rendered as compact sub-line. */}
       <div className="hv-callout hv-callout-pv1">
         <div className="hv-callout-value">
           <span className="hv-callout-num">{pv1Fmt.text}</span>
@@ -494,15 +500,62 @@ function HouseView({
           <span>PV 1</span>
           <span className="hv-callout-pct">{sum > 5 ? `${pv1Pct}%` : '—'}</span>
         </div>
+        {pv1Sub.any && (
+          <div className="hv-callout-sub">
+            {pv1Sub.v && <span className="hv-sub-chip">{pv1Sub.v}</span>}
+            {pv1Sub.a && <span className="hv-sub-chip">{pv1Sub.a}</span>}
+          </div>
+        )}
       </div>
 
-      {/* Home — over the house body */}
+      {/* Home — over the house body. Small P1-meter lifetime totals as extra
+          insight beneath the live house load. */}
       <div className="hv-callout hv-callout-home">
         <div className="hv-callout-value">
           <span className="hv-callout-num">{houseFmt.text}</span>
           {houseFmt.unit && <span className="hv-callout-unit">{houseFmt.unit}</span>}
         </div>
         <div className="hv-callout-label">Home</div>
+        {hasP1 && (
+          <div className="hv-callout-p1">
+            {p1ImpFmt && p1ImpFmt.text !== '—' && (
+              <div className="hv-p1-block hv-p1-chip-import">
+                <div className="hv-p1-chip">
+                  <span className="hv-p1-label">Imp</span>
+                  <span className="hv-p1-value">{p1ImpFmt.text}<span className="hv-p1-unit"> {p1ImpFmt.unit}</span></span>
+                </div>
+                {hasImpTariff && (
+                  <div className="hv-p1-tariffs">
+                    {p1ImpT1Fmt && p1ImpT1Fmt.text !== '—' && (
+                      <span className="hv-p1-tariff"><span className="hv-p1-tariff-tag">T1</span>{p1ImpT1Fmt.text}</span>
+                    )}
+                    {p1ImpT2Fmt && p1ImpT2Fmt.text !== '—' && (
+                      <span className="hv-p1-tariff"><span className="hv-p1-tariff-tag">T2</span>{p1ImpT2Fmt.text}</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            {p1ExpFmt && p1ExpFmt.text !== '—' && (
+              <div className="hv-p1-block hv-p1-chip-export">
+                <div className="hv-p1-chip">
+                  <span className="hv-p1-label">Exp</span>
+                  <span className="hv-p1-value">{p1ExpFmt.text}<span className="hv-p1-unit"> {p1ExpFmt.unit}</span></span>
+                </div>
+                {hasExpTariff && (
+                  <div className="hv-p1-tariffs">
+                    {p1ExpT1Fmt && p1ExpT1Fmt.text !== '—' && (
+                      <span className="hv-p1-tariff"><span className="hv-p1-tariff-tag">T1</span>{p1ExpT1Fmt.text}</span>
+                    )}
+                    {p1ExpT2Fmt && p1ExpT2Fmt.text !== '—' && (
+                      <span className="hv-p1-tariff"><span className="hv-p1-tariff-tag">T2</span>{p1ExpT2Fmt.text}</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Grid — bottom-right corner */}
@@ -665,9 +718,6 @@ export default function SolarCard({
   const timerRef = useRef(null);
   const historyTimerRef = useRef(null);
   const monthlyTimerRef = useRef(null);
-  // Ref so children (Loads) can request a refresh after toggling a switch
-  // without wiring the loader through props from mount.
-  const loadRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -695,13 +745,11 @@ export default function SolarCard({
         if (!cancelled) setError(String(e));
       }
     };
-    loadRef.current = load;
     load();
     timerRef.current = setInterval(load, POLL_MS);
     return () => {
       cancelled = true;
       clearInterval(timerRef.current);
-      loadRef.current = null;
     };
   }, []);
 
@@ -816,8 +864,7 @@ export default function SolarCard({
       style={style}
       onPointerDown={handleTileDown}
     >
-      <div className="solar-inner">
-        <div className="solar-title">Electricity</div>
+      <div className="solar-inner solar-inner-titleless">
         {error && <div className="solar-note solar-note-error">Fetch error</div>}
         {!error && !configured && (
           <div className="solar-note">Set Home Assistant token in appsettings.json to see live data.</div>
@@ -828,9 +875,19 @@ export default function SolarCard({
             pvState={data?.pvTotal}
             pv1State={data?.pv1}
             pv2State={data?.pv2}
+            pv1VoltageState={data?.pv1Voltage}
+            pv2VoltageState={data?.pv2Voltage}
+            pv1CurrentState={data?.pv1Current}
+            pv2CurrentState={data?.pv2Current}
             importState={data?.import}
             exportState={data?.export}
             houseState={data?.houseUse}
+            p1ImportTotal={data?.p1ImportTotal}
+            p1ExportTotal={data?.p1ExportTotal}
+            p1ImportT1={data?.p1ImportT1}
+            p1ImportT2={data?.p1ImportT2}
+            p1ExportT1={data?.p1ExportT1}
+            p1ExportT2={data?.p1ExportT2}
             runModeText={data?.runMode ? formatMode(data.runMode) : null}
           />
         </div>
@@ -846,53 +903,6 @@ export default function SolarCard({
             />
           ))}
         </div>
-
-        {(data?.p1ImportTotal || data?.p1ExportTotal
-          || data?.p1ImportT1 || data?.p1ImportT2
-          || data?.p1ExportT1 || data?.p1ExportT2) && (
-          <GridMeter data={data} />
-        )}
-
-        {Array.isArray(data?.controls) && data.controls.length > 0 && (
-          <ElectricControls
-            controls={data.controls}
-            onChanged={() => loadRef.current?.()}
-          />
-        )}
-
-        {(data?.runMode || data?.gridRuntime
-          || data?.pv1Voltage || data?.pv2Voltage
-          || data?.pv1Current || data?.pv2Current) && (
-          <div className="health-row">
-            {data?.pv1Voltage || data?.pv1Current ? (
-              <span className="health-chip">
-                <span className="health-label">PV 1</span>
-                <span className="health-value">{formatPvPair(data?.pv1Voltage, data?.pv1Current)}</span>
-              </span>
-            ) : null}
-            {data?.pv2Voltage || data?.pv2Current ? (
-              <span className="health-chip">
-                <span className="health-label">PV 2</span>
-                <span className="health-value">{formatPvPair(data?.pv2Voltage, data?.pv2Current)}</span>
-              </span>
-            ) : null}
-            {HEALTH_METRICS.map((m) => {
-              const state = data?.[m.key];
-              if (!state || state.state == null) return null;
-              const text = m.key === 'gridRuntime'
-                ? formatRuntimeHours(state)
-                : m.key === 'runMode'
-                  ? formatMode(state)
-                  : formatValue(toNumber(state), state?.unit).text;
-              return (
-                <span key={m.key} className="health-chip">
-                  <span className="health-label">{m.label}</span>
-                  <span className="health-value">{text}</span>
-                </span>
-              );
-            })}
-          </div>
-        )}
       </div>
       {editMode && (
         <>
@@ -907,107 +917,3 @@ export default function SolarCard({
   );
 }
 
-// P1 utility meter — grid-side lifetime totals with per-tariff breakdown.
-// Distinct from Solax's inverter counters (which are the strip above); the
-// values here are what the DSO bills.
-function GridMeter({ data }) {
-  const fmt = (state) => {
-    const n = toNumber(state);
-    if (n == null) return { text: '—', unit: '' };
-    return formatValue(n, state?.unit || 'kWh');
-  };
-  const imp = fmt(data?.p1ImportTotal);
-  const impT1 = fmt(data?.p1ImportT1);
-  const impT2 = fmt(data?.p1ImportT2);
-  const exp = fmt(data?.p1ExportTotal);
-  const expT1 = fmt(data?.p1ExportT1);
-  const expT2 = fmt(data?.p1ExportT2);
-  return (
-    <div className="grid-meter">
-      <div className="grid-meter-title">Grid meter</div>
-      <div className="grid-meter-rows">
-        <MeterRow label="Import" accent="bad" total={imp} t1={impT1} t2={impT2} />
-        <MeterRow label="Export" accent="good" total={exp} t1={expT1} t2={expT2} />
-      </div>
-    </div>
-  );
-}
-
-// Electric loads — one-tap toggle chips inside the Electricity tile. Domain
-// dispatch (switch/light/input_boolean/script/cover/lock) is done server-side
-// in /api/ha/entity/action; we just POST the entityId and let it figure the
-// right service out.
-function ElectricControls({ controls, onChanged }) {
-  const [pending, setPending] = useState({});
-
-  const trigger = async (entity) => {
-    if (!entity || pending[entity]) return;
-    setPending((p) => ({ ...p, [entity]: true }));
-    try {
-      await fetch('api/ha/entity/action', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entityId: entity }),
-      });
-      setTimeout(() => onChanged?.(), 700);
-    } catch { /* transient */ }
-    finally {
-      setTimeout(() => setPending((p) => { const n = { ...p }; delete n[entity]; return n; }), 900);
-    }
-  };
-
-  return (
-    <div className="electric-loads">
-      <div className="solar-section-title">Loads</div>
-      <div className="electric-loads-grid">
-        {controls.map((c) => {
-          const s = c.state?.state;
-          const on = s === 'on' || s === 'open' || s === 'playing' || s === 'unlocked';
-          const off = s === 'off' || s === 'closed' || s === 'idle' || s === 'locked' || s === 'paused';
-          const busy = !!pending[c.entity];
-          const cls = on ? 'is-on' : off ? 'is-off' : 'is-unknown';
-          const domain = (c.entity || '').split('.')[0];
-          return (
-            <button
-              key={c.entity}
-              type="button"
-              className={`electric-load ${cls} ${busy ? 'is-busy' : ''}`}
-              onClick={() => trigger(c.entity)}
-              disabled={busy}
-              title={c.entity}
-            >
-              <span className="electric-load-icon">
-                <TileIcon iconKey={c.icon} domain={domain} on={on} />
-              </span>
-              <span className="electric-load-name">{c.name || c.entity}</span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function MeterRow({ label, accent, total, t1, t2 }) {
-  return (
-    <div className={`grid-meter-row grid-meter-${accent}`}>
-      <div className="grid-meter-side">
-        <div className="grid-meter-label">{label}</div>
-        <div className="grid-meter-total">
-          <span className="grid-meter-num">{total.text}</span>
-          <span className="grid-meter-unit">{total.unit}</span>
-        </div>
-      </div>
-      <div className="grid-meter-tariffs">
-        <span className="grid-meter-tariff">
-          <span className="grid-meter-tariff-label">T1</span>
-          <span className="grid-meter-tariff-val">{t1.text}</span>
-        </span>
-        <span className="grid-meter-tariff">
-          <span className="grid-meter-tariff-label">T2</span>
-          <span className="grid-meter-tariff-val">{t2.text}</span>
-        </span>
-      </div>
-    </div>
-  );
-}

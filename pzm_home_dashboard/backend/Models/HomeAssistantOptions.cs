@@ -185,7 +185,21 @@ public sealed record HaStateDto(
     [property: JsonPropertyName("entityId")] string EntityId,
     [property: JsonPropertyName("state")] string? State,
     [property: JsonPropertyName("unit")] string? Unit,
-    [property: JsonPropertyName("friendlyName")] string? FriendlyName);
+    [property: JsonPropertyName("friendlyName")] string? FriendlyName,
+    [property: JsonPropertyName("light")] LightAttrs? Light = null);
+
+// Compact bag of light attributes surfaced to the frontend when the
+// entity is a light. `null` means "not a light" or attributes missing —
+// the SimpleTile falls back to plain toggle behaviour in that case.
+public sealed record LightAttrs(
+    [property: JsonPropertyName("brightness")] int? Brightness,
+    [property: JsonPropertyName("rgb")] int[]? Rgb,
+    [property: JsonPropertyName("colorTemp")] int? ColorTemp,
+    [property: JsonPropertyName("minColorTemp")] int? MinColorTemp,
+    [property: JsonPropertyName("maxColorTemp")] int? MaxColorTemp,
+    [property: JsonPropertyName("supportsBrightness")] bool SupportsBrightness,
+    [property: JsonPropertyName("supportsColor")] bool SupportsColor,
+    [property: JsonPropertyName("supportsColorTemp")] bool SupportsColorTemp);
 
 public sealed record HaSample(
     [property: JsonPropertyName("t")] long T,

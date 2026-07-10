@@ -201,24 +201,191 @@ function ZoneSection({ title, zones, variant }) {
     <div className={`security-zones security-zones--${variant || 'zones'}`}>
       <div className="solar-section-title">{title}</div>
       <div className="zones-grid">
-        {zones.map((z) => {
-          const open = contactOpen(z.state);
-          const cls = open === true ? 'bad' : open === false ? 'ok' : 'neutral';
-          return (
-            <div
-              key={z.entity}
-              className={`zone-chip zone-chip-${cls}`}
-              title={`${z.name || z.entity}\n${z.entity}`}
-            >
-              <span className="zone-name">{z.name || z.entity}</span>
-              {open === true && (
-                <span className="zone-alert">{zoneStateLabel(z.kind, true)}</span>
-              )}
-            </div>
-          );
-        })}
+        {zones.map((z) => (
+          <ZoneChip key={z.entity} zone={z} />
+        ))}
       </div>
     </div>
+  );
+}
+
+// Individual zone chip. Renders an icon + name, and switches to icon-only
+// via CSS container queries when the chip itself gets too narrow — the
+// icon still conveys the sensor kind and the outline colour the state.
+// Container queries are stable: no measurement loop, no React re-render
+// flicker as the layout settles.
+function ZoneChip({ zone }) {
+  const open = contactOpen(zone.state);
+  const cls = open === true ? 'bad' : open === false ? 'ok' : 'neutral';
+  const kindKey = String(zone.kind || '').toLowerCase();
+  const label = zone.name || zone.entity;
+
+  return (
+    <div
+      className={`zone-chip zone-chip-${cls}`}
+      title={`${label}\n${zone.entity}\n${zoneStateLabel(zone.kind, open)}`}
+    >
+      <span className="zone-icon" aria-hidden>
+        <ZoneKindIcon kind={kindKey} name={label} open={open} />
+      </span>
+      <span className="zone-name">{label}</span>
+    </div>
+  );
+}
+
+// Compact inline glyphs keyed to the sensor's kind. Kept in this file
+// alongside the security-specific chip styles so they stay in sync with
+// the SecurityCard's palette without hopping into SimpleTile's catalog.
+// For motion/PIR sensors we look at the zone name to pick a room-flavoured
+// glyph (bed, sofa, kitchen…) instead of a single generic "motion" icon.
+function ZoneKindIcon({ kind, name, open }) {
+  const k = String(kind || '').toLowerCase();
+  if (k === 'motion' || k === 'occupancy' || k === 'presence' || k === 'pir') {
+    return <PirRoomIcon name={name} />;
+  }
+  if (k === 'door') {
+    return (
+      <svg viewBox="0 0 24 24" width="100%" height="100%">
+        <path fill="currentColor" d={open
+          ? "M4 21V4h6l8-2v20l-8-2H4zm2-2h4V6H6v13zm6-13v12l4 1V3l-4 1zm-3 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"
+          : "M6 2h12v20H6V2zm2 2v16h8V4H8zm5 8v2h1v-2h-1z"} />
+      </svg>
+    );
+  }
+  if (k === 'window') {
+    return (
+      <svg viewBox="0 0 24 24" width="100%" height="100%">
+        <path fill="currentColor" d="M4 3h16v18H4V3zm2 2v7h5V5H6zm7 0v7h5V5h-5zM6 14v5h5v-5H6zm7 0v5h5v-5h-5z" />
+      </svg>
+    );
+  }
+  if (k === 'fire' || k === 'smoke' || k === 'heat') {
+    return (
+      <svg viewBox="0 0 24 24" width="100%" height="100%">
+        <path fill="currentColor" d="M13 3s3 4 3 8a4 4 0 1 1-8 0c0-2 1-3 1-3s-2 5 2 7c0 0-3-2-1-6 1-2 3-6 3-6z" />
+      </svg>
+    );
+  }
+  if (k === 'gas' || k === 'carbon_monoxide' || k === 'co') {
+    return (
+      <svg viewBox="0 0 24 24" width="100%" height="100%">
+        <path fill="currentColor" d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 2a7 7 0 1 1 0 14 7 7 0 0 1 0-14zM9 9a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm6 0a2 2 0 1 1 0 4 2 2 0 0 1 0-4z" />
+      </svg>
+    );
+  }
+  if (k === 'glass' || k === 'glass_break' || k === 'sound' || k === 'vibration') {
+    return (
+      <svg viewBox="0 0 24 24" width="100%" height="100%">
+        <path fill="currentColor" d="M4 3h16v18H4V3zm2 2v14h5l4-14H6zm7 0-4 14h9V5h-5z" />
+      </svg>
+    );
+  }
+  if (k === 'flood' || k === 'moisture' || k === 'water') {
+    return (
+      <svg viewBox="0 0 24 24" width="100%" height="100%">
+        <path fill="currentColor" d="M12 2.5s-6.5 7.5-6.5 12.5a6.5 6.5 0 1 0 13 0C18.5 10 12 2.5 12 2.5z" />
+      </svg>
+    );
+  }
+  if (k === 'lock') {
+    return (
+      <svg viewBox="0 0 24 24" width="100%" height="100%">
+        <path fill="currentColor" d="M12 2a5 5 0 0 0-5 5v3H5v12h14V10h-2V7a5 5 0 0 0-5-5zm-3 8V7a3 3 0 0 1 6 0v3H9z" />
+      </svg>
+    );
+  }
+  // Contact / opening / generic — a small round marker so the chip still
+  // has a visual anchor when other kinds don't match.
+  return (
+    <svg viewBox="0 0 24 24" width="100%" height="100%">
+      <circle cx="12" cy="12" r="5" fill="currentColor" />
+    </svg>
+  );
+}
+
+// Dispatch a PIR / motion / presence zone to a room-flavoured glyph based
+// on the zone name. Falls through to the generic "walking figure" motion
+// icon when no room keyword matches, so every PIR still gets *something*.
+function PirRoomIcon({ name }) {
+  const n = String(name || '').toLowerCase();
+  const has = (needles) => needles.some((s) => n.includes(s));
+
+  if (has(['entrance', 'entry', 'hall', 'iejim', 'hallway', 'foyer', 'lobby'])) {
+    return (
+      <svg viewBox="0 0 24 24" width="100%" height="100%">
+        <path fill="currentColor" d="M6 2h12v20H6V2zm2 2v16h8V4H8zm5 8v2h1v-2h-1z" />
+      </svg>
+    );
+  }
+  if (has(['living', 'lounge', 'sale', 'sofa', 'sitting'])) {
+    return (
+      <svg viewBox="0 0 24 24" width="100%" height="100%">
+        <path fill="currentColor" d="M3 11a2 2 0 0 1 4 0v3h10v-3a2 2 0 1 1 4 0v6h-2v2h-2v-2H7v2H5v-2H3v-6zm4 3v-2a4 4 0 0 1 4-4h2a4 4 0 0 1 4 4v2H7z" />
+      </svg>
+    );
+  }
+  if (has(['kitchen', 'virtuv', 'cook', 'pantry'])) {
+    return (
+      <svg viewBox="0 0 24 24" width="100%" height="100%">
+        <path fill="currentColor" d="M4 4h16v16H4V4zm2 2v12h12V6H6zm2 2h3v3H8V8zm5 0h3v3h-3V8zm-5 5h3v3H8v-3zm5 0h3v3h-3v-3z" />
+      </svg>
+    );
+  }
+  if (has(['office', 'darbo', 'study', 'work', 'desk'])) {
+    return (
+      <svg viewBox="0 0 24 24" width="100%" height="100%">
+        <path fill="currentColor" d="M3 4h18v12H3V4zm2 2v8h14V6H5zm-1 12h16v2H4v-2z" />
+      </svg>
+    );
+  }
+  if (has(['bedroom', 'bed', 'miegam', 'kids', 'nursery'])) {
+    return (
+      <svg viewBox="0 0 24 24" width="100%" height="100%">
+        <path fill="currentColor" d="M3 8h11a4 4 0 0 1 4 4v3h3v5h-2v-2H5v2H3V8zm2 2v5h11v-3a2 2 0 0 0-2-2H5zm2 1a2 2 0 1 1 4 0 2 2 0 0 1-4 0z" />
+      </svg>
+    );
+  }
+  if (has(['bath', 'shower', 'wc', 'toilet', 'vonia'])) {
+    return (
+      <svg viewBox="0 0 24 24" width="100%" height="100%">
+        <path fill="currentColor" d="M6 4a3 3 0 0 1 6 0v6H4v3a5 5 0 0 0 4 4.9V21h2v-3.1a5 5 0 0 0 4-4.9v-3H8a1 1 0 0 1 0-2h2V7H8a3 3 0 0 1-2-3zm14 0h2v9h-2V4z" />
+      </svg>
+    );
+  }
+  if (has(['garage', 'garaz', 'workshop', 'shed'])) {
+    return (
+      <svg viewBox="0 0 24 24" width="100%" height="100%">
+        <path fill="currentColor" d="M3 21V9l9-6 9 6v12h-4v-6H7v6H3zm6-2h2v-2H9v2zm4 0h2v-2h-2v2zM9 15h2v-2H9v2zm4 0h2v-2h-2v2z" />
+      </svg>
+    );
+  }
+  if (has(['upstairs', '2nd', 'second floor', '2 a', 'stairs', 'stair', 'floor'])) {
+    return (
+      <svg viewBox="0 0 24 24" width="100%" height="100%">
+        <path fill="currentColor" d="M3 21V3h18v4h-4v4h-4v4H9v4H3zm2-2h4v-4h4v-4h4V9h4V5H5v14z" />
+      </svg>
+    );
+  }
+  if (has(['dining', 'valgom'])) {
+    return (
+      <svg viewBox="0 0 24 24" width="100%" height="100%">
+        <path fill="currentColor" d="M3 10h18v3H3v-3zm2 5h14v6H5v-6zm2 2v2h10v-2H7zM8 3h1v6H8V3zm3 0h1v6h-1V3zm3 0h1v6h-1V3zm3 0h1v6h-1V3z" />
+      </svg>
+    );
+  }
+  if (has(['garden', 'yard', 'sod', 'lauk', 'outdoor', 'terrace', 'patio', 'teras'])) {
+    return (
+      <svg viewBox="0 0 24 24" width="100%" height="100%">
+        <path fill="currentColor" d="M12 2a6 6 0 0 0-6 6c0 3 2 5 4 6v2H6v2h5v4h2v-4h5v-2h-4v-2c2-1 4-3 4-6a6 6 0 0 0-6-6z" />
+      </svg>
+    );
+  }
+  // Fallback — the classic "person + movement lines" glyph so the chip
+  // still reads as motion even when the room can't be inferred.
+  return (
+    <svg viewBox="0 0 24 24" width="100%" height="100%">
+      <path fill="currentColor" d="M13 2a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM5 22l3-9 3 2 3-4 5 5-1 1-4-3-3 4-3-2-1 6H5z" />
+    </svg>
   );
 }
 

@@ -4,6 +4,63 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.9
+
+- **Zone / PIR chips restyled as status, not buttons**. The rectangle
+  border and tinted background are gone — the label just colours by
+  state (green ok / red bad, red pulses subtle opacity). When the chip
+  is wide enough it shows only the label; when narrow, only the icon.
+- **Zone chip flicker fixed** by dropping the JS `ResizeObserver`
+  measurement in favour of a pure CSS `@container` swap. No more
+  measure → hide-name → chip-shrinks → measure loop.
+- **PIR icons enriched** with more room keywords (entrance, living
+  room, kitchen, office, bedroom, bath, garage, upstairs, dining,
+  garden/terrace) — each PIR now picks a room-flavoured glyph based on
+  its name.
+- **Electricity tile**: the "Electricity" heading is removed to give
+  the house visualization more headroom at the top of the tile.
+- **Runtime health-chip removed** (the tile now has no health-row at
+  all). The freed row's data landed inside the Home callout instead:
+  the P1 lifetime totals now unfold into T1 / T2 tariff splits so
+  peak-vs-off-peak usage is visible from the diagram itself.
+
+## 0.2.8
+
+- **Electricity tile refocused on electricity**: the outdoor light switches
+  (Loads section) are gone; the tile now shows only monitoring data. The
+  P1 utility-meter lifetime totals (Import / Export kWh) moved into the
+  Home callout on the house diagram as compact sub-lines. PV 1 / PV 2
+  voltage and current now sit inside the PV 1 / PV 2 callouts at the top
+  of the diagram instead of the old health-row chips.
+- **Icon catalog expanded** with ~100 home-automation glyphs across
+  lighting, HVAC, kitchen, laundry, media, network, security, energy,
+  outdoor and rooms. Each icon carries search aliases so the picker
+  matches on synonyms (e.g. "refrigerator" → fridge, "smoothie" →
+  blender).
+- **Icon picker gets a search box** in both the add-tile and edit-tile
+  flows, using the new shared `IconPicker` component.
+- **Custom-tile button layout adapts to its own aspect ratio** via CSS
+  container queries: tiny tiles collapse to an icon-only chip with
+  state carried by the tile tint; wide (≥ 1.6:1) tiles switch to icon
+  left / name+state right; portrait tiles keep the vertical stack with
+  the name allowed to wrap.
+- **Lights: long-press for dim + colour**. `light.*` entities that
+  expose brightness or RGB open a colour-swatch + brightness modal on
+  long-press (tap still toggles). Backend `HaStateDto` now carries a
+  light-attribute bag (brightness, rgb, colour temp, supported modes).
+- **Security zones and PIR sensors get icons**. PIR icons are picked
+  from the zone name (Entrance → door, Living room → sofa, Kitchen →
+  stove, Office → screen, Bedroom → bed, Garage → garage, Upstairs →
+  stairs, Terrace/Garden → tree, …). Other zone kinds keep kind-based
+  icons (door / window / fire / gas / glass / water).
+- **Zone chip icon-only mode via CSS container queries** — no more
+  measurement-loop flicker; the chip collapses to a centred icon under
+  ~96 px and enlarges the glyph under ~64 px so a lone sensor still
+  fills the square nicely.
+- Small-label spacing pass: callouts, energy chips, gate buttons and
+  health chips got a bit more room so text doesn't clip in normal
+  layouts.
+
 ## 0.2.7
 
 - Security tile: gate buttons now always sit on **one horizontal row**
