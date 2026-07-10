@@ -664,47 +664,49 @@ html, body, #root {
   }
   .hv-callout-pv-total .hv-callout-num { font-size: 1.7rem; }
   .hv-callout-pv-total .hv-callout-unit { font-size: 0.82rem; }
-  /* Grid callout goes horizontal on wide photos: live power + direction
-     label on the left, the Solax block as stacked lines on the right,
-     chart and peaks spanning underneath. */
   .hv-callout-grid {
     min-width: 236px;
     padding: 0.42rem 0.7rem;
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-rows: auto auto 1fr auto auto;
-    grid-template-areas:
-      "value solax"
-      "label solax"
-      "fill  solax"
-      "chart chart"
-      "stats stats";
-    column-gap: 0.7rem;
   }
-  .hv-callout-grid > .hv-callout-value { grid-area: value; }
-  .hv-callout-grid > .hv-callout-label { grid-area: label; align-self: start; }
-  .hv-callout-grid > .hv-cols-3 {
-    grid-area: solax;
-    grid-template-columns: 1fr;
-    gap: 0.14rem;
-    margin-top: 0;
-    padding-top: 0;
-    border-top: none;
-    border-left: 1px solid rgba(255, 255, 255, 0.14);
-    padding-left: 0.6rem;
-  }
-  .hv-callout-grid > .hv-cols-3 .hv-cell {
-    flex-direction: row;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 0.5rem;
-  }
-  .hv-callout-grid > .hv-mini-chart { grid-area: chart; }
-  .hv-callout-grid > .hv-mini-stats { grid-area: stats; }
   .hv-callout-grid .hv-callout-num { font-size: 1.35rem; }
   .hv-callout-grid .hv-callout-unit { font-size: 0.72rem; }
   .hv-cell-val { font-size: 0.68rem; }
 }
+/* Grid callout is horizontal at every size: live power + direction label
+   on the left, the Solax block as stacked lines on the right, chart and
+   peaks spanning underneath. */
+.hv-callout-grid {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto 1fr auto auto;
+  grid-template-areas:
+    "value solax"
+    "label solax"
+    "fill  solax"
+    "chart chart"
+    "stats stats";
+  column-gap: 0.7rem;
+}
+.hv-callout-grid > .hv-callout-value { grid-area: value; }
+.hv-callout-grid > .hv-callout-label { grid-area: label; align-self: start; }
+.hv-callout-grid > .hv-cols-3 {
+  grid-area: solax;
+  grid-template-columns: 1fr;
+  gap: 0.14rem;
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.14);
+  padding-left: 0.6rem;
+}
+.hv-callout-grid > .hv-cols-3 .hv-cell {
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.hv-callout-grid > .hv-mini-chart { grid-area: chart; }
+.hv-callout-grid > .hv-mini-stats { grid-area: stats; }
 @media (prefers-color-scheme: light) {
   .hv-callout-grid > .hv-cols-3 { border-left-color: rgba(0, 0, 0, 0.08); }
 }

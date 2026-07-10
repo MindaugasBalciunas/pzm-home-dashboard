@@ -4,6 +4,18 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.20
+
+- **Grid callout Solax block can no longer vanish.** The cells fall back
+  to the `today_import`/`today_export` entities when the `solax_today_*`
+  sensors don't resolve, and **House-today is derived from the energy
+  balance** (solar + import − export) when no sensor provides it. Baked
+  defaults switched to the Solax daily sensors
+  (`today_s_import_energy` / `today_s_export_energy`); caption reads
+  "Solax today".
+- **Horizontal Grid callout at every size** — live import/export digits on
+  the left, the Solax today lines on the right — not just on wide tiles.
+
 ## 0.2.19
 
 - **Editable flow-line junction.** In edit mode the Electricity tile shows

@@ -1,5 +1,5 @@
 name: PZM Home Dashboard
-version: "0.2.19"
+version: "0.2.20"
 slug: pzm_home_dashboard
 description: >-
   RTSP camera streams (transcoded on-demand to HLS via ffmpeg) plus a live
@@ -47,14 +47,16 @@ options:
       today_export: "sensor.solax_inverter_solax_today_s_export_energy"
       today_import: "sensor.solax_inverter_solax_today_s_import_energy"
       total_solar: "sensor.solax_inverter_solax_total_solar_energy"
-      # Solax energy-dashboard sensors rendered on the Grid callout as a
-      # grid-side comparison against the P1 meter (import / export / house
-      # consumption). These defaults are also baked into the backend model,
-      # so installs whose saved add-on options predate the keys still get
-      # the row; set a key to "" to hide its cell.
-      solax_today_import: "sensor.solax_energy_dashboard_solax_grid_import_energy"
-      solax_today_export: "sensor.solax_energy_dashboard_solax_grid_export_energy"
-      solax_today_house: "sensor.garage_solax_energy_dashboard_solax_home_consumption_energy"
+      # Solax inverter-side DAILY stats rendered on the Grid callout
+      # (import / export / house use today). Defaults are also baked into
+      # the backend model so installs whose saved add-on options predate
+      # the keys still get the block. The frontend additionally falls back
+      # to `today_import`/`today_export` when these don't resolve, and
+      # derives house-today from the energy balance (solar + import −
+      # export) when `solax_today_house` is blank.
+      solax_today_import: "sensor.solax_inverter_solax_today_s_import_energy"
+      solax_today_export: "sensor.solax_inverter_solax_today_s_export_energy"
+      solax_today_house: ""
       pv1_voltage: "sensor.solax_inverter_solax_pv_voltage_1"
       pv2_voltage: "sensor.solax_inverter_solax_pv_voltage_2"
       pv1_current: "sensor.solax_inverter_solax_pv_current_1"

@@ -861,18 +861,30 @@ function HouseView({
           {isExporting ? 'Export' : isImporting ? 'Import' : 'Grid'}
         </div>
         {(() => {
+          // Solax daily stats. Each cell falls back so the block never
+          // silently vanishes when a dedicated sensor is missing:
+          // imp/exp fall back to the today_* entities (Solax dailies by
+          // default) and House-today is derived from the energy balance
+          // (solar + import − export) when no sensor provides it.
+          const impN = toNumber(solaxTodayImportState) ?? toNumber(todayImportState);
+          const expN = toNumber(solaxTodayExportState) ?? toNumber(todayExportState);
+          let houseN = toNumber(solaxTodayHouseState);
+          if (houseN == null) {
+            const sol = toNumber(todaySolarState);
+            if (sol != null && impN != null && expN != null) {
+              houseN = Math.max(0, sol + impN - expN);
+            }
+          }
           const cells = [
-            { key: 'imp',   tag: 'Imp',   cls: 'hv-tag-imp',   state: solaxTodayImportState },
-            { key: 'exp',   tag: 'Exp',   cls: 'hv-tag-exp',   state: solaxTodayExportState },
-            { key: 'house', tag: 'House', cls: 'hv-tag-house', state: solaxTodayHouseState },
-          ].map((c) => ({
-            ...c,
-            fmt: c.state ? formatValue(toNumber(c.state), c.state?.unit || 'kWh') : null,
-          })).filter((c) => c.fmt && c.fmt.text !== '—');
+            { key: 'imp',   tag: 'Imp',   cls: 'hv-tag-imp',   v: impN },
+            { key: 'exp',   tag: 'Exp',   cls: 'hv-tag-exp',   v: expN },
+            { key: 'house', tag: 'House', cls: 'hv-tag-house', v: houseN },
+          ].map((c) => ({ ...c, fmt: formatValue(c.v, 'kWh') }))
+            .filter((c) => c.fmt.text !== '—');
           if (cells.length === 0) return null;
           return (
             <div className="hv-cols hv-cols-3">
-              <div className="hv-cols-caption">Solax</div>
+              <div className="hv-cols-caption">Solax today</div>
               {cells.map((c) => (
                 <div className="hv-cell" key={c.key}>
                   <span className={`hv-cell-tag ${c.cls}`}>{c.tag}</span>
