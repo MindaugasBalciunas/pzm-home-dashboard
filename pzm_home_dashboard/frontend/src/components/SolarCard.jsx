@@ -668,7 +668,7 @@ function HouseView({
           if (cells.length === 0) return null;
           return (
             <div className="hv-cols hv-cols-3">
-              <div className="hv-cols-caption">Solax today</div>
+              <div className="hv-cols-caption">Solax</div>
               {cells.map((c) => (
                 <div className="hv-cell" key={c.key}>
                   <span className={`hv-cell-tag ${c.cls}`}>{c.tag}</span>

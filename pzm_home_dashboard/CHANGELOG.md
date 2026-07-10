@@ -4,6 +4,19 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.13
+
+- **Solax row now works on upgraded installs without a config edit.**
+  Supervisor keeps an install's saved options when an add-on adds new keys,
+  so 0.2.12's `solax_today_*` options resolved to nothing on existing
+  installs and the row stayed hidden. The defaults now live in the backend
+  model too, and point at the Solax **energy-dashboard** sensors
+  (`solax_grid_import_energy`, `solax_grid_export_energy`,
+  `garage…solax_home_consumption_energy`) as a grid-side comparison against
+  the P1 meter. Set a key to `""` to hide its cell.
+- Grid callout caption renamed **Solax today → Solax** since the
+  energy-dashboard sensors are cumulative rather than daily.
+
 ## 0.2.12
 
 - **Solar callout enriched**: lifetime Total sits beside Today in a two-column

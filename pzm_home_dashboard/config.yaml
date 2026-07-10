@@ -1,5 +1,5 @@
 name: PZM Home Dashboard
-version: "0.2.12"
+version: "0.2.13"
 slug: pzm_home_dashboard
 description: >-
   RTSP camera streams (transcoded on-demand to HLS via ffmpeg) plus a live
@@ -47,15 +47,14 @@ options:
       today_export: "sensor.solax_inverter_solax_today_s_export_energy"
       today_import: "sensor.solax_inverter_solax_today_s_import_energy"
       total_solar: "sensor.solax_inverter_solax_total_solar_energy"
-      # Solax inverter-side daily stats shown on the Grid callout. Point
-      # `today_import`/`today_export` above at the P1 meter's daily cycles
-      # (rendered on the Home callout) and these at the Solax dailies.
-      # `solax_today_house` has no stock solax_modbus sensor — bind a
-      # template / Riemann-sum daily house-consumption sensor, or leave
-      # blank to hide the cell.
-      solax_today_import: "sensor.solax_inverter_solax_today_s_import_energy"
-      solax_today_export: "sensor.solax_inverter_solax_today_s_export_energy"
-      solax_today_house: ""
+      # Solax energy-dashboard sensors rendered on the Grid callout as a
+      # grid-side comparison against the P1 meter (import / export / house
+      # consumption). These defaults are also baked into the backend model,
+      # so installs whose saved add-on options predate the keys still get
+      # the row; set a key to "" to hide its cell.
+      solax_today_import: "sensor.solax_energy_dashboard_solax_grid_import_energy"
+      solax_today_export: "sensor.solax_energy_dashboard_solax_grid_export_energy"
+      solax_today_house: "sensor.garage_solax_energy_dashboard_solax_home_consumption_energy"
       pv1_voltage: "sensor.solax_inverter_solax_pv_voltage_1"
       pv2_voltage: "sensor.solax_inverter_solax_pv_voltage_2"
       pv1_current: "sensor.solax_inverter_solax_pv_current_1"

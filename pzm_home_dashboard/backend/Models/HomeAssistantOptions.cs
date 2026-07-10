@@ -108,17 +108,24 @@ public sealed class SolarEntities
     [JsonPropertyName("total_solar")]
     public string? TotalSolar { get; set; }
 
-    // Solax inverter-side daily energy stats (import / export / house use),
-    // distinct from `today_import`/`today_export` which users typically bind
-    // to the P1 meter's daily cycles. Shown on the Grid callout.
+    // Solax energy-dashboard stats (grid import / export / house
+    // consumption) shown on the Grid callout as a comparison against the
+    // P1 meter. Property initializers mirror the config.yaml defaults:
+    // Supervisor keeps an install's saved options when the add-on adds new
+    // keys, so without these the row would stay hidden after an upgrade
+    // until the user hand-edits the configuration. Options.json overrides
+    // them whenever the keys are present ("" hides a cell).
     [JsonPropertyName("solax_today_import")]
-    public string? SolaxTodayImport { get; set; }
+    public string? SolaxTodayImport { get; set; } =
+        "sensor.solax_energy_dashboard_solax_grid_import_energy";
 
     [JsonPropertyName("solax_today_export")]
-    public string? SolaxTodayExport { get; set; }
+    public string? SolaxTodayExport { get; set; } =
+        "sensor.solax_energy_dashboard_solax_grid_export_energy";
 
     [JsonPropertyName("solax_today_house")]
-    public string? SolaxTodayHouse { get; set; }
+    public string? SolaxTodayHouse { get; set; } =
+        "sensor.garage_solax_energy_dashboard_solax_home_consumption_energy";
 
     // PV string detail (voltage/current per MPPT).
     [JsonPropertyName("pv1_voltage")]
