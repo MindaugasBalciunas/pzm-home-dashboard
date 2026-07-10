@@ -12,8 +12,8 @@
   --grid-cols: 48;
   /* Corner rounding used for buttons + number tiles. Kept as a variable
      so the whole app switches from sharp to soft with one edit. */
-  --radius-sm: 8px;
-  --radius-md: 12px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
 
   /* Isometric House dark mode theme colors */
   --house-wall: #1f2733;
@@ -150,6 +150,34 @@ html, body, #root {
   font-size: 0.78rem;
 }
 .tile-edit-name { font-weight: 600; opacity: 0.95; }
+/* Per-tile display toggles shown in edit mode (e.g. the Security card's
+   Zones / PIR switches). Sits just below the edit-top bar. */
+.tile-edit-toggles {
+  position: absolute;
+  top: 2rem;
+  left: 0.55rem;
+  z-index: 6;
+  display: flex;
+  gap: 0.3rem;
+}
+.tile-toggle {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.55);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.22rem 0.55rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.tile-toggle.is-on {
+  color: #fff;
+  border-color: rgba(87, 211, 140, 0.8);
+  background: rgba(87, 211, 140, 0.25);
+}
 .tile-edit-size {
   font-variant-numeric: tabular-nums;
   background: rgba(255,255,255,0.15);
@@ -1778,6 +1806,37 @@ html, body, #root {
 }
 @media (prefers-color-scheme: light) {
   .icon-picker-search { background: rgba(0, 0, 0, 0.02); }
+}
+/* Themed-pack chips row between the search box and the icon grid. */
+.icon-picker-packs {
+  display: flex;
+  gap: 0.25rem;
+  overflow-x: auto;
+  padding-bottom: 0.15rem;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.icon-pack-chip {
+  appearance: none;
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 0.22rem 0.55rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+}
+@media (prefers-color-scheme: light) {
+  .icon-pack-chip { background: rgba(0, 0, 0, 0.02); }
+}
+.icon-pack-chip.is-active {
+  color: var(--text);
+  border-color: var(--accent);
+  background: rgba(74, 163, 255, 0.14);
 }
 .icon-picker-search:focus {
   outline: none;

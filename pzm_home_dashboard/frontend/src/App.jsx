@@ -511,6 +511,10 @@ export default function App() {
             editMode={editMode}
             onStartMove={(e) => startDrag(SECURITY_ID, e, 'move')}
             onStartResize={(e) => startDrag(SECURITY_ID, e, 'resize')}
+            showZones={layout[SECURITY_ID].showZones !== false}
+            showPir={layout[SECURITY_ID].showPir !== false}
+            onToggleZones={() => updateTile(SECURITY_ID, { showZones: layout[SECURITY_ID].showZones === false }, true)}
+            onTogglePir={() => updateTile(SECURITY_ID, { showPir: layout[SECURITY_ID].showPir === false }, true)}
           />
         )}
         {customEntries.map(([id, entry]) => {

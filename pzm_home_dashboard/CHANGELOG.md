@@ -4,6 +4,21 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.17
+
+- **Security card display toggles.** In layout-edit mode the Security tile
+  now shows *Zones* and *PIR* on/off chips — turn either section's display
+  off and the choice persists in the shared layout (all clients follow).
+- **Sharper buttons**: corner rounding halved (`--radius-sm` 8→4 px,
+  `--radius-md` 12→6 px) across buttons and number tiles.
+- **Themed icon packs.** Every catalog icon now carries a pack tag and the
+  icon picker gained a pack-chips row (Lighting, Switches, Doors, Climate,
+  Kitchen, …) alongside search. Four new packs land with 21 new icons:
+  Transport (bus, train, plane, boat, truck), Holidays (xmas-tree,
+  snowflake, snowman, pumpkin, fireworks, balloon), Fitness (dumbbell,
+  running, pulse, pill, first-aid) and Food & drink (burger, cake, beer,
+  cocktail, ice-cream).
+
 ## 0.2.16
 
 - **Glassy callout cards.** The floating stat cards over the house photo
