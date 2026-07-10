@@ -5,9 +5,11 @@ import SecurityCard from './components/SecurityCard.jsx';
 import SideMenu from './components/SideMenu.jsx';
 import SimpleTile from './components/SimpleTile.jsx';
 import TileEditor from './components/TileEditor.jsx';
+import SecurityOptions from './components/SecurityOptions.jsx';
 import PullToRefresh from './components/PullToRefresh.jsx';
 
-const LONG_PRESS_MS = 500;
+// Touch move-drags arm after this hold; taps and mouse drags stay instant.
+const HOLD_TO_DRAG_MS = 350;
 const DRAG_THRESHOLD_PX = 6;
 
 const GRID_COLS = 48;
@@ -380,18 +382,32 @@ export default function App() {
     const startRowSpan = eff.rowSpan;
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
 
-    // Long-press to edit — only for user-owned tiles (custom / template),
-    // only on the move gesture. If the pointer moves before the timer fires
-    // we treat the gesture as a drag; if the timer wins we abort the drag
-    // and open the editor instead.
-    const isEditable = kind === 'move'
-      && (id.startsWith('custom-') || id.startsWith('tpl-'));
-    let longPressFired = false;
-    let moved = false;
-    let longPressTimer = null;
+    // The pop effect targets the tile root even when the gesture starts
+    // on the resize handle.
+    const tileEl = e.currentTarget.closest?.('.tile, .custom-tile') || e.currentTarget;
 
+    // Touch move-gestures arm after a short hold (long-press with a pop +
+    // haptic tick) so a stray swipe never drags tiles around; mouse drags
+    // and the resize handle arm immediately. A plain tap (no hold, no
+    // movement) opens the tile editor for user-owned tiles.
+    const isTouch = e.pointerType === 'touch' || e.pointerType === 'pen';
+    const needsHold = isTouch && kind === 'move';
+    const canOpenEditor = kind === 'move'
+      && (id.startsWith('custom-') || id.startsWith('tpl-') || id === SECURITY_ID);
+    let armed = !needsHold;
+    let lifted = false;
+    let moved = false;
+    let holdTimer = null;
+
+    const lift = () => {
+      if (lifted) return;
+      lifted = true;
+      tileEl.classList.add('tile-lifted');
+      if (isTouch && navigator.vibrate) navigator.vibrate(12);
+    };
     const teardown = () => {
-      if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+      if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+      tileEl.classList.remove('tile-lifted');
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onUp);
@@ -402,9 +418,12 @@ export default function App() {
           && (Math.abs(ev.clientX - startX) > DRAG_THRESHOLD_PX
               || Math.abs(ev.clientY - startY) > DRAG_THRESHOLD_PX)) {
         moved = true;
-        if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+        // Finger drifted before the hold armed the drag — an accidental
+        // brush, not an edit. Give up quietly.
+        if (!armed) { teardown(); return; }
+        lift();
       }
-      if (longPressFired) return;
+      if (!armed || !moved) return;
       const stepX = metrics.cellW + metrics.gap;
       const stepY = metrics.cellH + metrics.gap;
       const dCol = Math.round((ev.clientX - startX) / stepX);
@@ -420,17 +439,18 @@ export default function App() {
       }
     };
     const onUp = () => {
+      const wasTap = !moved && !lifted;
       teardown();
-      if (!longPressFired) commitLayoutSnapshot();
+      if (moved) { commitLayoutSnapshot(); return; }
+      if (wasTap && canOpenEditor) setEditingTileId(id);
     };
 
-    if (isEditable) {
-      longPressTimer = setTimeout(() => {
+    if (needsHold) {
+      holdTimer = setTimeout(() => {
         if (moved) return;
-        longPressFired = true;
-        teardown();
-        setEditingTileId(id);
-      }, LONG_PRESS_MS);
+        armed = true;
+        lift();
+      }, HOLD_TO_DRAG_MS);
     }
 
     window.addEventListener('pointermove', onMove);
@@ -513,8 +533,6 @@ export default function App() {
             onStartResize={(e) => startDrag(SECURITY_ID, e, 'resize')}
             showZones={layout[SECURITY_ID].showZones !== false}
             showPir={layout[SECURITY_ID].showPir !== false}
-            onToggleZones={() => updateTile(SECURITY_ID, { showZones: layout[SECURITY_ID].showZones === false }, true)}
-            onTogglePir={() => updateTile(SECURITY_ID, { showPir: layout[SECURITY_ID].showPir === false }, true)}
           />
         )}
         {customEntries.map(([id, entry]) => {
@@ -539,7 +557,15 @@ export default function App() {
         })}
       </main>
 
-      {editingTileId && overrides[editingTileId] && (
+      {editingTileId === SECURITY_ID && (
+        <SecurityOptions
+          showZones={layout[SECURITY_ID]?.showZones !== false}
+          showPir={layout[SECURITY_ID]?.showPir !== false}
+          onChange={(patch) => updateTile(SECURITY_ID, patch, true)}
+          onClose={() => setEditingTileId(null)}
+        />
+      )}
+      {editingTileId && editingTileId !== SECURITY_ID && overrides[editingTileId] && (
         <TileEditor
           id={editingTileId}
           entry={overrides[editingTileId]}

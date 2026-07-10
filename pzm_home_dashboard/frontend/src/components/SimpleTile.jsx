@@ -209,7 +209,7 @@ export default function SimpleTile({
       onPointerDown={editMode ? (e) => e.button === 0 && onStartMove(e) : undefined}
       onContextMenu={editMode ? (e) => e.preventDefault() : undefined}
       title={editMode
-        ? `${spec.entityId}\nLong-press to edit`
+        ? `${spec.entityId}\nTap to edit · hold to drag`
         : isDimmable
           ? `${spec.entityId}\nLong-press for dim + colour`
           : spec.entityId}

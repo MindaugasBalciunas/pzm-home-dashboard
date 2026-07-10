@@ -1,5 +1,5 @@
 name: PZM Home Dashboard
-version: "0.2.17"
+version: "0.2.18"
 slug: pzm_home_dashboard
 description: >-
   RTSP camera streams (transcoded on-demand to HLS via ffmpeg) plus a live
@@ -104,7 +104,9 @@ options:
       gates:
         - name: "Garage gates"
           entity: "switch.esim364_garazo_vartai"
-          contact: "binary_sensor.esim364_garazo_vartai"
+          # Dedicated Zigbee door contact — the Eldes zone with the same
+          # name follows the alarm panel, not the physical door.
+          contact: "binary_sensor.garage_gates_contact_sensor_door"
           icon: "mdi:garage"
         - name: "Yard gates"
           entity: "switch.esim364_lauko_vartai"

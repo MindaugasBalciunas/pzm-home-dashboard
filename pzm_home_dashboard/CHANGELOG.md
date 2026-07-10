@@ -4,6 +4,28 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.18
+
+- **Garage gate shows the actual door state.** The gate contact now points
+  at the dedicated Zigbee door sensor
+  (`binary_sensor.garage_gates_contact_sensor_door`); the backend remaps
+  the stale Eldes-zone contact from older saved options automatically, so
+  the state is correct even with Zones hidden.
+- **Touch editing reworked.** In edit mode, hold a tile (~350 ms) to lift
+  it — pop scale, shadow ring and a haptic tick — then drag to move; a
+  stray swipe no longer drags tiles. Tap a custom tile to edit it. Mouse
+  drags stay instant; the resize handle works as before and pops too.
+- **Security card options moved into a dialog.** Tap the Security tile in
+  edit mode to open it; Zones and PIR sections toggle Shown/Hidden there
+  and persist in the shared layout.
+- **Security layouts leverage the tile shape.** Portrait tiles stack gates
+  as full-label rows (no more icon-only squeeze); landscape/wide tiles let
+  zone chips flow into as many columns as fit.
+- **Electricity tile fills its box.** The house photo now covers the area
+  above the graph strip, zooming in/out with the tile instead of
+  letterboxing; callout cards get compressed padding and type on small
+  tiles so the numbers keep their room.
+
 ## 0.2.17
 
 - **Security card display toggles.** In layout-edit mode the Security tile

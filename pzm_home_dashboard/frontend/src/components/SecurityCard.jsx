@@ -71,7 +71,7 @@ function zoneStateLabel(kind, isOn) {
 
 export default function SecurityCard({
   col, row, colSpan, rowSpan, editMode, onStartMove, onStartResize,
-  showZones = true, showPir = true, onToggleZones, onTogglePir,
+  showZones = true, showPir = true,
 }) {
   const [snapshot, setSnapshot] = useState(null);
   const [error, setError] = useState(null);
@@ -194,24 +194,8 @@ export default function SecurityCard({
       {editMode && (
         <>
           <div className="tile-edit-top">
-            <div className="tile-edit-name">Security</div>
+            <div className="tile-edit-name">Security · tap to configure</div>
             <div className="tile-edit-size">{colSpan}×{rowSpan}</div>
-          </div>
-          {/* Display toggles — stopPropagation so taps don't start a drag. */}
-          <div
-            className="tile-edit-toggles"
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              className={`tile-toggle ${showZones ? 'is-on' : ''}`}
-              onClick={() => onToggleZones?.()}
-            >Zones {showZones ? 'on' : 'off'}</button>
-            <button
-              type="button"
-              className={`tile-toggle ${showPir ? 'is-on' : ''}`}
-              onClick={() => onTogglePir?.()}
-            >PIR {showPir ? 'on' : 'off'}</button>
           </div>
           <div
             className="tile-resize"

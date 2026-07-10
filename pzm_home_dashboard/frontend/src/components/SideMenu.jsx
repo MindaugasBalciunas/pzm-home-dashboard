@@ -162,7 +162,10 @@ export default function SideMenu({
               >Reset</button>
             </div>
             <div className="side-menu-note">
-              Edits are shared with every browser viewing this dashboard.
+              Hold a tile to lift it, then drag to move; drag the corner
+              handle to resize. Tap a custom or the Security tile to
+              configure it. Edits are shared with every browser viewing
+              this dashboard.
             </div>
           </section>
 

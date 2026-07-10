@@ -104,6 +104,15 @@ html, body, #root {
   -webkit-user-select: none;
 }
 .tile-editing .tile-video { pointer-events: none; }
+/* Pop effect while a tile is held / dragged in edit mode: lifts above
+   its neighbours with a scale + shadow so the grab is unmistakable. */
+.tile-lifted {
+  z-index: 30;
+  transform: scale(1.035);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55), 0 0 0 2px var(--accent);
+  opacity: 0.96;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
 /* In edit mode the inner button element must not consume pointer events,
    otherwise Firefox / iOS Safari swallow pointerdown on `disabled` buttons
    and the outer div never sees the drag / long-press start. */
@@ -150,33 +159,48 @@ html, body, #root {
   font-size: 0.78rem;
 }
 .tile-edit-name { font-weight: 600; opacity: 0.95; }
-/* Per-tile display toggles shown in edit mode (e.g. the Security card's
-   Zones / PIR switches). Sits just below the edit-top bar. */
-.tile-edit-toggles {
-  position: absolute;
-  top: 2rem;
-  left: 0.55rem;
-  z-index: 6;
+/* Security card options dialog: one tappable row per section with a
+   Shown / Hidden state chip on the right. */
+.sec-opt-rows {
   display: flex;
-  gap: 0.3rem;
+  flex-direction: column;
+  gap: 0.4rem;
 }
-.tile-toggle {
+.sec-opt-row {
   appearance: none;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  background: rgba(0, 0, 0, 0.55);
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 0.22rem 0.55rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  text-align: left;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  padding: 0.55rem 0.7rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
 }
-.tile-toggle.is-on {
-  color: #fff;
-  border-color: rgba(87, 211, 140, 0.8);
-  background: rgba(87, 211, 140, 0.25);
+@media (prefers-color-scheme: light) {
+  .sec-opt-row { background: rgba(0, 0, 0, 0.02); }
+}
+.sec-opt-row.is-on { border-color: rgba(87, 211, 140, 0.6); }
+.sec-opt-main { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+.sec-opt-label { font-weight: 700; font-size: 0.85rem; }
+.sec-opt-hint { font-size: 0.68rem; color: var(--muted); }
+.sec-opt-state {
+  flex: 0 0 auto;
+  font-size: 0.64rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+}
+.sec-opt-row.is-on .sec-opt-state {
+  background: rgba(87, 211, 140, 0.2);
+  color: var(--ok);
 }
 .tile-edit-size {
   font-variant-numeric: tabular-nums;
@@ -348,24 +372,21 @@ html, body, #root {
 }
 .house-view {
   position: relative;
+  /* Fill everything above the bottom graph strip — no letterboxing. The
+     photo covers the box (zooming in/out as needed) instead of forcing a
+     fixed aspect ratio, so no empty side margins appear on short tiles. */
   width: 100%;
-  /* Largest box fitting the flexible area at the photo's ratio; the
-     plain width above is the fallback for browsers without cq units. */
-  width: min(100%, calc(100cqh * 2682 / 1500));
-  /* Slightly taller aspect so the zoomed background still fits the roof
-     and yard on typical tile widths. */
-  aspect-ratio: 2682 / 1500;
+  height: 100%;
   overflow: hidden;
   color: var(--text);
 }
 .house-view-bg {
   position: absolute;
-  /* Zoom into the middle of the house image (~115%) — the background is
-     clipped by .house-view's overflow:hidden, so the callouts sit over a
-     bigger, more legible house. */
-  inset: -8% -4%;
-  background-size: 116% auto;
-  background-position: 50% 55%;
+  inset: 0;
+  /* Cover: zoom the photo in or out so it always fills the view; keep
+     the crop anchored just below centre where the house sits. */
+  background-size: cover;
+  background-position: 50% 58%;
   background-repeat: no-repeat;
 }
 /* Incoming background fades in over the previous one (hour/season
@@ -1112,6 +1133,18 @@ html, body, #root {
     flex-basis: 100%;
     justify-content: flex-end;
   }
+  /* Compress the callout chrome so the numbers keep their room: thinner
+     padding, no width floors, tighter dividers and slightly smaller type. */
+  .hv-callout { padding: 0.2rem 0.38rem; min-width: 0; }
+  .hv-callout-pv-total,
+  .hv-callout-home { min-width: 88px; padding: 0.26rem 0.42rem; }
+  .hv-callout-grid { min-width: 88px; }
+  .hv-callout-num { font-size: 1rem; }
+  .hv-callout-pv-total .hv-callout-num,
+  .hv-callout-home .hv-callout-num { font-size: 1.2rem; }
+  .hv-callout-label { margin-top: 0.06rem; font-size: 0.56rem; }
+  .hv-cols { margin-top: 0.18rem; padding-top: 0.14rem; }
+  .hv-callout-sub { margin-top: 0.16rem; padding-top: 0.12rem; }
 }
 
 /* Mirrored hourly grid chart: export up (green), import down (red). */
@@ -1221,6 +1254,18 @@ html, body, #root {
 .security-tile .zones-grid { gap: 0.1rem 0.35rem; }
 .security-zones { gap: 0.1rem; }
 
+/* Portrait: clearly taller than wide — height is abundant, width is not.
+   Gates stack as a vertical column with their full labels visible
+   (instead of squeezing into icon-only pills), and zone chips go two-up
+   so the long PIR list fills the height in an even rhythm. */
+@container sec (max-aspect-ratio: 0.8) {
+  .security-inner > .gates-grid {
+    grid-auto-flow: row;
+    grid-template-columns: 1fr;
+  }
+  .security-tile .zones-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 /* Landscape: at least 30% wider than tall.
    Grid layout with the gate stack on the left (as a vertical column of
    buttons — more thumb-friendly on wide layouts) and Zones over PIR on
@@ -1251,7 +1296,11 @@ html, body, #root {
   }
   .security-inner > .security-zones--zones { grid-area: zones; min-height: 0; }
   .security-inner > .security-zones--pir   { grid-area: pir;   min-height: 0; }
-  .security-tile .zones-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Let the chip columns follow the tile width instead of a fixed 2-up,
+     so wide-but-shallow tiles spread chips out rather than stacking. */
+  .security-tile .zones-grid {
+    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  }
 }
 
 /* Wide: at least 2.2× wider than tall. Zones and PIR each get their
@@ -1265,7 +1314,9 @@ html, body, #root {
       "title title title"
       "gates zones pir";
   }
-  .security-tile .zones-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .security-tile .zones-grid {
+    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  }
 }
 
 /* --- Gate buttons (the primary action of this card) ---

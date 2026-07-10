@@ -26,19 +26,23 @@ public sealed class SecurityController : ControllerBase
             ? Task.FromResult<HaStateDto?>(null)
             : _client.GetStateAsync(sec.AlarmPanel!, ct);
 
-        var gateTasks = sec.Gates.Select(async g => new
+        var gateTasks = sec.Gates.Select(async g =>
         {
-            g.Name,
-            g.Entity,
-            g.Icon,
-            g.Contact,
-            g.ContactKind,
-            state = string.IsNullOrWhiteSpace(g.Entity)
-                ? null
-                : await _client.GetStateAsync(g.Entity, ct),
-            contactState = string.IsNullOrWhiteSpace(g.Contact)
-                ? null
-                : await _client.GetStateAsync(g.Contact!, ct),
+            var contact = EffectiveContact(g.Contact);
+            return new
+            {
+                g.Name,
+                g.Entity,
+                g.Icon,
+                Contact = contact,
+                g.ContactKind,
+                state = string.IsNullOrWhiteSpace(g.Entity)
+                    ? null
+                    : await _client.GetStateAsync(g.Entity, ct),
+                contactState = string.IsNullOrWhiteSpace(contact)
+                    ? null
+                    : await _client.GetStateAsync(contact!, ct),
+            };
         }).ToArray();
 
         var zoneTasks = sec.Zones.Select(async z => new
@@ -118,6 +122,17 @@ public sealed class SecurityController : ControllerBase
         var ok = await _client.CallServiceAsync("alarm_control_panel", service, data, ct);
         return ok ? Ok(new { ok = true }) : StatusCode(502, new { error = "HA call failed." });
     }
+
+    // Saved add-on options aren't refreshed when defaults change, and older
+    // installs still carry the Eldes garage zone as the gate contact — that
+    // zone tracks the alarm panel, not the physical door. Remap it to the
+    // dedicated door contact so the gate chip shows the actual door state
+    // (config.yaml defaults carry the same entity for fresh installs).
+    private static string? EffectiveContact(string? contact)
+        => string.Equals(contact, "binary_sensor.esim364_garazo_vartai",
+                StringComparison.OrdinalIgnoreCase)
+            ? "binary_sensor.garage_gates_contact_sensor_door"
+            : contact;
 
     // Map an entity's domain to the right press/toggle service. Momentary
     // relays are best represented in HA as `switch` or `button`; pulse-style
