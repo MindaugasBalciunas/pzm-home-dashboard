@@ -4,6 +4,25 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.11
+
+- **Electricity panel: isometric house visualization** inspired by the actual
+  backyard aerial photo. The flow diagram is now a 3D house SVG with a
+  reddish-brown tiled roof, solar panels on the right slope, a garage with
+  electric car, a heat pump, and an inverter box on the right wall.
+- **Glassmorphic floating cards** overlay the house — Solar (top-right), Home
+  (top-left), Grid (bottom-right) and optionally Battery — showing live W/kW
+  values and colour-coded by direction (amber solar, green export, red import,
+  teal battery).
+- **PV1/PV2 split** now shown in the Solar card as `PV1: 1.2kW (55%) · PV2: 1.0kW (45%)`.
+- **Battery support**: new `battery_power` and `battery_soc` option fields;
+  a Battery power cell auto-appears when configured.
+- **Power cell grid** consolidated to Solar / House / Grid / Battery (3-4 cols),
+  each with a background area sparkline that fills behind the live value.
+- **Single-line energy stats bar** (Today Solar / Export / Import / Total).
+- CSS `--house-wall`, `--roof-color`, `--card-bg` custom properties themed for
+  both dark and light colour schemes.
+
 ## 0.2.10
 
 - **LED colour actually works now**. `entity/action` was serialising
