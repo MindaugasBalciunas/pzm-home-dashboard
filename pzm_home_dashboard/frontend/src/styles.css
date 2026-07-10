@@ -247,9 +247,10 @@ html, body, #root {
   overflow: auto;
 }
 /* Titleless variant: the Electricity heading is gone, so trim padding
-   hard on all sides — the diagram and energy strip get more room. */
+   hard on all sides — zero on top so the house view (and its callout
+   cards) hugs the tile's top edge, hairline elsewhere. */
 .solar-inner-titleless {
-  padding: 0.2rem 0.35rem 0.35rem;
+  padding: 0 0.15rem 0.2rem;
   gap: 0.2rem;
 }
 .solar-title {
@@ -310,7 +311,9 @@ html, body, #root {
   min-height: 0;
   margin-bottom: 0;
   display: flex;
-  align-items: center;
+  /* Top-anchored (not centered): on tall tiles the photo and its callout
+     cards sit at the top and any slack falls below, toward the strip. */
+  align-items: flex-start;
   justify-content: center;
   container-type: size;
   container-name: hv;
@@ -566,7 +569,7 @@ html, body, #root {
 /* Solar (PV Total) — top-left, dark base + orange accent border for the
    sun read. Enlarged for emphasis: it's the tile's marquee number. */
 .hv-callout-pv-total {
-  top: 3%;
+  top: 1.5%;
   left: 2%;
   min-width: 110px;
   padding: 0.42rem 0.7rem;
@@ -635,12 +638,12 @@ html, body, #root {
 }
 
 /* PV 2 sits just to the left of PV 1, both pinned at the very top now. */
-.hv-callout-pv2  { top: 4%; left: 36%; transform: translateX(-50%); }
-.hv-callout-pv1  { top: 4%; left: 58%; transform: translateX(-50%); }
+.hv-callout-pv2  { top: 1.5%; left: 36%; transform: translateX(-50%); }
+.hv-callout-pv1  { top: 1.5%; left: 58%; transform: translateX(-50%); }
 /* Home is the tile's second-largest read (live house load + daily meter
    splits). Move it up next to the PV callouts and bump the type sizes. */
 .hv-callout-home {
-  top: 3%;
+  top: 1.5%;
   right: 2%;
   min-width: 118px;
   padding: 0.42rem 0.7rem;

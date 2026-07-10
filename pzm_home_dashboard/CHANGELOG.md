@@ -4,6 +4,15 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.14
+
+- **Electricity tile spacing tightened**: top padding removed and side /
+  bottom padding reduced to a hairline, so the house view spans nearly the
+  full tile width.
+- **Callout cards sit higher**: the house view is top-anchored (slack now
+  falls between the photo and the bottom strip instead of above), and the
+  Solar / PV1 / PV2 / Home callouts moved up to ~1.5% from the top edge.
+
 ## 0.2.13
 
 - **Solax row now works on upgraded installs without a config edit.**
