@@ -108,6 +108,18 @@ public sealed class SolarEntities
     [JsonPropertyName("total_solar")]
     public string? TotalSolar { get; set; }
 
+    // Solax inverter-side daily energy stats (import / export / house use),
+    // distinct from `today_import`/`today_export` which users typically bind
+    // to the P1 meter's daily cycles. Shown on the Grid callout.
+    [JsonPropertyName("solax_today_import")]
+    public string? SolaxTodayImport { get; set; }
+
+    [JsonPropertyName("solax_today_export")]
+    public string? SolaxTodayExport { get; set; }
+
+    [JsonPropertyName("solax_today_house")]
+    public string? SolaxTodayHouse { get; set; }
+
     // PV string detail (voltage/current per MPPT).
     [JsonPropertyName("pv1_voltage")]
     public string? Pv1Voltage { get; set; }

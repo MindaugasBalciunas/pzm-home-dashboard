@@ -1,5 +1,5 @@
 name: PZM Home Dashboard
-version: "0.2.11"
+version: "0.2.12"
 slug: pzm_home_dashboard
 description: >-
   RTSP camera streams (transcoded on-demand to HLS via ffmpeg) plus a live
@@ -47,6 +47,15 @@ options:
       today_export: "sensor.solax_inverter_solax_today_s_export_energy"
       today_import: "sensor.solax_inverter_solax_today_s_import_energy"
       total_solar: "sensor.solax_inverter_solax_total_solar_energy"
+      # Solax inverter-side daily stats shown on the Grid callout. Point
+      # `today_import`/`today_export` above at the P1 meter's daily cycles
+      # (rendered on the Home callout) and these at the Solax dailies.
+      # `solax_today_house` has no stock solax_modbus sensor — bind a
+      # template / Riemann-sum daily house-consumption sensor, or leave
+      # blank to hide the cell.
+      solax_today_import: "sensor.solax_inverter_solax_today_s_import_energy"
+      solax_today_export: "sensor.solax_inverter_solax_today_s_export_energy"
+      solax_today_house: ""
       pv1_voltage: "sensor.solax_inverter_solax_pv_voltage_1"
       pv2_voltage: "sensor.solax_inverter_solax_pv_voltage_2"
       pv1_current: "sensor.solax_inverter_solax_pv_current_1"
@@ -190,6 +199,9 @@ schema:
       today_export: str?
       today_import: str?
       total_solar: str?
+      solax_today_import: str?
+      solax_today_export: str?
+      solax_today_house: str?
       pv1_voltage: str?
       pv2_voltage: str?
       pv1_current: str?

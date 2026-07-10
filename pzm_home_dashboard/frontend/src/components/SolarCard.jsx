@@ -12,13 +12,12 @@ const POWER_METRICS = [
   { key: 'pv2',      label: 'PV 2',     accent: 'neutral' },
 ];
 
+// Today Import / Export moved into the Grid callout and Total Solar into
+// the Solar callout (top section), so the strip is down to three chips.
 const ENERGY_METRICS = [
   { key: 'todaySolar',  label: 'Today Solar',  accent: 'good' },
   { key: 'pv1',         label: 'PV 1',         accent: 'good' },
   { key: 'pv2',         label: 'PV 2',         accent: 'good' },
-  { key: 'todayExport', label: 'Today Export', accent: 'good' },
-  { key: 'todayImport', label: 'Today Import', accent: 'bad' },
-  { key: 'totalSolar',  label: 'Total Solar',  accent: 'good' },
 ];
 
 function toNumber(state) {
@@ -374,6 +373,17 @@ function HouseView({
   p1ExportT1,
   p1ExportT2,
   todaySolarState,
+  totalSolarState,
+  todayImportState,
+  todayExportState,
+  solaxTodayImportState,
+  solaxTodayExportState,
+  solaxTodayHouseState,
+  hourlyGrid,
+  daily,
+  pvPeakW,
+  impPeakW,
+  expPeakW,
   runModeText,
 }) {
   const pv = toNumber(pvState) ?? 0;
@@ -391,7 +401,6 @@ function HouseView({
   const p1ImpT2Fmt = fmtOrNull(p1ImportT2);
   const p1ExpT1Fmt = fmtOrNull(p1ExportT1);
   const p1ExpT2Fmt = fmtOrNull(p1ExportT2);
-  const hasP1 = (p1ImpFmt && p1ImpFmt.text !== '—') || (p1ExpFmt && p1ExpFmt.text !== '—');
   const hasImpTariff = (p1ImpT1Fmt && p1ImpT1Fmt.text !== '—') || (p1ImpT2Fmt && p1ImpT2Fmt.text !== '—');
   const hasExpTariff = (p1ExpT1Fmt && p1ExpT1Fmt.text !== '—') || (p1ExpT2Fmt && p1ExpT2Fmt.text !== '—');
 
@@ -474,17 +483,62 @@ function HouseView({
           <span className="hv-callout-num">{pvFmt.text}</span>
           {pvFmt.unit && <span className="hv-callout-unit">{pvFmt.unit}</span>}
         </div>
-        <div className="hv-callout-label">Solar</div>
-        {todaySolarState && (() => {
-          const t = formatValue(toNumber(todaySolarState), todaySolarState?.unit || 'kWh');
-          if (t.text === '—') return null;
+        <div className="hv-callout-label">
+          <span>Solar</span>
+          {pvPeakW != null && (() => {
+            const p = formatValue(pvPeakW, pvState?.unit || 'W');
+            return <span className="hv-peak" title="Peak PV today">Peak↑ {p.text} {p.unit}</span>;
+          })()}
+        </div>
+        {(() => {
+          const t = todaySolarState ? formatValue(toNumber(todaySolarState), todaySolarState?.unit || 'kWh') : null;
+          const tot = totalSolarState ? formatValue(toNumber(totalSolarState), totalSolarState?.unit || 'kWh') : null;
+          const hasT = t && t.text !== '—';
+          const hasTot = tot && tot.text !== '—';
+          if (!hasT && !hasTot) return null;
           return (
-            <div className="hv-callout-today">
-              <span className="hv-callout-today-tag">Today</span>
-              <span className="hv-callout-today-val">{t.text}<span className="hv-callout-today-unit"> {t.unit}</span></span>
+            <div className="hv-cols">
+              {hasT && (
+                <div className="hv-cell">
+                  <span className="hv-cell-tag hv-tag-amber">Today</span>
+                  <span className="hv-cell-val hv-val-amber">{t.text}<span className="hv-cell-unit"> {t.unit}</span></span>
+                </div>
+              )}
+              {hasTot && (
+                <div className="hv-cell">
+                  <span className="hv-cell-tag">Total</span>
+                  <span className="hv-cell-val">{tot.text}<span className="hv-cell-unit"> {tot.unit}</span></span>
+                </div>
+              )}
             </div>
           );
         })()}
+        {daily && daily.length > 0 && (
+          <>
+            <div className="hv-mini-chart" title="Generation, last 7 days">
+              <BarChart items={daily} accent="solar" keyPrefix="cd" />
+            </div>
+            <div className="hv-mini-day-labels">
+              {daily.map((d) => <span key={d.key}>{dayInitial(d)}</span>)}
+            </div>
+            {(() => {
+              let maxV = -Infinity, minV = Infinity;
+              for (const d of daily) {
+                if (d.v > maxV) maxV = d.v;
+                if (d.v < minV) minV = d.v;
+              }
+              if (!Number.isFinite(maxV) || maxV <= 0) return null;
+              const mx = formatValue(maxV, 'kWh');
+              const mn = formatValue(Math.max(0, minV), 'kWh');
+              return (
+                <div className="hv-mini-stats">
+                  <span className="hv-stat-max" title="Best day (last 7)">↑ {mx.text} {mx.unit}</span>
+                  <span className="hv-stat-min" title="Lowest day (last 7)">↓ {mn.text} {mn.unit}</span>
+                </div>
+              );
+            })()}
+          </>
+        )}
       </div>
 
       {/* PV 2 — top-left, near left panels. V/A rendered as compact sub-line. */}
@@ -523,57 +577,77 @@ function HouseView({
         )}
       </div>
 
-      {/* Home — over the house body. Small P1-meter lifetime totals as extra
-          insight beneath the live house load. */}
+      {/* Home — over the house body. All P1 utility-meter reads (what the
+          DSO actually bills on) group here beneath the live house load:
+          today's import/export, then lifetime totals with tariff splits. */}
       <div className="hv-callout hv-callout-home">
         <div className="hv-callout-value">
           <span className="hv-callout-num">{houseFmt.text}</span>
           {houseFmt.unit && <span className="hv-callout-unit">{houseFmt.unit}</span>}
         </div>
         <div className="hv-callout-label">Home</div>
-        {hasP1 && (
-          <div className="hv-callout-p1">
-            {p1ImpFmt && p1ImpFmt.text !== '—' && (
-              <div className="hv-p1-block hv-p1-chip-import">
-                <div className="hv-p1-chip">
-                  <span className="hv-p1-label">Imp</span>
-                  <span className="hv-p1-value">{p1ImpFmt.text}<span className="hv-p1-unit"> {p1ImpFmt.unit}</span></span>
+        {(() => {
+          const impT = todayImportState ? formatValue(toNumber(todayImportState), todayImportState?.unit || 'kWh') : null;
+          const expT = todayExportState ? formatValue(toNumber(todayExportState), todayExportState?.unit || 'kWh') : null;
+          const hasImpToday = impT && impT.text !== '—';
+          const hasExpToday = expT && expT.text !== '—';
+          const hasImpTotal = p1ImpFmt && p1ImpFmt.text !== '—';
+          const hasExpTotal = p1ExpFmt && p1ExpFmt.text !== '—';
+          if (!hasImpToday && !hasExpToday && !hasImpTotal && !hasExpTotal) return null;
+          return (
+            <div className="hv-cols">
+              {hasImpToday && (
+                <div className="hv-cell">
+                  <span className="hv-cell-tag hv-tag-imp">P1 Imp today</span>
+                  <span className="hv-cell-val">{impT.text}<span className="hv-cell-unit"> {impT.unit}</span></span>
                 </div>
-                {hasImpTariff && (
-                  <div className="hv-p1-tariffs">
-                    {p1ImpT1Fmt && p1ImpT1Fmt.text !== '—' && (
-                      <span className="hv-p1-tariff"><span className="hv-p1-tariff-tag">T1</span>{p1ImpT1Fmt.text}</span>
-                    )}
-                    {p1ImpT2Fmt && p1ImpT2Fmt.text !== '—' && (
-                      <span className="hv-p1-tariff"><span className="hv-p1-tariff-tag">T2</span>{p1ImpT2Fmt.text}</span>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-            {p1ExpFmt && p1ExpFmt.text !== '—' && (
-              <div className="hv-p1-block hv-p1-chip-export">
-                <div className="hv-p1-chip">
-                  <span className="hv-p1-label">Exp</span>
-                  <span className="hv-p1-value">{p1ExpFmt.text}<span className="hv-p1-unit"> {p1ExpFmt.unit}</span></span>
+              )}
+              {hasExpToday && (
+                <div className="hv-cell">
+                  <span className="hv-cell-tag hv-tag-exp">P1 Exp today</span>
+                  <span className="hv-cell-val">{expT.text}<span className="hv-cell-unit"> {expT.unit}</span></span>
                 </div>
-                {hasExpTariff && (
-                  <div className="hv-p1-tariffs">
-                    {p1ExpT1Fmt && p1ExpT1Fmt.text !== '—' && (
-                      <span className="hv-p1-tariff"><span className="hv-p1-tariff-tag">T1</span>{p1ExpT1Fmt.text}</span>
-                    )}
-                    {p1ExpT2Fmt && p1ExpT2Fmt.text !== '—' && (
-                      <span className="hv-p1-tariff"><span className="hv-p1-tariff-tag">T2</span>{p1ExpT2Fmt.text}</span>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+              )}
+              {hasImpTotal && (
+                <div className="hv-cell">
+                  <span className="hv-cell-tag hv-tag-imp">P1 Imp total</span>
+                  <span className="hv-cell-val">{p1ImpFmt.text}<span className="hv-cell-unit"> {p1ImpFmt.unit}</span></span>
+                  {hasImpTariff && (
+                    <div className="hv-p1-tariffs">
+                      {p1ImpT1Fmt && p1ImpT1Fmt.text !== '—' && (
+                        <span className="hv-p1-tariff"><span className="hv-p1-tariff-tag">T1</span>{p1ImpT1Fmt.text}</span>
+                      )}
+                      {p1ImpT2Fmt && p1ImpT2Fmt.text !== '—' && (
+                        <span className="hv-p1-tariff"><span className="hv-p1-tariff-tag">T2</span>{p1ImpT2Fmt.text}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+              {hasExpTotal && (
+                <div className="hv-cell">
+                  <span className="hv-cell-tag hv-tag-exp">P1 Exp total</span>
+                  <span className="hv-cell-val">{p1ExpFmt.text}<span className="hv-cell-unit"> {p1ExpFmt.unit}</span></span>
+                  {hasExpTariff && (
+                    <div className="hv-p1-tariffs">
+                      {p1ExpT1Fmt && p1ExpT1Fmt.text !== '—' && (
+                        <span className="hv-p1-tariff"><span className="hv-p1-tariff-tag">T1</span>{p1ExpT1Fmt.text}</span>
+                      )}
+                      {p1ExpT2Fmt && p1ExpT2Fmt.text !== '—' && (
+                        <span className="hv-p1-tariff"><span className="hv-p1-tariff-tag">T2</span>{p1ExpT2Fmt.text}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
-      {/* Grid — bottom-right corner */}
+      {/* Grid — bottom-right corner. Live grid power plus the mirrored
+          hourly chart and today's peaks; the P1 daily/lifetime energy
+          totals live on the Home callout with the rest of the P1 reads. */}
       <div className={`hv-callout hv-callout-grid ${isExporting ? 'hv-good' : isImporting ? 'hv-bad' : ''}`}>
         <div className="hv-callout-value">
           <span className="hv-callout-num">{gridFmt.text}</span>
@@ -582,6 +656,45 @@ function HouseView({
         <div className="hv-callout-label">
           {isExporting ? 'Export' : isImporting ? 'Import' : 'Grid'}
         </div>
+        {(() => {
+          const cells = [
+            { key: 'imp',   tag: 'Imp',   cls: 'hv-tag-imp',   state: solaxTodayImportState },
+            { key: 'exp',   tag: 'Exp',   cls: 'hv-tag-exp',   state: solaxTodayExportState },
+            { key: 'house', tag: 'House', cls: 'hv-tag-house', state: solaxTodayHouseState },
+          ].map((c) => ({
+            ...c,
+            fmt: c.state ? formatValue(toNumber(c.state), c.state?.unit || 'kWh') : null,
+          })).filter((c) => c.fmt && c.fmt.text !== '—');
+          if (cells.length === 0) return null;
+          return (
+            <div className="hv-cols hv-cols-3">
+              <div className="hv-cols-caption">Solax today</div>
+              {cells.map((c) => (
+                <div className="hv-cell" key={c.key}>
+                  <span className={`hv-cell-tag ${c.cls}`}>{c.tag}</span>
+                  <span className="hv-cell-val">{c.fmt.text}<span className="hv-cell-unit"> {c.fmt.unit}</span></span>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+        {hourlyGrid && hourlyGrid.length > 0 && (
+          <div className="hv-mini-chart" title="By hour — export up, import down">
+            <DualBarChart items={hourlyGrid} />
+          </div>
+        )}
+        {(expPeakW != null || impPeakW != null) && (
+          <div className="hv-mini-stats">
+            {expPeakW != null && (() => {
+              const f = formatValue(expPeakW, exportState?.unit || 'W');
+              return <span className="hv-stat-up" title="Peak export today">↑ {f.text} {f.unit}</span>;
+            })()}
+            {impPeakW != null && (() => {
+              const f = formatValue(impPeakW, importState?.unit || 'W');
+              return <span className="hv-stat-down" title="Peak import today">↓ {f.text} {f.unit}</span>;
+            })()}
+          </div>
+        )}
       </div>
 
       {/* Operation mode — small pill on the bottom of the image */}
@@ -606,23 +719,14 @@ function EnergyCell({ metric, state }) {
   );
 }
 
-function EnergyChip({ metric, state, samples, hourlyPv, daily }) {
+function EnergyChip({ metric, state, samples, hourlyPv }) {
   const v = toNumber(state);
   const { text, unit } = formatValue(v, state?.unit);
-  const useDaily = metric.key === 'totalSolar' && daily && daily.length > 0;
   const useHourly = metric.key === 'todaySolar' && hourlyPv && hourlyPv.length > 0;
 
   let maxLabel = null;
   let maxTitle = '24h peak';
-  if (useDaily) {
-    let maxV = -Infinity;
-    for (const d of daily) if (Number.isFinite(d.v) && d.v > maxV) maxV = d.v;
-    if (Number.isFinite(maxV)) {
-      const { text: mt, unit: mu } = formatValue(maxV, state?.unit || 'kWh');
-      maxLabel = mu ? `${mt} ${mu}` : mt;
-    }
-    maxTitle = 'Best day (last 7)';
-  } else if (useHourly) {
+  if (useHourly) {
     let maxV = -Infinity;
     for (const h of hourlyPv) if (Number.isFinite(h.v) && h.v > maxV) maxV = h.v;
     if (Number.isFinite(maxV)) {
@@ -644,9 +748,7 @@ function EnergyChip({ metric, state, samples, hourlyPv, daily }) {
 
   return (
     <div className={`energy-chip energy-accent-${metric.accent}`}>
-      {useDaily ? (
-        <BarChart items={daily} accent={metric.accent} keyPrefix="d" />
-      ) : useHourly ? (
+      {useHourly ? (
         <BarChart items={hourlyPv} accent={metric.accent} keyPrefix="h" />
       ) : (
         samples && samples.length >= 2 && (
@@ -732,13 +834,108 @@ function bucketByHour(samples) {
 }
 
 // Bucket the /solar/daily payload into last-N-days chart items, keyed
-// by YYYY-MM-DD so React can match bars stably across polls.
+// by YYYY-MM-DD so React can match bars stably across polls. Carries the
+// date parts so the Solar callout can print weekday initials under bars.
 function bucketByDay(days) {
   if (!days || days.length === 0) return [];
   return days.map((d) => ({
     key: `${d.year}-${d.month}-${d.day}`,
     v: Math.max(0, Number(d.v) || 0),
+    year: d.year,
+    month: d.month,
+    day: d.day,
   }));
+}
+
+function dayInitial(item) {
+  return new Date(item.year, item.month - 1, item.day)
+    .toLocaleDateString(undefined, { weekday: 'narrow' });
+}
+
+// True (un-bucketed) peak of a since-midnight sample stream; null when
+// there's no usable sample so callers can hide the annotation.
+function peakOf(samples) {
+  let m = null;
+  for (const s of samples || []) {
+    const v = typeof s === 'number' ? s : s?.v;
+    if (Number.isFinite(v) && (m == null || v > m)) m = v;
+  }
+  return m;
+}
+
+// Bucket import + export power histories into aligned per-hour averages
+// (midnight → current hour) for the mirrored grid chart. Both series must
+// share the hour axis, so they're cut at the same point.
+function bucketPairByHour(impSamples, expSamples) {
+  const mk = () => Array.from({ length: 24 }, () => ({ sum: 0, count: 0 }));
+  const fill = (samples, buckets) => {
+    let any = false;
+    for (const s of samples || []) {
+      if (!s || !Number.isFinite(s.t) || !Number.isFinite(s.v)) continue;
+      const h = new Date(s.t).getHours();
+      if (h >= 0 && h < 24) {
+        buckets[h].sum += s.v;
+        buckets[h].count += 1;
+        any = true;
+      }
+    }
+    return any;
+  };
+  const impB = mk();
+  const expB = mk();
+  const anyImp = fill(impSamples, impB);
+  const anyExp = fill(expSamples, expB);
+  if (!anyImp && !anyExp) return [];
+  const cut = new Date().getHours() + 1;
+  const items = [];
+  for (let h = 0; h < cut; h++) {
+    items.push({
+      key: h,
+      imp: impB[h].count ? Math.max(0, impB[h].sum / impB[h].count) : 0,
+      exp: expB[h].count ? Math.max(0, expB[h].sum / expB[h].count) : 0,
+    });
+  }
+  return items;
+}
+
+// Mirrored hourly grid chart: export grows up from the axis (green),
+// import grows down (red). Position — not color alone — separates the
+// two series, and both scale against the same max so heights compare.
+function DualBarChart({ items }) {
+  if (!items || items.length === 0) return null;
+  const w = 100, h = 30;
+  const mid = h / 2;
+  let maxV = 0;
+  for (const it of items) {
+    if (it.imp > maxV) maxV = it.imp;
+    if (it.exp > maxV) maxV = it.exp;
+  }
+  if (maxV <= 0) maxV = 1;
+  const slot = w / items.length;
+  const pad = 0.18;
+  const barW = slot * (1 - 2 * pad);
+  return (
+    <svg className="dual-graph" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none">
+      {items.map((it, i) => {
+        const x = (i * slot + slot * pad).toFixed(2);
+        const expH = (it.exp / maxV) * (mid - 1);
+        const impH = (it.imp / maxV) * (mid - 1);
+        return (
+          <g key={`ie-${it.key}`}>
+            {expH > 0.05 && (
+              <rect className="dual-graph-exp" x={x} y={(mid - expH).toFixed(2)}
+                    width={barW.toFixed(2)} height={expH.toFixed(2)} rx="0.4" />
+            )}
+            {impH > 0.05 && (
+              <rect className="dual-graph-imp" x={x} y={mid.toFixed(2)}
+                    width={barW.toFixed(2)} height={impH.toFixed(2)} rx="0.4" />
+            )}
+          </g>
+        );
+      })}
+      <line className="dual-graph-axis" x1="0" y1={mid} x2={w} y2={mid} />
+    </svg>
+  );
 }
 
 function TodayGraph({ samples, accent }) {
@@ -954,6 +1151,17 @@ export default function SolarCard({
             p1ExportT1={data?.p1ExportT1}
             p1ExportT2={data?.p1ExportT2}
             todaySolarState={data?.todaySolar}
+            totalSolarState={data?.totalSolar}
+            todayImportState={data?.todayImport}
+            todayExportState={data?.todayExport}
+            solaxTodayImportState={data?.solaxTodayImport}
+            solaxTodayExportState={data?.solaxTodayExport}
+            solaxTodayHouseState={data?.solaxTodayHouse}
+            hourlyGrid={bucketPairByHour(history24h?.import, history24h?.export)}
+            daily={bucketByDay(monthly)}
+            pvPeakW={peakOf(history24h?.pvTotal)}
+            impPeakW={peakOf(history24h?.import)}
+            expPeakW={peakOf(history24h?.export)}
             runModeText={data?.runMode ? formatMode(data.runMode) : null}
           />
         </div>
@@ -966,7 +1174,6 @@ export default function SolarCard({
               state={data?.[m.key]}
               samples={history24h?.[m.key]}
               hourlyPv={m.key === 'todaySolar' ? bucketByHour(history24h?.pvTotal) : null}
-              daily={m.key === 'totalSolar' ? bucketByDay(monthly) : null}
             />
           ))}
         </div>

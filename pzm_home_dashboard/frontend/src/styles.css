@@ -226,6 +226,10 @@ html, body, #root {
   border: 1px solid var(--border);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
   border-radius: 0;
+  /* Size container: energy chips scale their height against the tile
+     (cqh) instead of using a fixed pixel height. */
+  container-type: size;
+  container-name: solar;
 }
 @media (prefers-color-scheme: light) {
   .solar-tile {
@@ -290,17 +294,33 @@ html, body, #root {
 }
 .flow-svg { width: 100%; height: 100%; display: block; }
 
-/* Photo-based house visualization (replaces isometric SVG). */
+/* Photo-based house visualization (replaces isometric SVG). Flexes to
+   absorb all tile height left over by the energy strip, so the strip is
+   always pinned to the tile's bottom edge. It is itself a size container
+   so the house view can pick the largest size that fits BOTH dimensions
+   while keeping the photo's aspect ratio (callouts and flow lines are
+   %-anchored to the box, so the ratio must never distort). */
 .solar-flow-photo {
   aspect-ratio: auto;
   max-height: none;
   padding: 0;
   border: none;
   background: transparent;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  container-type: size;
+  container-name: hv;
 }
 .house-view {
   position: relative;
   width: 100%;
+  /* Largest box fitting the flexible area at the photo's ratio; the
+     plain width above is the fallback for browsers without cq units. */
+  width: min(100%, calc(100cqh * 2682 / 1500));
   /* Slightly taller aspect so the zoomed background still fits the roof
      and yard on typical tile widths. */
   aspect-ratio: 2682 / 1500;
@@ -437,36 +457,87 @@ html, body, #root {
     color: rgba(0, 0, 0, 0.72);
   }
 }
-/* Home callout P1-meter insights: two tiny stacked chips showing utility
-   meter lifetime totals (import / export). Distinct from the live house
-   load so the eye still lands on the big number first. */
-.hv-callout-p1 {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
+/* Two-column stat block inside a callout — used for Today|Total on the
+   Solar card, Imp|Exp today on the Grid card, and the P1 meter lifetime
+   totals on the Home card, so the callouts spend width instead of
+   stacking rows. Collapses back to stacked rows on narrow photos (see
+   the hv container query below). */
+.hv-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.15rem 0.7rem;
   margin-top: 0.28rem;
   padding-top: 0.22rem;
   border-top: 1px solid rgba(255, 255, 255, 0.14);
 }
 @media (prefers-color-scheme: light) {
-  .hv-callout-p1 { border-top-color: rgba(0, 0, 0, 0.08); }
+  .hv-cols { border-top-color: rgba(0, 0, 0, 0.08); }
 }
-.hv-p1-block { display: flex; flex-direction: column; gap: 0.05rem; }
-.hv-p1-chip {
+.hv-cell {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.4rem;
-  font-size: 0.56rem;
+  flex-direction: column;
+  gap: 0.08rem;
+  min-width: 0;
+}
+.hv-cell-tag {
+  font-size: 0.5rem;
   font-weight: 800;
-  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.55);
   line-height: 1.1;
   white-space: nowrap;
 }
+@media (prefers-color-scheme: light) {
+  .hv-cell-tag { color: rgba(0, 0, 0, 0.5); }
+}
+.hv-cell-val {
+  font-size: 0.64rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.95);
+  line-height: 1.1;
+  white-space: nowrap;
+}
+@media (prefers-color-scheme: light) {
+  .hv-cell-val { color: rgba(0, 0, 0, 0.85); }
+}
+.hv-cell-unit {
+  font-size: 0.5rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.65);
+}
+@media (prefers-color-scheme: light) {
+  .hv-cell-unit { color: rgba(0, 0, 0, 0.5); }
+}
+/* Three-up variant (Solax today: Imp | Exp | House on the Grid callout)
+   with a full-width caption row naming the source meter. */
+.hv-cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+.hv-cols-caption {
+  grid-column: 1 / -1;
+  font-size: 0.48rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.1;
+}
+@media (prefers-color-scheme: light) {
+  .hv-cols-caption { color: rgba(0, 0, 0, 0.45); }
+}
+.hv-tag-imp   { color: rgba(255, 107, 107, 0.9); }
+.hv-tag-exp   { color: rgba(87, 211, 140, 0.9); }
+.hv-tag-house { color: rgba(74, 163, 255, 0.9); }
+.hv-tag-amber { color: #ffcf70; }
+.hv-val-amber { color: #ffcf70; }
+@media (prefers-color-scheme: light) {
+  .hv-tag-amber, .hv-val-amber { color: #d67f00; }
+}
+
+/* P1 tariff splits (T1/T2) under each meter total on the Home card. */
 .hv-p1-tariffs {
   display: flex;
   gap: 0.35rem;
-  padding-left: 0.9rem;
   color: rgba(255, 255, 255, 0.6);
 }
 @media (prefers-color-scheme: light) {
@@ -487,32 +558,6 @@ html, body, #root {
   letter-spacing: 0.06em;
   opacity: 0.8;
 }
-.hv-p1-label {
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.65);
-}
-@media (prefers-color-scheme: light) {
-  .hv-p1-label { color: rgba(0, 0, 0, 0.55); }
-}
-.hv-p1-chip-import .hv-p1-label { color: rgba(255, 107, 107, 0.85); }
-.hv-p1-chip-export .hv-p1-label { color: rgba(87, 211, 140, 0.85); }
-.hv-p1-value {
-  font-variant-numeric: tabular-nums;
-  color: rgba(255, 255, 255, 0.95);
-  font-weight: 800;
-}
-@media (prefers-color-scheme: light) {
-  .hv-p1-value { color: rgba(0, 0, 0, 0.85); }
-}
-.hv-p1-unit {
-  font-size: 0.52rem;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.7);
-  margin-left: 0.05rem;
-}
-@media (prefers-color-scheme: light) {
-  .hv-p1-unit { color: rgba(0, 0, 0, 0.55); }
-}
 .hv-callout.hv-good  { border-color: rgba(87, 211, 140, 0.65); }
 .hv-callout.hv-bad   { border-color: rgba(255, 107, 107, 0.65); }
 .hv-callout.hv-good  .hv-callout-num { color: var(--ok); }
@@ -531,38 +576,23 @@ html, body, #root {
 .hv-callout-pv-total .hv-callout-num { color: #ffffff; font-size: 1.5rem; }
 .hv-callout-pv-total .hv-callout-unit { font-size: 0.78rem; }
 .hv-callout-pv-total .hv-callout-label { color: #ffcf70; font-size: 0.7rem; }
-.hv-callout-today {
-  display: flex;
-  align-items: baseline;
-  gap: 0.3rem;
-  margin-top: 0.28rem;
-  padding-top: 0.22rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.14);
-  font-size: 0.6rem;
-  font-weight: 800;
-  line-height: 1.1;
-}
-@media (prefers-color-scheme: light) {
-  .hv-callout-today { border-top-color: rgba(0, 0, 0, 0.08); }
-}
-.hv-callout-today-tag {
-  color: rgba(255, 255, 255, 0.6);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-@media (prefers-color-scheme: light) {
-  .hv-callout-today-tag { color: rgba(0, 0, 0, 0.5); }
-}
-.hv-callout-today-val {
-  font-variant-numeric: tabular-nums;
-  color: #ffcf70;
-}
-.hv-callout-today-unit {
-  font-size: 0.54rem;
-  color: rgba(255, 255, 255, 0.65);
-}
-@media (prefers-color-scheme: light) {
-  .hv-callout-today-unit { color: rgba(0, 0, 0, 0.5); }
+/* Roomier Solar + Grid callouts once the photo is wide enough that the
+   callouts don't fight the PV pills for space. */
+@container hv (min-width: 461px) {
+  .hv-callout-pv-total {
+    min-width: 138px;
+    padding: 0.5rem 0.75rem;
+  }
+  .hv-callout-pv-total .hv-callout-num { font-size: 1.7rem; }
+  .hv-callout-pv-total .hv-callout-unit { font-size: 0.82rem; }
+  .hv-callout-grid {
+    /* Wide enough for the Solax three-up row + a broader hourly chart. */
+    min-width: 208px;
+    padding: 0.42rem 0.7rem;
+  }
+  .hv-callout-grid .hv-callout-num { font-size: 1.35rem; }
+  .hv-callout-grid .hv-callout-unit { font-size: 0.72rem; }
+  .hv-cell-val { font-size: 0.68rem; }
 }
 
 .hv-callout-strings {
@@ -618,7 +648,10 @@ html, body, #root {
 .hv-callout-home .hv-callout-num  { font-size: 1.5rem; }
 .hv-callout-home .hv-callout-unit { font-size: 0.78rem; }
 .hv-callout-home .hv-callout-label{ font-size: 0.7rem; }
-.hv-callout-grid { bottom: 4%; right: 2%; }
+/* Grid callout hosts today's import/export totals + the hourly mirrored
+   chart, so it needs a bit more width than the plain live-power pill.
+   (Enlarged further on wide photos — see the hv container query above.) */
+.hv-callout-grid { bottom: 4%; right: 2%; min-width: 118px; }
 
 .hv-mode-pill {
   position: absolute;
@@ -823,16 +856,21 @@ html, body, #root {
   font-weight: 600;
 }
 
-/* Compact energy strip — 3-column grid, 6 chips (2 rows). */
+/* Compact energy strip — Today Solar / PV 1 / PV 2. Pinned to the tile's
+   bottom edge (margin-top: auto in the flex column) so the chip graphs
+   always sit flush with the bottom; columns adapt to the tile width. */
 .energy-strip {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 0.4rem;
+  margin-top: auto;
+  flex-shrink: 0;
 }
 .energy-chip {
   position: relative;
   min-width: 0;
-  min-height: 54px;
+  /* Scale with the tile: taller tiles get taller chips (= taller graphs). */
+  min-height: clamp(54px, 16cqh, 130px);
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border);
   border-radius: 0;
@@ -924,6 +962,118 @@ html, body, #root {
 .today-graph-good .today-graph-bar    { fill: var(--ok); }
 .today-graph-bad  .today-graph-bar    { fill: var(--danger); }
 .today-graph-neutral .today-graph-bar { fill: var(--accent); }
+/* Solar-amber accent for the 7-day generation columns in the Solar callout. */
+.today-graph-solar .today-graph-bar   { fill: #f5a623; opacity: 0.85; }
+
+/* In-flow mini chart inside a callout (7-day columns, hourly grid bars).
+   The chart svgs are absolutely positioned, so this wrapper gives them a
+   fixed slice of the callout under a hairline divider. */
+.hv-mini-chart {
+  position: relative;
+  height: 34px;
+  margin-top: 0.3rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+}
+@media (prefers-color-scheme: light) {
+  .hv-mini-chart { border-top-color: rgba(0, 0, 0, 0.08); }
+}
+/* Weekday initials under the 7-day columns — one equal slot per bar. */
+.hv-mini-day-labels {
+  display: flex;
+  margin-top: 0.1rem;
+}
+.hv-mini-day-labels span {
+  flex: 1 1 0;
+  text-align: center;
+  font-size: 0.46rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1;
+}
+@media (prefers-color-scheme: light) {
+  .hv-mini-day-labels span { color: rgba(0, 0, 0, 0.45); }
+}
+
+/* Max/min annotations: peak PV in the Solar label row; best/lowest day
+   under the 7-day columns; peak export (↑) / import (↓) under the hourly
+   grid chart, matching the mirrored chart's orientation. */
+.hv-peak {
+  font-size: 0.56rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.75);
+  white-space: nowrap;
+  text-transform: none;
+  letter-spacing: 0;
+}
+@media (prefers-color-scheme: light) {
+  .hv-peak { color: rgba(0, 0, 0, 0.55); }
+}
+.hv-mini-stats {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin-top: 0.14rem;
+  font-size: 0.54rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.hv-stat-max { color: rgba(255, 255, 255, 0.85); }
+.hv-stat-min { color: rgba(255, 255, 255, 0.55); }
+@media (prefers-color-scheme: light) {
+  .hv-stat-max { color: rgba(0, 0, 0, 0.75); }
+  .hv-stat-min { color: rgba(0, 0, 0, 0.45); }
+}
+.hv-stat-up   { color: var(--ok); }
+.hv-stat-down { color: var(--danger); }
+
+/* On narrow tiles the callouts already crowd the photo — drop the mini
+   charts and their annotations (the Today/Total and Imp/Exp stat rows
+   stay) so the Solar and Grid callouts keep their compact footprint.
+   The two-column stat blocks also fold back into single stacked rows
+   (tag left, value right) to give the width back. */
+@container hv (max-width: 460px) {
+  .hv-mini-chart,
+  .hv-mini-day-labels,
+  .hv-mini-stats { display: none; }
+  .hv-cols { grid-template-columns: 1fr; gap: 0.12rem; }
+  .hv-cell {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.2rem 0.4rem;
+    flex-wrap: wrap;
+  }
+  .hv-cell .hv-p1-tariffs {
+    flex-basis: 100%;
+    justify-content: flex-end;
+  }
+}
+
+/* Mirrored hourly grid chart: export up (green), import down (red). */
+.dual-graph {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.dual-graph-exp { fill: var(--ok); opacity: 0.85; }
+.dual-graph-imp { fill: var(--danger); opacity: 0.85; }
+.dual-graph-axis {
+  stroke: rgba(255, 255, 255, 0.3);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+@media (prefers-color-scheme: light) {
+  .dual-graph-axis { stroke: rgba(0, 0, 0, 0.25); }
+}
 
 .pv-string-row {
   display: grid;

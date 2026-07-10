@@ -4,6 +4,25 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.12
+
+- **Solar callout enriched**: lifetime Total sits beside Today in a two-column
+  row, with peak PV output today in the label row, a 7-day generation column
+  chart with weekday initials, and best/lowest day annotations.
+- **Grid callout refocused on live + inverter-side reads**: a mirrored hourly
+  chart (export up in green, import down in red) with today's peak export /
+  import, plus a new **Solax today** three-up row (Imp | Exp | House).
+- **New options** `solax_today_import`, `solax_today_export` and
+  `solax_today_house` feed the Solax daily row; `today_import`/`today_export`
+  are now intended for the P1 meter's daily cycles.
+- **Home callout is the P1 hub**: P1 Imp/Exp *today* and *total* in a 2×2
+  grid with T1/T2 tariff splits, all explicitly "P1"-prefixed.
+- **Energy strip pinned to the tile bottom** and trimmed to Today Solar /
+  PV 1 / PV 2; chips reflow by width and scale their height with the tile.
+- **Dynamic sizing** via container queries: the house photo keeps its aspect
+  ratio while flexing, callouts enlarge on wide tiles, and mini charts /
+  two-column stat rows collapse gracefully on narrow ones.
+
 ## 0.2.11
 
 - **Electricity panel: isometric house visualization** inspired by the actual
