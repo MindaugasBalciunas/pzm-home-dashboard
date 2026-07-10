@@ -421,12 +421,132 @@ function HouseView({
   runModeText,
   bgImage = 'house.png',
   bgLabel = null,
+  editMode = false,
+  flowPoint = null,
+  onFlowPointChange = null,
+  calloutPos = null,
+  onCalloutPosChange = null,
 }) {
   // Previous background stays mounted beneath the incoming one so image
   // swaps (hour/season boundaries, demo loop) crossfade instead of pop.
   const prevBgRef = useRef(bgImage);
   const prevBg = prevBgRef.current;
   useEffect(() => { prevBgRef.current = bgImage; }, [bgImage]);
+
+  // Junction where the solar bus / house feed / grid legs meet, in the
+  // flow svg's 0–100 coordinate space. User-adjustable in edit mode.
+  const rootRef = useRef(null);
+  const clampN = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+  const jx = clampN(Number(flowPoint?.x) || 78, 5, 95);
+  const jy = clampN(Number(flowPoint?.y) || 50, 10, 90);
+  const onJunctionDown = (e) => {
+    if (!editMode || !onFlowPointChange) return;
+    e.stopPropagation();
+    e.preventDefault();
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+    const rect = rootRef.current?.getBoundingClientRect();
+    if (!rect || rect.width < 1 || rect.height < 1) return;
+    const move = (ev) => {
+      const x = ((ev.clientX - rect.left) / rect.width) * 100;
+      const y = ((ev.clientY - rect.top) / rect.height) * 100;
+      onFlowPointChange({
+        x: Math.round(clampN(x, 5, 95)),
+        y: Math.round(clampN(y, 10, 90)),
+      });
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  };
+
+  // Callout cards are repositionable in edit mode. Custom positions are
+  // stored as left/top percentages of the house view; when unset, the
+  // stylesheet's default anchors apply.
+  const posStyle = (key) => {
+    const p = calloutPos?.[key];
+    if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return undefined;
+    return { left: `${p.x}%`, top: `${p.y}%`, right: 'auto', bottom: 'auto', transform: 'none' };
+  };
+  const beginCalloutDrag = (e, key) => {
+    if (!editMode || !onCalloutPosChange) return;
+    e.stopPropagation();
+    e.preventDefault();
+    const rect = rootRef.current?.getBoundingClientRect();
+    const elRect = e.currentTarget.getBoundingClientRect();
+    if (!rect || rect.width < 1 || rect.height < 1) return;
+    // Keep the grab point under the pointer so the card doesn't jump when
+    // a CSS-anchored (right/bottom/translate) position becomes a custom one.
+    const grabDx = e.clientX - elRect.left;
+    const grabDy = e.clientY - elRect.top;
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+    const maxX = Math.max(0, 100 - (elRect.width / rect.width) * 100);
+    const maxY = Math.max(0, 100 - (elRect.height / rect.height) * 100);
+    const move = (ev) => {
+      const x = ((ev.clientX - grabDx - rect.left) / rect.width) * 100;
+      const y = ((ev.clientY - grabDy - rect.top) / rect.height) * 100;
+      onCalloutPosChange(key, {
+        x: Math.round(clampN(x, 0, maxX) * 10) / 10,
+        y: Math.round(clampN(y, 0, maxY) * 10) / 10,
+      });
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  };
+  const calloutProps = (key) => ({
+    ref: (el) => { calloutRefs.current[key] = el; },
+    style: posStyle(key),
+    ...(editMode && onCalloutPosChange
+      ? { onPointerDown: (e) => beginCalloutDrag(e, key) }
+      : {}),
+  });
+
+  // Each flow line runs from its callout card to the junction dot as an
+  // "L" (vertical + horizontal legs), so lines follow the cards wherever
+  // they're dragged. Card anchors (centres, in the 0–100 flow space) are
+  // measured after every render with a change-guard so the effect settles.
+  const calloutRefs = useRef({});
+  const [anchors, setAnchors] = useState({});
+  useEffect(() => {
+    const rect = rootRef.current?.getBoundingClientRect();
+    if (!rect || rect.width < 1 || rect.height < 1) return;
+    const next = {};
+    for (const [k, el] of Object.entries(calloutRefs.current)) {
+      if (!el) continue;
+      const r = el.getBoundingClientRect();
+      next[k] = {
+        cx: ((r.left + r.width / 2 - rect.left) / rect.width) * 100,
+        cy: ((r.top + r.height / 2 - rect.top) / rect.height) * 100,
+        left: ((r.left - rect.left) / rect.width) * 100,
+        bottom: ((r.bottom - rect.top) / rect.height) * 100,
+      };
+    }
+    setAnchors((prev) => {
+      const keys = Object.keys(next);
+      if (keys.length === Object.keys(prev).length
+          && keys.every((k) => prev[k]
+            && Math.abs(prev[k].cx - next[k].cx) < 0.3
+            && Math.abs(prev[k].cy - next[k].cy) < 0.3
+            && Math.abs(prev[k].bottom - next[k].bottom) < 0.3)) {
+        return prev;
+      }
+      return next;
+    });
+  });
+  const anchor = (key, fallback) => {
+    const p = anchors[key];
+    return p && Number.isFinite(p.cx) && Number.isFinite(p.cy) ? p : fallback;
+  };
 
   const pv = toNumber(pvState) ?? 0;
   const pv1 = toNumber(pv1State) ?? 0;
@@ -479,7 +599,7 @@ function HouseView({
       : idleStroke;
 
   return (
-    <div className="house-view">
+    <div className="house-view" ref={rootRef}>
       {/* Background is set inline so the URL resolves against the document base
           rather than the CSS file location — under HAOS ingress the stylesheet
           lives in /assets/, but the photos sit next to index.html. */}
@@ -497,38 +617,69 @@ function HouseView({
       {bgLabel && <div className="hv-bg-pill">{bgLabel}</div>}
 
       {/*
-        Straight vertical/horizontal segments only, junction at (63, 55) near the
-        garage. Roof panel anchors: PV 2 ≈ (37,31), PV 1 ≈ (52,30).
-        House body flow terminus ≈ (44, 66). Grid corner ≈ (85, 78).
+        Straight vertical/horizontal segments only. The junction where the
+        solar bus, house feed and grid legs meet is user-adjustable in edit
+        mode (drag the ring) because the cover-cropped photo shifts under
+        the lines with tile shape; it persists as flowX/flowY on the tile.
       */}
       <svg className="house-view-flow" viewBox="0 0 100 100" preserveAspectRatio="none">
-        {/* Home callout was moved up to (top: 3%, right: 2%) — its bottom
-            edge sits around y≈18. The Home flow line now stops at
-            (78, 18) so it clearly "arrives" at the callout's left edge
-            instead of running underneath a larger callout. Junction
-            still at (78, 50), PV bus horizontal at y=26, grid at y=91. */}
-        <path d="M 34 11 V 26"
-              className={`hv-line ${active(pv2) ? 'hv-line-active' : ''}`}
-              style={pv2Line} />
-        <path d="M 56 11 V 26"
-              className={`hv-line ${active(pv1) ? 'hv-line-active' : ''}`}
-              style={pv1Line} />
-        <path d="M 34 26 H 78 V 50"
-              className={`hv-line ${active(pv) ? 'hv-line-active' : ''}`}
-              style={solarBusLine} />
-        <path d="M 78 50 V 20 H 84"
-              className={`hv-line ${active(house) ? 'hv-line-active' : ''}`}
-              style={houseLine} />
-        <path d={isImporting ? "M 89 91 V 50 H 78" : "M 78 50 V 91 H 89"}
-              className={`hv-line ${(isExporting || isImporting) ? 'hv-line-active' : ''}`}
-              style={gridLine} />
+        {(() => {
+          const solA = anchor('pvTotal', { cx: 12, cy: 10, left: 2, bottom: 20 });
+          const pv2A = anchor('pv2', { cx: 36, cy: 6, left: 30, bottom: 12 });
+          const pv1A = anchor('pv1', { cx: 58, cy: 6, left: 52, bottom: 12 });
+          const homA = anchor('home', { cx: 88, cy: 8, left: 78, bottom: 16 });
+          const grdA = anchor('grid', { cx: 88, cy: 80, left: 78, bottom: 90 });
+          // Solar cards drop a short leg from their bottom edge onto a
+          // shared horizontal bus, which feeds the junction — so the first
+          // turn stays close to each card and the legs merge into one run.
+          // Home / Grid legs attach at their card's LEFT edge, approached
+          // horizontally; direction of travel follows the energy.
+          const busY = clampN(
+            Math.max(solA.bottom, pv1A.bottom, pv2A.bottom) + 2.5, 4, jy - 2);
+          const busX1 = Math.min(solA.cx, pv1A.cx, pv2A.cx, jx);
+          const busX2 = Math.max(solA.cx, pv1A.cx, pv2A.cx, jx);
+          return (
+            <>
+              <path d={`M ${pv2A.cx} ${pv2A.bottom} V ${busY}`}
+                    className={`hv-line ${active(pv2) ? 'hv-line-active' : ''}`}
+                    style={pv2Line} />
+              <path d={`M ${pv1A.cx} ${pv1A.bottom} V ${busY}`}
+                    className={`hv-line ${active(pv1) ? 'hv-line-active' : ''}`}
+                    style={pv1Line} />
+              <path d={`M ${solA.cx} ${solA.bottom} V ${busY} M ${busX1} ${busY} H ${busX2} M ${jx} ${busY} V ${jy}`}
+                    className={`hv-line ${active(pv) ? 'hv-line-active' : ''}`}
+                    style={solarBusLine} />
+              <path d={`M ${jx} ${jy} V ${homA.cy} H ${homA.left}`}
+                    className={`hv-line ${active(house) ? 'hv-line-active' : ''}`}
+                    style={houseLine} />
+              <path d={isImporting
+                      ? `M ${grdA.left} ${grdA.cy} H ${jx} V ${jy}`
+                      : `M ${jx} ${jy} V ${grdA.cy} H ${grdA.left}`}
+                    className={`hv-line ${(isExporting || isImporting) ? 'hv-line-active' : ''}`}
+                    style={gridLine} />
+            </>
+          );
+        })()}
       </svg>
+
+      {/* Edit mode: draggable junction handle. stopPropagation so grabbing
+          it never lifts / drags the whole tile. */}
+      {editMode && (
+        <div
+          className="hv-junction"
+          style={{ left: `${jx}%`, top: `${jy}%` }}
+          onPointerDown={onJunctionDown}
+          title="Drag to move the flow junction"
+        >
+          <span className="hv-junction-dot" />
+        </div>
+      )}
 
       {/* Solar (PV Total) — top-left. Live PV wattage as the marquee
           number; today's cumulative harvest as a small sub-line so the
           "how much did we make today so far" question is answered
           without leaving the diagram. */}
-      <div className="hv-callout hv-callout-pv-total">
+      <div className="hv-callout hv-callout-pv-total" {...calloutProps('pvTotal')}>
         <div className="hv-callout-value">
           <span className="hv-callout-num">{pvFmt.text}</span>
           {pvFmt.unit && <span className="hv-callout-unit">{pvFmt.unit}</span>}
@@ -592,7 +743,7 @@ function HouseView({
       </div>
 
       {/* PV 2 — top-left, near left panels. V/A rendered as compact sub-line. */}
-      <div className="hv-callout hv-callout-pv2">
+      <div className="hv-callout hv-callout-pv2" {...calloutProps('pv2')}>
         <div className="hv-callout-value">
           <span className="hv-callout-num">{pv2Fmt.text}</span>
           {pv2Fmt.unit && <span className="hv-callout-unit">{pv2Fmt.unit}</span>}
@@ -610,7 +761,7 @@ function HouseView({
       </div>
 
       {/* PV 1 — top-right, near right panels. V/A rendered as compact sub-line. */}
-      <div className="hv-callout hv-callout-pv1">
+      <div className="hv-callout hv-callout-pv1" {...calloutProps('pv1')}>
         <div className="hv-callout-value">
           <span className="hv-callout-num">{pv1Fmt.text}</span>
           {pv1Fmt.unit && <span className="hv-callout-unit">{pv1Fmt.unit}</span>}
@@ -630,7 +781,7 @@ function HouseView({
       {/* Home — over the house body. All P1 utility-meter reads (what the
           DSO actually bills on) group here beneath the live house load:
           today's import/export, then lifetime totals with tariff splits. */}
-      <div className="hv-callout hv-callout-home">
+      <div className="hv-callout hv-callout-home" {...calloutProps('home')}>
         <div className="hv-callout-value">
           <span className="hv-callout-num">{houseFmt.text}</span>
           {houseFmt.unit && <span className="hv-callout-unit">{houseFmt.unit}</span>}
@@ -698,7 +849,10 @@ function HouseView({
       {/* Grid — bottom-right corner. Live grid power plus the mirrored
           hourly chart and today's peaks; the P1 daily/lifetime energy
           totals live on the Home callout with the rest of the P1 reads. */}
-      <div className={`hv-callout hv-callout-grid ${isExporting ? 'hv-good' : isImporting ? 'hv-bad' : ''}`}>
+      <div
+        className={`hv-callout hv-callout-grid ${isExporting ? 'hv-good' : isImporting ? 'hv-bad' : ''}`}
+        {...calloutProps('grid')}
+      >
         <div className="hv-callout-value">
           <span className="hv-callout-num">{gridFmt.text}</span>
           {gridFmt.unit && <span className="hv-callout-unit">{gridFmt.unit}</span>}
@@ -1022,6 +1176,10 @@ export default function SolarCard({
   col, row, colSpan, rowSpan, editMode,
   onStartMove, onStartResize,
   bgDemo = false,
+  flowPoint = null,
+  onFlowPointChange = null,
+  calloutPos = null,
+  onCalloutPosChange = null,
 }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
@@ -1228,6 +1386,11 @@ export default function SolarCard({
             expPeakW={peakOf(history24h?.export)}
             bgImage={bg.file}
             bgLabel={bgDemo ? bg.label : null}
+            editMode={editMode}
+            flowPoint={flowPoint}
+            onFlowPointChange={onFlowPointChange}
+            calloutPos={calloutPos}
+            onCalloutPosChange={onCalloutPosChange}
             runModeText={data?.runMode ? formatMode(data.runMode) : null}
           />
         </div>

@@ -4,6 +4,29 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.19
+
+- **Editable flow-line junction.** In edit mode the Electricity tile shows
+  a draggable ring where the solar bus, house feed and grid legs meet —
+  drag it to line the wiring up with the (cover-cropped) photo; the point
+  persists per layout (`flowX`/`flowY`).
+- **Movable callout cards.** All five stat cards over the house photo
+  (Solar, PV1, PV2, Home, Grid) can be dragged to custom positions in
+  edit mode; positions persist in the shared layout and default anchors
+  apply until a card is moved.
+- **Lines always connect to the cards.** Flow lines follow the cards live
+  while they're dragged: solar cards drop a short leg from their bottom
+  edge onto a shared bus that feeds the junction dot, while Home and Grid
+  legs attach at their card's left edge, approached horizontally.
+  Animation direction follows the energy (generation in, consumption out).
+- **Grid callout goes horizontal on wide tiles**: live power + direction
+  on the left, the Solax block as stacked lines on the right, hourly
+  chart and peaks spanning underneath.
+- **Denser cards.** Security and Electricity tiles trimmed their padding,
+  gaps, gate-button height and chip floors, and the energy-chip headline
+  scales with tile height — cards can now shrink to just fit their
+  content.
+
 ## 0.2.18
 
 - **Garage gate shows the actual door state.** The gate contact now points

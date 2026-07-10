@@ -302,8 +302,8 @@ html, body, #root {
    hard on all sides — zero on top so the house view (and its callout
    cards) hugs the tile's top edge, hairline elsewhere. */
 .solar-inner-titleless {
-  padding: 0 0.15rem 0.2rem;
-  gap: 0.2rem;
+  padding: 0 0.15rem 0.15rem;
+  gap: 0.15rem;
 }
 .solar-title {
   font-size: 0.62rem;
@@ -664,15 +664,53 @@ html, body, #root {
   }
   .hv-callout-pv-total .hv-callout-num { font-size: 1.7rem; }
   .hv-callout-pv-total .hv-callout-unit { font-size: 0.82rem; }
+  /* Grid callout goes horizontal on wide photos: live power + direction
+     label on the left, the Solax block as stacked lines on the right,
+     chart and peaks spanning underneath. */
   .hv-callout-grid {
-    /* Wide enough for the Solax three-up row + a broader hourly chart. */
-    min-width: 208px;
+    min-width: 236px;
     padding: 0.42rem 0.7rem;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr auto auto;
+    grid-template-areas:
+      "value solax"
+      "label solax"
+      "fill  solax"
+      "chart chart"
+      "stats stats";
+    column-gap: 0.7rem;
   }
+  .hv-callout-grid > .hv-callout-value { grid-area: value; }
+  .hv-callout-grid > .hv-callout-label { grid-area: label; align-self: start; }
+  .hv-callout-grid > .hv-cols-3 {
+    grid-area: solax;
+    grid-template-columns: 1fr;
+    gap: 0.14rem;
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+    border-left: 1px solid rgba(255, 255, 255, 0.14);
+    padding-left: 0.6rem;
+  }
+  .hv-callout-grid > .hv-cols-3 .hv-cell {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .hv-callout-grid > .hv-mini-chart { grid-area: chart; }
+  .hv-callout-grid > .hv-mini-stats { grid-area: stats; }
   .hv-callout-grid .hv-callout-num { font-size: 1.35rem; }
   .hv-callout-grid .hv-callout-unit { font-size: 0.72rem; }
   .hv-cell-val { font-size: 0.68rem; }
 }
+@media (prefers-color-scheme: light) {
+  .hv-callout-grid > .hv-cols-3 { border-left-color: rgba(0, 0, 0, 0.08); }
+}
+/* Edit mode: callout cards are draggable. */
+.tile-editing .hv-callout { cursor: grab; }
+.tile-editing .hv-callout:active { cursor: grabbing; }
 
 .hv-callout-strings {
   margin-top: 0.28rem;
@@ -731,6 +769,30 @@ html, body, #root {
    chart, so it needs a bit more width than the plain live-power pill.
    (Enlarged further on wide photos — see the hv container query above.) */
 .hv-callout-grid { bottom: 4%; right: 2%; min-width: 118px; }
+
+/* Draggable flow-junction handle (edit mode only): generous hit target
+   around a small accent ring pinned at the junction percentage. */
+.hv-junction {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 8;
+  cursor: grab;
+  touch-action: none;
+}
+.hv-junction:active { cursor: grabbing; }
+.hv-junction-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2.5px solid var(--accent);
+  background: rgba(10, 14, 20, 0.7);
+  box-shadow: 0 0 0 3px rgba(74, 163, 255, 0.25), 0 2px 8px rgba(0, 0, 0, 0.5);
+}
 
 .hv-mode-pill {
   position: absolute;
@@ -940,16 +1002,17 @@ html, body, #root {
    always sit flush with the bottom; columns adapt to the tile width. */
 .energy-strip {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 0.4rem;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 0.25rem;
   margin-top: auto;
   flex-shrink: 0;
 }
 .energy-chip {
   position: relative;
   min-width: 0;
-  /* Scale with the tile: taller tiles get taller chips (= taller graphs). */
-  min-height: clamp(54px, 16cqh, 130px);
+  /* Scale with the tile: taller tiles get taller chips (= taller graphs),
+     small tiles collapse the chips to a text-height floor. */
+  min-height: clamp(42px, 14cqh, 120px);
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border);
   border-radius: 0;
@@ -963,10 +1026,10 @@ html, body, #root {
 .energy-chip-inner {
   position: relative;
   z-index: 1;
-  padding: 0.5rem 0.65rem;
+  padding: 0.32rem 0.45rem;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.12rem;
 }
 .energy-chip-header {
   display: flex;
@@ -1006,7 +1069,9 @@ html, body, #root {
   line-height: 1.05;
 }
 .energy-chip-num {
-  font-size: 1.35rem;
+  /* Track the tile height (solar size container) so small tiles get a
+     proportionally smaller headline instead of clipping. */
+  font-size: clamp(0.95rem, 4.5cqh, 1.35rem);
   font-weight: 800;
   color: var(--text);
   font-variant-numeric: tabular-nums;
@@ -1235,8 +1300,8 @@ html, body, #root {
   container-name: sec;
 }
 .security-inner {
-  padding: 0.3rem 0.35rem;
-  gap: 0.15rem;
+  padding: 0.2rem 0.25rem;
+  gap: 0.1rem;
 }
 /* Compact section titles inside the Security card so they don't push
    Zones / PIR out of the visible area on small tile heights. */
@@ -1326,7 +1391,7 @@ html, body, #root {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(0, 1fr);
-  gap: 0.25rem;
+  gap: 0.2rem;
   flex: 0 0 auto;
   min-height: 0;
 }
@@ -1342,9 +1407,9 @@ html, body, #root {
   border-left-width: 3px;
   background: linear-gradient(145deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02));
   color: var(--text);
-  padding: 0.3rem 0.4rem;
+  padding: 0.24rem 0.35rem;
   cursor: pointer;
-  min-height: 40px;
+  min-height: 34px;
   min-width: 0;
   container-type: inline-size;
   container-name: gb;

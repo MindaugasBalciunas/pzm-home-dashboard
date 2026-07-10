@@ -519,6 +519,17 @@ export default function App() {
             onStartMove={(e) => startDrag(SOLAR_ID, e, 'move')}
             onStartResize={(e) => startDrag(SOLAR_ID, e, 'resize')}
             bgDemo={bgDemo}
+            flowPoint={{
+              x: layout[SOLAR_ID].flowX ?? 78,
+              y: layout[SOLAR_ID].flowY ?? 50,
+            }}
+            onFlowPointChange={(pt) => updateTile(SOLAR_ID, { flowX: pt.x, flowY: pt.y }, true)}
+            calloutPos={layout[SOLAR_ID].callouts || null}
+            onCalloutPosChange={(key, pos) => updateTile(
+              SOLAR_ID,
+              { callouts: { ...(layout[SOLAR_ID].callouts || {}), [key]: pos } },
+              true,
+            )}
           />
         )}
         {layout[SECURITY_ID] && (
