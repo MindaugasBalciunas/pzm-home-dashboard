@@ -1389,6 +1389,29 @@ html, body, #root {
   flex: 0 0 auto;
   min-height: 0;
 }
+/* Gates-only card (no Zones / PIR sections rendered): the gate row may
+   grow to fill the tile, capped at roughly two grid rows, so a 2-row
+   strip gets big thumb-friendly buttons instead of a 34 px row floating
+   over blank space. Taller tiles keep the cap — buttons top out at
+   ~two rows and the rest stays breathing room. */
+.security-inner:not([data-zones]):not([data-pir]) > .gates-grid {
+  flex: 1 1 auto;
+  max-height: 96px;
+}
+/* With the taller two-row buttons there is room for a bigger glyph. */
+@container sec (56px < height <= 110px) {
+  .security-inner:not([data-zones]):not([data-pir]) .gate-btn {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+  .security-inner:not([data-zones]):not([data-pir]) .gate-btn > .gate-icon {
+    width: 34px;
+    height: 34px;
+  }
+  .security-inner:not([data-zones]):not([data-pir]) .gate-btn > .gate-icon svg {
+    width: 24px;
+    height: 24px;
+  }
+}
 .gate-btn {
   appearance: none;
   display: grid;

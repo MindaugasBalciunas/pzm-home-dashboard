@@ -4,6 +4,14 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.23
+
+- **Gates-only Security card grows to two rows.** When Zones and PIR are
+  hidden (or absent), the gate button row stretches to fill the tile up
+  to roughly two grid rows — a 2-row strip gets big thumb-friendly
+  buttons with a larger glyph instead of a thin row floating over blank
+  space. Taller tiles keep the cap.
+
 ## 0.2.22
 
 - **Number tile display modes.** Besides the big value, number tiles can
