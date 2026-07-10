@@ -4,6 +4,13 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.16
+
+- **Glassy callout cards.** The floating stat cards over the house photo
+  are now translucent (dark: 35 % tint, light: 45 %) so the scene shows
+  through; the existing backdrop blur + text shadows keep values readable
+  on both bright day and dark night renders.
+
 ## 0.2.15
 
 - **Season & time-of-day house photos.** The Electricity tile now picks its
