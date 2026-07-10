@@ -191,15 +191,21 @@ public sealed record HaStateDto(
 // Compact bag of light attributes surfaced to the frontend when the
 // entity is a light. `null` means "not a light" or attributes missing —
 // the SimpleTile falls back to plain toggle behaviour in that case.
+// `effectList` powers the pattern picker for WLED / RGBIC strips.
 public sealed record LightAttrs(
     [property: JsonPropertyName("brightness")] int? Brightness,
     [property: JsonPropertyName("rgb")] int[]? Rgb,
     [property: JsonPropertyName("colorTemp")] int? ColorTemp,
     [property: JsonPropertyName("minColorTemp")] int? MinColorTemp,
     [property: JsonPropertyName("maxColorTemp")] int? MaxColorTemp,
+    [property: JsonPropertyName("effect")] string? Effect,
+    [property: JsonPropertyName("effectList")] string[]? EffectList,
+    [property: JsonPropertyName("colorMode")] string? ColorMode,
+    [property: JsonPropertyName("supportedColorModes")] string[]? SupportedColorModes,
     [property: JsonPropertyName("supportsBrightness")] bool SupportsBrightness,
     [property: JsonPropertyName("supportsColor")] bool SupportsColor,
-    [property: JsonPropertyName("supportsColorTemp")] bool SupportsColorTemp);
+    [property: JsonPropertyName("supportsColorTemp")] bool SupportsColorTemp,
+    [property: JsonPropertyName("supportsEffect")] bool SupportsEffect);
 
 public sealed record HaSample(
     [property: JsonPropertyName("t")] long T,

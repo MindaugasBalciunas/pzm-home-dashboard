@@ -122,6 +122,73 @@ public sealed class HomeAssistantController : ControllerBase
         return Ok(payload);
     }
 
+    [HttpGet("solar/daily")]
+    public async Task<IActionResult> SolarDaily(
+        [FromQuery] int days = 7,
+        CancellationToken ct = default)
+    {
+        days = Math.Clamp(days, 1, 30);
+        var entity = _opts.Solar.TotalSolar;
+        if (string.IsNullOrWhiteSpace(entity))
+        {
+            return Ok(new { days = Array.Empty<object>() });
+        }
+
+        // Ask HA for one extra day at the start so the cumulative-diff
+        // fallback has a prior anchor. Statistics bucket boundaries fall
+        // on midnight LOCAL, and HA responds with UTC timestamps — the
+        // frontend re-labels by local date.
+        var start = DateTime.UtcNow.AddDays(-(days + 1));
+        var stats = await _client.GetDailyStatisticsAsync(
+            new[] { entity! }, start, DateTime.UtcNow, ct);
+
+        if (!stats.TryGetValue(entity!, out var samples) || samples.Count == 0)
+        {
+            return Ok(new { days = Array.Empty<object>() });
+        }
+
+        // Same shape-detection logic as the monthly endpoint: HA may
+        // give us per-bucket 'change' deltas already, or a running
+        // cumulative sum we need to diff into deltas.
+        var values = new List<double>(samples.Count);
+        foreach (var s in samples) values.Add(s.V);
+        bool looksCumulative = values.Count >= 2 && values[^1] > values[0] * 1.05
+                               && values[values.Count - 1] > 10;
+        if (looksCumulative)
+        {
+            var deltas = new List<double>(values.Count);
+            deltas.Add(0);
+            for (int i = 1; i < values.Count; i++)
+            {
+                var d = values[i] - values[i - 1];
+                deltas.Add(d > 0 ? d : 0);
+            }
+            values = deltas;
+        }
+
+        var result = new List<object>(samples.Count);
+        for (int i = 0; i < samples.Count; i++)
+        {
+            var dt = samples[i].T > 0
+                ? DateTimeOffset.FromUnixTimeMilliseconds(samples[i].T).UtcDateTime
+                : DateTime.UtcNow.AddDays(-(samples.Count - 1 - i));
+            result.Add(new
+            {
+                year = dt.Year,
+                month = dt.Month,
+                day = dt.Day,
+                v = Math.Max(0, values[i]),
+            });
+        }
+        if (result.Count > days)
+        {
+            result = result.GetRange(result.Count - days, days);
+        }
+
+        Response.Headers["Cache-Control"] = "no-store";
+        return Ok(new { days = result });
+    }
+
     [HttpGet("solar/monthly")]
     public async Task<IActionResult> SolarMonthly(
         [FromQuery] int months = 12,

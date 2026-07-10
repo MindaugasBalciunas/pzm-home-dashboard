@@ -29,10 +29,13 @@ export default function LightControl({ entityId, name, initial, onClose, onChang
     return Number.isFinite(b) ? Math.round((b / 255) * 100) : 100;
   });
   const [rgb, setRgb] = useState(() => initial?.light?.rgb || null);
+  const [effect, setEffect] = useState(() => initial?.light?.effect || null);
   const [busy, setBusy] = useState(false);
 
   const supportsBrightness = !!initial?.light?.supportsBrightness;
   const supportsColor = !!initial?.light?.supportsColor;
+  const supportsEffect = !!initial?.light?.supportsEffect;
+  const effectList = initial?.light?.effectList || [];
 
   const sendTimer = useRef(null);
   const pendingRef = useRef({});
@@ -77,7 +80,15 @@ export default function LightControl({ entityId, name, initial, onClose, onChang
 
   const applyColor = (swatch) => {
     setRgb(swatch);
+    // Setting a solid colour cancels any running effect on WLED-style
+    // strips; mirror that in the UI so the effect chip doesn't stay lit.
+    setEffect(null);
     schedule({ rgb_color: swatch }, 0);
+  };
+
+  const applyEffect = (name) => {
+    setEffect(name);
+    schedule({ effect: name }, 0);
   };
 
   const turnOff = () => {
@@ -159,11 +170,28 @@ export default function LightControl({ entityId, name, initial, onClose, onChang
           </div>
         )}
 
-        {!supportsBrightness && !supportsColor && (
+        {supportsEffect && effectList.length > 0 && (
+          <div className="light-section">
+            <label>Effect / pattern</label>
+            <div className="effect-list">
+              {effectList.map((name) => (
+                <button
+                  key={name}
+                  type="button"
+                  className={`effect-chip ${effect === name ? 'is-active' : ''}`}
+                  onClick={() => applyEffect(name)}
+                  title={name}
+                >{name}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!supportsBrightness && !supportsColor && !supportsEffect && (
           <div className="picker-form">
             <div className="side-menu-note">
-              This light exposes no dimming or colour attributes — use the
-              tile tap to toggle it.
+              This light exposes no dimming, colour, or effect attributes
+              — use the tile tap to toggle it.
             </div>
           </div>
         )}

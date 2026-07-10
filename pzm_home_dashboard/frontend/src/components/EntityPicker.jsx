@@ -88,7 +88,7 @@ export default function EntityPicker({ kind, onCancel, onConfirm }) {
       domain: selected.domain,
       name: name.trim(),
       unit: selected.unit || null,
-      icon: kind === 'button' ? icon : undefined,
+      icon,
     });
   };
 
@@ -127,16 +127,12 @@ export default function EntityPicker({ kind, onCancel, onConfirm }) {
             onChange={(e) => setName(e.target.value)}
           />
 
-          {kind === 'button' && (
-            <>
-              <label>Icon</label>
-              <IconPicker
-                value={icon}
-                onChange={setIcon}
-                domain={selected?.domain}
-              />
-            </>
-          )}
+          <label>Icon</label>
+          <IconPicker
+            value={icon}
+            onChange={setIcon}
+            domain={selected?.domain}
+          />
         </div>
 
         <div className="picker-list">

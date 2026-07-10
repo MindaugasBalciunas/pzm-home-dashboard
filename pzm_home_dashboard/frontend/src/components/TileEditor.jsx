@@ -26,8 +26,7 @@ export default function TileEditor({ id, entry, onSave, onDelete, onCancel }) {
 
   const save = () => {
     if (!canSave) return;
-    const nextSpec = { ...spec, name: name.trim() };
-    if (spec.kind === 'button') nextSpec.icon = icon;
+    const nextSpec = { ...spec, name: name.trim(), icon };
     onSave(id, nextSpec);
   };
 
@@ -61,16 +60,12 @@ export default function TileEditor({ id, entry, onSave, onDelete, onCancel }) {
             {spec.entityId || '—'}
           </div>
 
-          {spec.kind === 'button' && (
-            <>
-              <label>Icon</label>
-              <IconPicker
-                value={icon}
-                onChange={setIcon}
-                domain={spec.domain}
-              />
-            </>
-          )}
+          <label>Icon</label>
+          <IconPicker
+            value={icon}
+            onChange={setIcon}
+            domain={spec.domain}
+          />
         </div>
 
         <div className="picker-actions" style={{ justifyContent: 'space-between' }}>

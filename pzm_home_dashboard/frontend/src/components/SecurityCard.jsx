@@ -2,13 +2,23 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 const POLL_MS = 4000;
 
-// Contact sensors: normalise 'on'/'off' (HA convention: on = detected/open).
+// Contact sensors: normalise the raw HA state into a boolean (detected /
+// open). HA convention is `on` = triggered / open / motion for the whole
+// binary_sensor domain regardless of device_class, so we treat anything
+// non-off/closed/clear as truthy. A missing / empty state string (which
+// really can happen if HA restarted) reads as null (neutral), not off —
+// otherwise a booted-but-not-yet-populated sensor looked "OK" incorrectly.
 function contactOpen(state) {
-  if (!state || !state.state) return null;
-  const s = String(state.state).toLowerCase();
-  if (s === 'on' || s === 'open' || s === 'opened') return true;
-  if (s === 'off' || s === 'closed' || s === 'clear') return false;
-  return null;
+  if (state == null) return null;
+  const raw = state.state;
+  if (raw == null || raw === '' || raw === 'unknown' || raw === 'unavailable') return null;
+  const s = String(raw).toLowerCase();
+  if (s === 'off' || s === 'closed' || s === 'clear'
+      || s === 'idle' || s === 'not_detected' || s === 'no_motion'
+      || s === 'locked' || s === 'safe' || s === 'dry' || s === 'ok') return false;
+  // Anything else (on, open, opened, detected, motion, wet, alarm, tampered,
+  // problem, unsafe, unlocked, …) counts as triggered / bad.
+  return true;
 }
 
 // Localise a zone/contact state (on/off) into a status label whose wording

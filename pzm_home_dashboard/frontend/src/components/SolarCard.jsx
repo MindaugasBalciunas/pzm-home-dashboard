@@ -373,6 +373,7 @@ function HouseView({
   p1ImportT2,
   p1ExportT1,
   p1ExportT2,
+  todaySolarState,
   runModeText,
 }) {
   const pv = toNumber(pvState) ?? 0;
@@ -442,10 +443,11 @@ function HouseView({
         House body flow terminus ≈ (44, 66). Grid corner ≈ (85, 78).
       */}
       <svg className="house-view-flow" viewBox="0 0 100 100" preserveAspectRatio="none">
-        {/* Bubble centres (0–100 units): PV 2 ≈ (34, 11), PV 1 ≈ (56, 11),
-            Home ≈ (89, 35), Grid ≈ (89, 91). Junction stays at (78, 50).
-            PV lines are short vertical drops to the roof (~15 units ≈ ~50px);
-            the shared "solar bus" carries the total across to the junction. */}
+        {/* Home callout was moved up to (top: 3%, right: 2%) — its bottom
+            edge sits around y≈18. The Home flow line now stops at
+            (78, 18) so it clearly "arrives" at the callout's left edge
+            instead of running underneath a larger callout. Junction
+            still at (78, 50), PV bus horizontal at y=26, grid at y=91. */}
         <path d="M 34 11 V 26"
               className={`hv-line ${active(pv2) ? 'hv-line-active' : ''}`}
               style={pv2Line} />
@@ -455,7 +457,7 @@ function HouseView({
         <path d="M 34 26 H 78 V 50"
               className={`hv-line ${active(pv) ? 'hv-line-active' : ''}`}
               style={solarBusLine} />
-        <path d="M 78 50 H 89 V 35"
+        <path d="M 78 50 V 20 H 84"
               className={`hv-line ${active(house) ? 'hv-line-active' : ''}`}
               style={houseLine} />
         <path d={isImporting ? "M 89 91 V 50 H 78" : "M 78 50 V 91 H 89"}
@@ -463,13 +465,26 @@ function HouseView({
               style={gridLine} />
       </svg>
 
-      {/* Solar (PV Total) — top-left, with PV 1 / PV 2 breakdown lines. */}
+      {/* Solar (PV Total) — top-left. Live PV wattage as the marquee
+          number; today's cumulative harvest as a small sub-line so the
+          "how much did we make today so far" question is answered
+          without leaving the diagram. */}
       <div className="hv-callout hv-callout-pv-total">
         <div className="hv-callout-value">
           <span className="hv-callout-num">{pvFmt.text}</span>
           {pvFmt.unit && <span className="hv-callout-unit">{pvFmt.unit}</span>}
         </div>
         <div className="hv-callout-label">Solar</div>
+        {todaySolarState && (() => {
+          const t = formatValue(toNumber(todaySolarState), todaySolarState?.unit || 'kWh');
+          if (t.text === '—') return null;
+          return (
+            <div className="hv-callout-today">
+              <span className="hv-callout-today-tag">Today</span>
+              <span className="hv-callout-today-val">{t.text}<span className="hv-callout-today-unit"> {t.unit}</span></span>
+            </div>
+          );
+        })()}
       </div>
 
       {/* PV 2 — top-left, near left panels. V/A rendered as compact sub-line. */}
@@ -591,21 +606,30 @@ function EnergyCell({ metric, state }) {
   );
 }
 
-function EnergyChip({ metric, state, samples, monthly }) {
+function EnergyChip({ metric, state, samples, hourlyPv, daily }) {
   const v = toNumber(state);
   const { text, unit } = formatValue(v, state?.unit);
-  const useMonthly = metric.key === 'totalSolar' && monthly && monthly.length > 0;
+  const useDaily = metric.key === 'totalSolar' && daily && daily.length > 0;
+  const useHourly = metric.key === 'todaySolar' && hourlyPv && hourlyPv.length > 0;
 
   let maxLabel = null;
   let maxTitle = '24h peak';
-  if (useMonthly) {
+  if (useDaily) {
     let maxV = -Infinity;
-    for (const m of monthly) if (Number.isFinite(m.v) && m.v > maxV) maxV = m.v;
+    for (const d of daily) if (Number.isFinite(d.v) && d.v > maxV) maxV = d.v;
     if (Number.isFinite(maxV)) {
       const { text: mt, unit: mu } = formatValue(maxV, state?.unit || 'kWh');
       maxLabel = mu ? `${mt} ${mu}` : mt;
     }
-    maxTitle = 'Best month (last 12)';
+    maxTitle = 'Best day (last 7)';
+  } else if (useHourly) {
+    let maxV = -Infinity;
+    for (const h of hourlyPv) if (Number.isFinite(h.v) && h.v > maxV) maxV = h.v;
+    if (Number.isFinite(maxV)) {
+      const { text: mt, unit: mu } = formatValue(maxV, 'W');
+      maxLabel = mu ? `${mt} ${mu}` : mt;
+    }
+    maxTitle = 'Peak PV output today';
   } else if (samples && samples.length > 0) {
     let maxV = -Infinity;
     for (const s of samples) {
@@ -620,8 +644,10 @@ function EnergyChip({ metric, state, samples, monthly }) {
 
   return (
     <div className={`energy-chip energy-accent-${metric.accent}`}>
-      {useMonthly ? (
-        <MonthlyBars monthly={monthly} accent={metric.accent} />
+      {useDaily ? (
+        <BarChart items={daily} accent={metric.accent} keyPrefix="d" />
+      ) : useHourly ? (
+        <BarChart items={hourlyPv} accent={metric.accent} keyPrefix="h" />
       ) : (
         samples && samples.length >= 2 && (
           <TodayGraph samples={samples} accent={metric.accent} />
@@ -641,13 +667,16 @@ function EnergyChip({ metric, state, samples, monthly }) {
   );
 }
 
-function MonthlyBars({ monthly, accent }) {
-  if (!monthly || monthly.length === 0) return null;
+// Generic bar-per-bucket chart used for both weekly (last 7 days) and
+// hourly (today so far) breakdowns. `items` is [{key, v}]; each entry
+// becomes one bar sized against the tallest bar in the set.
+function BarChart({ items, accent, keyPrefix }) {
+  if (!items || items.length === 0) return null;
   const w = 100, h = 30;
   let maxV = 0;
-  for (const m of monthly) if (m.v > maxV) maxV = m.v;
+  for (const it of items) if (it.v > maxV) maxV = it.v;
   if (maxV <= 0) maxV = 1;
-  const slot = w / monthly.length;
+  const slot = w / items.length;
   const pad = 0.18;
   const barW = slot * (1 - 2 * pad);
   return (
@@ -656,13 +685,13 @@ function MonthlyBars({ monthly, accent }) {
       viewBox={`0 0 ${w} ${h}`}
       preserveAspectRatio="none"
     >
-      {monthly.map((m, i) => {
-        const barH = (m.v / maxV) * (h - 1);
+      {items.map((it, i) => {
+        const barH = (it.v / maxV) * (h - 1);
         const x = i * slot + slot * pad;
         const y = h - barH;
         return (
           <rect
-            key={`${m.year}-${m.month}`}
+            key={`${keyPrefix}-${it.key ?? i}`}
             className="today-graph-bar"
             x={x.toFixed(2)}
             y={y.toFixed(2)}
@@ -674,6 +703,42 @@ function MonthlyBars({ monthly, accent }) {
       })}
     </svg>
   );
+}
+
+// Bucket a 24 h stream of pvTotal power samples ({t: ms, v: W}) into
+// per-hour averages. Wh is what actually equals kWh once summed —
+// average W over an hour ≈ Wh over that hour, so a bar's height reads
+// as "how much did we make that hour". Trims trailing empty hours so
+// the chart doesn't lie flat past the current hour.
+function bucketByHour(samples) {
+  if (!samples || samples.length === 0) return [];
+  const buckets = Array.from({ length: 24 }, () => ({ sum: 0, count: 0 }));
+  for (const s of samples) {
+    if (!s || !Number.isFinite(s.t) || !Number.isFinite(s.v)) continue;
+    const h = new Date(s.t).getHours();
+    if (h >= 0 && h < 24) {
+      buckets[h].sum += s.v;
+      buckets[h].count += 1;
+    }
+  }
+  let lastActive = -1;
+  const items = buckets.map((b, h) => {
+    const avg = b.count > 0 ? b.sum / b.count : 0;
+    if (avg > 0) lastActive = h;
+    return { key: h, v: avg };
+  });
+  const cut = Math.max(lastActive + 1, 1);
+  return items.slice(0, cut);
+}
+
+// Bucket the /solar/daily payload into last-N-days chart items, keyed
+// by YYYY-MM-DD so React can match bars stably across polls.
+function bucketByDay(days) {
+  if (!days || days.length === 0) return [];
+  return days.map((d) => ({
+    key: `${d.year}-${d.month}-${d.day}`,
+    v: Math.max(0, Number(d.v) || 0),
+  }));
 }
 
 function TodayGraph({ samples, accent }) {
@@ -787,17 +852,17 @@ export default function SolarCard({
 
   useEffect(() => {
     let cancelled = false;
-    const loadMonthly = async () => {
+    const loadDaily = async () => {
       try {
-        const r = await fetch('api/ha/solar/monthly?months=12');
+        const r = await fetch('api/ha/solar/daily?days=7');
         if (!r.ok) return;
         const j = await r.json();
         if (cancelled) return;
-        setMonthly(Array.isArray(j?.months) ? j.months : []);
+        setMonthly(Array.isArray(j?.days) ? j.days : []);
       } catch { /* transient */ }
     };
-    loadMonthly();
-    monthlyTimerRef.current = setInterval(loadMonthly, 60 * 60 * 1000);
+    loadDaily();
+    monthlyTimerRef.current = setInterval(loadDaily, 30 * 60 * 1000);
     return () => { cancelled = true; clearInterval(monthlyTimerRef.current); };
   }, []);
 
@@ -888,6 +953,7 @@ export default function SolarCard({
             p1ImportT2={data?.p1ImportT2}
             p1ExportT1={data?.p1ExportT1}
             p1ExportT2={data?.p1ExportT2}
+            todaySolarState={data?.todaySolar}
             runModeText={data?.runMode ? formatMode(data.runMode) : null}
           />
         </div>
@@ -899,7 +965,8 @@ export default function SolarCard({
               metric={m}
               state={data?.[m.key]}
               samples={history24h?.[m.key]}
-              monthly={m.key === 'totalSolar' ? monthly : null}
+              hourlyPv={m.key === 'todaySolar' ? bucketByHour(history24h?.pvTotal) : null}
+              daily={m.key === 'totalSolar' ? bucketByDay(monthly) : null}
             />
           ))}
         </div>

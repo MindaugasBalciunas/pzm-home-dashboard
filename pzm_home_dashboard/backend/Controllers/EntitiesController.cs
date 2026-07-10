@@ -115,6 +115,13 @@ public sealed class EntitiesController : ControllerBase
         _               => "turn_on",
     };
 
+    // Recursively convert a JsonElement into a native CLR shape so that
+    // downstream JsonSerializer.Serialize(...) produces the payload HA
+    // expects. This used to fall through to GetRawText() for arrays and
+    // objects, which then re-serialized to a *string* containing JSON —
+    // so `rgb_color: [0,111,255]` reached HA as `"rgb_color":"[0,111,255]"`
+    // and the service call was ignored. Arrays/objects now round-trip
+    // correctly.
     private static object? JsonToObject(JsonElement el) => el.ValueKind switch
     {
         JsonValueKind.String => el.GetString(),
@@ -122,6 +129,9 @@ public sealed class EntitiesController : ControllerBase
         JsonValueKind.True   => true,
         JsonValueKind.False  => false,
         JsonValueKind.Null   => null,
+        JsonValueKind.Array  => el.EnumerateArray().Select(JsonToObject).ToArray(),
+        JsonValueKind.Object => el.EnumerateObject()
+            .ToDictionary(p => p.Name, p => JsonToObject(p.Value)),
         _ => el.GetRawText(),
     };
 }

@@ -373,14 +373,112 @@ export const TILE_ICONS = [
   { key: 'mailbox',     aliases: 'post letter delivery outdoor' },
   { key: 'flag',        aliases: 'garden marker pole yard' },
 
-  // --- Rooms ---
+  // --- Rooms / furniture ---
   { key: 'bed',         aliases: 'bedroom sleep home' },
   { key: 'sofa',        aliases: 'living room couch home' },
+  { key: 'chair',       aliases: 'seat dining office home' },
+  { key: 'dining-table',aliases: 'table eat food kitchen' },
+  { key: 'desk',        aliases: 'workspace office table study' },
+  { key: 'wardrobe',    aliases: 'closet clothes bedroom storage' },
+  { key: 'bookshelf',   aliases: 'books library reading office' },
+  { key: 'photo-frame', aliases: 'picture art wall home' },
+  { key: 'fireplace',   aliases: 'chimney fire cozy heat living room' },
   { key: 'bathroom',    aliases: 'shower bath home' },
   { key: 'shower',      aliases: 'bath water bathroom' },
   { key: 'toilet',      aliases: 'wc restroom bathroom' },
   { key: 'stairs',      aliases: 'hallway floor level up down' },
   { key: 'workshop',    aliases: 'tools shed garage diy' },
+  { key: 'wrench',      aliases: 'tool diy service maintenance' },
+  { key: 'plant',       aliases: 'houseplant pot leaf green home' },
+  { key: 'plant-pot',   aliases: 'pot succulent indoor plant' },
+  { key: 'aquarium',    aliases: 'fish tank pet water' },
+
+  // --- Lights: more variety ---
+  { key: 'pendant',     aliases: 'ceiling hanging light kitchen dining' },
+  { key: 'spotlight',   aliases: 'downlight recessed ceiling light beam' },
+  { key: 'wall-light',  aliases: 'sconce lamp wall home' },
+  { key: 'floor-lamp',  aliases: 'standing lamp corner light' },
+  { key: 'garden-light',aliases: 'path outdoor lamp yard' },
+
+  // --- Pets / people ---
+  { key: 'pet',         aliases: 'dog cat animal home' },
+  { key: 'dog',         aliases: 'pet puppy paw home' },
+  { key: 'cat',         aliases: 'pet kitten paw home' },
+  { key: 'paw',         aliases: 'pet feeder cat dog' },
+  { key: 'baby',        aliases: 'child kids nursery bedroom' },
+  { key: 'stroller',    aliases: 'baby child kids outdoor' },
+
+  // --- Household misc ---
+  { key: 'broom',       aliases: 'cleaning sweep floor chore' },
+  { key: 'trash',       aliases: 'bin garbage waste recycle' },
+  { key: 'recycle',     aliases: 'trash bin recycling waste' },
+  { key: 'candle',      aliases: 'ambient flame cozy scent' },
+  { key: 'gift-box',    aliases: 'present holiday party' },
+
+  // --- Variants: alternative styles for common concepts ---
+  // Lights
+  { key: 'bulb-edison', aliases: 'lightbulb filament vintage bulb light' },
+  { key: 'bulb-round',  aliases: 'globe orb bulb round light' },
+  { key: 'bulb-flame',  aliases: 'chandelier candle flame bulb light' },
+  { key: 'panel-light', aliases: 'led flat panel ceiling office' },
+  { key: 'string-light',aliases: 'fairy party outdoor string light' },
+  // Doors
+  { key: 'door-double', aliases: 'french door pair entry' },
+  { key: 'door-sliding',aliases: 'patio sliding glass door' },
+  { key: 'door-glass',  aliases: 'balcony transparent glass door' },
+  // Locks
+  { key: 'lock-smart',  aliases: 'digital keyless smart lock' },
+  { key: 'padlock',     aliases: 'padlock outdoor secure lock' },
+  { key: 'deadbolt',    aliases: 'bolt lock front door' },
+  // Beds
+  { key: 'bed-single',  aliases: 'twin single bed kids' },
+  { key: 'bed-double',  aliases: 'queen king double bed master' },
+  { key: 'crib',        aliases: 'baby cot nursery' },
+  // Vehicles
+  { key: 'car-side',    aliases: 'sedan ev garage side view' },
+  { key: 'car-front',   aliases: 'ev vehicle front headlights' },
+  { key: 'suv',         aliases: 'van bigger vehicle family' },
+  { key: 'bicycle',     aliases: 'bike sport outdoor' },
+  { key: 'scooter',     aliases: 'e-scooter kick urban' },
+  // Cameras
+  { key: 'camera-dome', aliases: 'ceiling dome cctv surveillance' },
+  { key: 'camera-bullet',aliases: 'bullet outdoor cctv wall' },
+  { key: 'camera-ptz',  aliases: 'pan tilt zoom cctv' },
+  // Sensors
+  { key: 'sensor',      aliases: 'chip module generic sensor' },
+  { key: 'radar',       aliases: 'mmwave presence radar' },
+  // Windows / rooms
+  { key: 'window-round',aliases: 'porthole round window' },
+  { key: 'skylight',    aliases: 'roof ceiling skylight' },
+  // Furniture variants
+  { key: 'armchair',    aliases: 'lounge chair living' },
+  { key: 'stool',       aliases: 'bar stool kitchen' },
+  { key: 'bench',       aliases: 'entry hall outdoor bench' },
+  // Drinkware
+  { key: 'mug',         aliases: 'tea cup coffee mug hot' },
+  { key: 'glass',       aliases: 'water drink glass' },
+  { key: 'wine',        aliases: 'glass drink dinner alcohol' },
+  // Plant variants
+  { key: 'flower',      aliases: 'blossom bloom plant garden' },
+  { key: 'cactus',      aliases: 'succulent desert plant' },
+  { key: 'palm',        aliases: 'tropical tree outdoor plant' },
+  // Tools
+  { key: 'screwdriver', aliases: 'tool diy' },
+  { key: 'hammer',      aliases: 'tool diy build' },
+  { key: 'toolbox',     aliases: 'diy tools maintenance' },
+  // Weather variants
+  { key: 'cloud',       aliases: 'sky weather overcast' },
+  { key: 'thunder',     aliases: 'storm weather lightning' },
+  { key: 'fog',         aliases: 'mist weather visibility' },
+  { key: 'umbrella',    aliases: 'rain outdoor weather cover' },
+  // Recreation / outdoor
+  { key: 'bbq',         aliases: 'grill outdoor cook meat' },
+  { key: 'firepit',     aliases: 'campfire outdoor patio' },
+  { key: 'hammock',     aliases: 'outdoor rest garden' },
+  // Notifications
+  { key: 'phone-ring',  aliases: 'call ringing dial' },
+  { key: 'message',     aliases: 'chat sms bubble' },
+  { key: 'envelope',    aliases: 'mail email letter' },
 
   // --- Water / sensors ---
   { key: 'water',       aliases: 'droplet leak humidity home' },
@@ -411,13 +509,13 @@ export const TILE_ICONS = [
 export const TILE_ICON_KEYS = TILE_ICONS.map((i) => i.key);
 
 const ICON_PATHS = {
-  light:      'M9 21h6v-1H9v1zm3-19a7 7 0 0 0-4 12.7V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.3A7 7 0 0 0 12 2z',
-  lamp:       'M6 2h12l-2 8h-8L6 2zm2 10h8v6h2v3H6v-3h2v-6z',
-  torch:      'M9 2h6l-1 4h-4L9 2zm-1 5h8v3l-4 13-4-13V7z',
+  light:      'M9 22h6v-2H9v2zm3-20a7 7 0 0 0-4 12.7V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.3A7 7 0 0 0 12 2zm-2 15v-2.9l-.5-.4a5 5 0 1 1 5 0l-.5.4V17h-4z',
+  lamp:       'M7 2h10l-2 7H9L7 2zm2 8h6v6h2v3h1v2H6v-2h1v-3h2v-6zm2 2v4h2v-4h-2z',
+  torch:      'M8 2h8l-1 4h-6L8 2zm-1 5h10v4l-5 13-5-13V7zm2 2v2h6V9H9z',
   sign:       'M6 3h12l3 4-3 4H6V3zm0 10h9l3 4-3 4H6v-8zM4 3h1v18H4V3z',
   switch_on:  'M17 6H7a6 6 0 0 0 0 12h10a6 6 0 0 0 0-12zm0 10a4 4 0 1 1 0-8 4 4 0 0 1 0 8z',
   switch_off: 'M7 6a6 6 0 0 0 0 12h10a6 6 0 0 0 0-12H7zm0 10a4 4 0 1 1 0-8 4 4 0 0 1 0 8z',
-  outlet:     'M6 2h12v20H6V2zm2 5h2v4H8V7zm6 0h2v4h-2V7zm-3 8a2 2 0 1 1 0 4 2 2 0 0 1 0-4z',
+  outlet:     'M5 3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H5zm4 5h2v4H9V8zm4 0h2v4h-2V8zm-1 6a2 2 0 1 1 0 4 2 2 0 0 1 0-4z',
   cover:      'M4 3h16v2H4zM6 6h12v14H6zM8 8v10h8V8H8z',
   curtain:    'M3 3h18v2H3V3zm2 3h6v14H5V6zm8 0h6v14h-6V6zM7 8v10h2V8H7zm8 0v10h2V8h-2z',
   fan:        'M12 4a4 4 0 0 1 3.5 5.9L20 12l-4.5 2.1A4 4 0 1 1 8.5 9.9L4 12l4.5-2.1A4 4 0 0 1 12 4z',
@@ -428,7 +526,7 @@ const ICON_PATHS = {
   water:      'M12 2.5s-6.5 7.5-6.5 12.5a6.5 6.5 0 1 0 13 0C18.5 10 12 2.5 12 2.5z',
   garden:     'M12 2a5 5 0 0 0-5 5c0 3 5 8 5 8s5-5 5-8a5 5 0 0 0-5-5zm-8 20l3-6h10l3 6H4z',
   fire:       'M13 3s3 4 3 8a4 4 0 1 1-8 0c0-2 1-3 1-3s-2 5 2 7c0 0-3-2-1-6 1-2 3-6 3-6z',
-  garage:     'M3 21V9l9-6 9 6v12h-4v-6H7v6H3zm6-2h2v-2H9v2zm4 0h2v-2h-2v2z',
+  garage:     'M12 3 3 9v12h4v-9h10v9h4V9l-9-6zm-4 11v6h8v-6H8zm1 1h6v1H9v-1zm0 2h6v1H9v-1zm0 2h6v1H9v-1z',
   gate:       'M3 20V6h2v3h4V6h2v3h2V6h2v3h4V6h2v14H3z',
   door:       'M6 2h12v20H6V2zm2 2v16h8V4H8zm5 8v2h1v-2h-1z',
   window:     'M4 3h16v18H4V3zm2 2v7h5V5H6zm7 0v7h5V5h-5zM6 14v5h5v-5H6zm7 0v5h5v-5h-5z',
@@ -457,10 +555,10 @@ const ICON_PATHS = {
   shield:     'M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3zm-1 6h2v4h-2V8zm0 6h2v2h-2v-2z',
   sun:        'M12 4v2m0 12v2m8-8h-2M4 12H2m14.24-5.66-1.42 1.42M7.18 16.82l-1.42 1.42m0-12.72 1.42 1.42m9.06 9.06 1.42 1.42M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10z',
   moon:       'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z',
-  bed:        'M3 8h11a4 4 0 0 1 4 4v3h3v5h-2v-2H5v2H3V8zm2 2v5h11v-3a2 2 0 0 0-2-2H5zm2 1a2 2 0 1 1 4 0 2 2 0 0 1-4 0z',
-  kitchen:    'M6 2h12v20H6V2zm2 2v6h8V4H8zm0 8v8h8v-8H8zm1 1h6v2H9v-2zm0 4h6v1H9v-1zm2-10a1 1 0 1 1 2 0 1 1 0 0 1-2 0z',
+  bed:        'M2 8v11h2v-2h16v2h2v-6a4 4 0 0 0-4-4h-7v5H4V8H2zm5 3a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z',
+  kitchen:    'M5 2v20h14V2H5zm2 2h10v6H7V4zm0 8h10v8H7v-8zm2 1v6h6v-6H9zm1 1h4v1h-4v-1zm0 2h4v1h-4v-1zm2-11a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z',
   bathroom:   'M6 4a3 3 0 0 1 6 0v6H4v3a5 5 0 0 0 4 4.9V21h2v-3.1a5 5 0 0 0 4-4.9v-3H8a1 1 0 0 1 0-2h2V7H8a3 3 0 0 1-2-3zm14 0h2v9h-2V4z',
-  sofa:       'M3 11a2 2 0 0 1 4 0v3h10v-3a2 2 0 1 1 4 0v6h-2v2h-2v-2H7v2H5v-2H3v-6zm4 3v-2a4 4 0 0 1 4-4h2a4 4 0 0 1 4 4v2H7z',
+  sofa:       'M4 10a3 3 0 0 0-3 3v6h2v-2h18v2h2v-6a3 3 0 0 0-3-3 3 3 0 0 0-3 3v2H7v-2a3 3 0 0 0-3-3zm4 4h8v-3a2 2 0 0 1 2-2H8a2 2 0 0 1 2 2v3z',
   battery:    'M7 4h10v2h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h1V4zm-1 4v11h12V8H6zm2 3h8v6H8v-6z',
   'ev-charger':'M6 3h9v9H6V3zm2 2v5h5V5H8zm-1 9h11v6H7v-6zm2 2v2h2v-2H9zm4 0v2h2v-2h-2zM17 5l3 3v6h-2v-3h-2V5h1z',
   power:      'M13 3v10h-2V3h2zm5.4 3.6-1.4 1.4a7 7 0 1 1-10 0L5.6 6.6a9 9 0 1 0 12.8 0z',
@@ -543,7 +641,7 @@ const ICON_PATHS = {
   // Rooms
   shower:    'M7 3h10v3l3 3v11h-2v-9l-1-1H8L7 11v9H5V9l3-3V3zm2 2v2h6V5H9zm-1 8a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm3 3a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm3-2a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm-6-4a1 1 0 1 1 0 2 1 1 0 0 1 0-2z',
   toilet:    'M5 3h14v6H5V3zm2 2v2h10V5H7zm-2 5h14v3l-2 5h-2v3h-6v-3H7l-2-5v-3zm2 2v1l1 3h8l1-3v-1H7z',
-  stairs:    'M3 21V3h18v4h-4v4h-4v4H9v4H3zm2-2h4v-4h4v-4h4V9h4V5H5v14z',
+  stairs:    'M2 22V15h4v-4h4V7h4V3h8v2h-6v4h-4v4H8v4H4v3H2v2z',
   workshop:  'M4 4h16v3H4V4zm1 5h14v11H5V9zm2 2v7h5v-7H7zm7 0 4 4-1 1-3-3v-2zm-2 5h4v2h-4v-2z',
 
   // Water
@@ -567,6 +665,119 @@ const ICON_PATHS = {
   heart:     'M12 21s-8-5-8-11a5 5 0 0 1 8-4 5 5 0 0 1 8 4c0 6-8 11-8 11z',
   gift:      'M4 12h16v9H4v-9zm7 0v9h2v-9h-2zM3 8h18v4H3V8zm7 0V6a2 2 0 1 1 2 0v2h-2zm4 0V6a2 2 0 1 1 2 2h-2z',
   question:  'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm-1 12h2v2h-2v-2zm2-2h-2c0-2 3-2 3-4a2 2 0 0 0-4 0H8a4 4 0 1 1 8 0c0 3-3 3-3 4z',
+
+  // Rooms / furniture
+  chair:        'M5 21v-4h14v4h-2v-2H7v2H5zm2-6V6h10v9H7zm2-7v5h6V8H9z',
+  'dining-table':'M3 8h18v2H3V8zm1 3h16v2H4v-2zm0 4h2v6H4v-6zm14 0h2v6h-2v-6z',
+  desk:         'M3 6h18v3H3V6zm1 4h4v11H7v-8H4V10zm12 0h4v3h-3v8h-1V10zM4 14h4v2H4v-2z',
+  wardrobe:     'M4 3h16v18h-2v-2H6v2H4V3zm2 2v12h5V5H6zm7 0v12h5V5h-5zm-3 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm4 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2z',
+  bookshelf:    'M3 3h18v18H3V3zm2 2v4h14V5H5zm0 6v4h14v-4H5zm0 6v2h14v-2H5zM7 6h1v2H7V6zm2 0h1v2H9V6zm2 0h2v2h-2V6zm-4 6h1v2H7v-2zm2 0h3v2H9v-2zm5 0h2v2h-2v-2z',
+  'photo-frame':'M3 4h18v16H3V4zm2 2v12h14V6H5zm2 2h10v3h-3l-2 3-2-2-3 3V8z',
+  fireplace:    'M3 3h18v3h-2v13H5V6H3V3zm4 5v11h10V8h-2c-.5 3-2 4-3 4s-2.5-1-3-4H7zm3.5 2c.5 2 1 3 1.5 3s1-1 1.5-3c-.6.5-1.1.5-1.5.5s-.9 0-1.5-.5z',
+  wrench:       'M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4L15 12l-3-3 2.7-2.7z',
+  plant:        'M6 21v-4c0-3 2-5 5-5v-2C7 10 4 13 4 17v4h2zm7-16c0 3-2 5-5 5 0-3 2-5 5-5zm7 4c0 3-2 5-5 5 0-3 2-5 5-5zm-8 8v4h2v-4h-2z',
+  'plant-pot':  'M8 8h8l-1 3H9L8 8zm-2 4h12l-1 8H7l-1-8zm4-6a2 2 0 1 1 4 0 2 2 0 0 1-4 0z',
+  aquarium:     'M3 5h18v14H3V5zm2 2v10h14V7H5zm3 4a3 3 0 0 1 6 0 3 3 0 0 1-6 0zm10 0 3-1v2l-3-1zM5 15c1 0 1 1 3 1s2-1 4-1 2 1 4 1 2-1 3-1v1c-1 0-1 1-3 1s-2-1-4-1-2 1-4 1-2-1-3-1v-1z',
+
+  // Lights: more variety
+  pendant:      'M11 2h2v3h-2V2zm-3 4h8l2 5h-4v3h1v3h-2v3h-2v-3H9v-3h1v-3H6l2-5z',
+  spotlight:    'M4 4h16v6H4V4zm2 2v2h12V6H6zm2 6h8l-1 10h-6l-1-10zm2 2 .5 6h3l.5-6h-4z',
+  'wall-light': 'M4 3h4v18H4V3zm2 2v14h1V5H6zm3 6h6l1 4h-8l1-4zm-1 5h9l-2 3v3H10v-3l-2-3z',
+  'floor-lamp': 'M9 2h6l1 8H8l1-8zm2 10h2v8h3v2H8v-2h3v-8z',
+  'garden-light':'M10 2h4v4h-4V2zm-1 5h6l1 4H8l1-4zm2 5h2v9h3v2H9v-2h2v-9z',
+
+  // Pets / people
+  pet:          'M5 8a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm4-4a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm6 0a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm4 4a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm-7 5a5 5 0 0 1 4 8h-8a5 5 0 0 1 4-8z',
+  dog:          'M4 6h4l2 3h4l2-3h4l-1 5-2 1v5a2 2 0 0 1-2 2h-1v-3h-4v3H9a2 2 0 0 1-2-2v-5l-2-1-1-5zm5 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm6 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2z',
+  cat:          'M4 4l3 4h10l3-4v10a5 5 0 0 1-5 5h-6a5 5 0 0 1-5-5V4zm5 7a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm6 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm-4 4h2l-1 2-1-2z',
+  paw:          'M6 6a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm4-3a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm4 0a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm4 3a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm-6 6a4 4 0 0 1 3 7h-6a4 4 0 0 1 3-7z',
+  baby:         'M12 2a3 3 0 0 1 3 3c0 2-1.5 3-3 3s-3-1-3-3a3 3 0 0 1 3-3zm-5 9h10l-1 4h1v6H7v-6h1l-1-4zm4 4v2h2v-2h-2z',
+  stroller:     'M4 5h4l2 6h9l-2 6H8l-1-3-3-4V5zm3 12a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm10 0a2 2 0 1 1 0 4 2 2 0 0 1 0-4z',
+
+  // Household misc
+  broom:        'M17 3l4 4-8 8-4-4 8-8zm-9 9 4 4-3 6-6-1 5-9z',
+  trash:        'M6 4h4l1-1h2l1 1h4v2H6V4zm1 4h10l-1 12H8L7 8zm3 2v8h1v-8h-1zm3 0v8h1v-8h-1z',
+  recycle:      'M12 3l4 5h-3v4h-2V8H8l4-5zm8 8-2 6-4-2 2-3-3-1-1 2-2-6 5 1-1 2 6 1zm-12 8 2-6 4 2-2 3 3 1 1-2 2 6-5-1 1-2-6-1z',
+  candle:       'M11 2c0 2-2 2-2 4a3 3 0 1 0 6 0c0-2-2-2-2-4-1 1-1 2-2 0zm-3 9h8v9H8v-9zm2 2v5h4v-5h-4z',
+  'gift-box':   'M3 8h8V6a2 2 0 1 1 2 0v2h8v4H3V8zm1 6h16v7H4v-7zm7 0v7h2v-7h-2z',
+
+  // Light variants
+  'bulb-edison':'M12 2a6 6 0 0 0-4 10.5V14a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-1.5A6 6 0 0 0 12 2zM11 8a1 1 0 1 1 2 0v4a1 1 0 1 1-2 0V8zM9 16h6v2H9v-2zm1 3h4v2h-4v-2z',
+  'bulb-round': 'M12 2a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM9 18h6v2H9v-2zm1 3h4v1h-4v-1z',
+  'bulb-flame': 'M12 2c-1 3-3 3-3 6a3 3 0 0 0 6 0c0-3-2-3-3-6zm-3 12h6v3H9v-3zm2 4h2v3h-2v-3z',
+  'panel-light':'M3 3h18v10H3V3zm2 2v6h14V5H5zm3 12v3h8v-3H8z',
+  'string-light':'M2 4c2 4 4 4 6 0M8 4c2 4 4 4 6 0M14 4c2 4 4 4 6 0M5 7a2 2 0 1 1 2 2v3l-2 3v-8zm6 0a2 2 0 1 1 2 2v3l-2 3v-8zm6 0a2 2 0 1 1 2 2v3l-2 3v-8z',
+
+  // Door variants
+  'door-double':  'M3 3h8v18H3V3zm10 0h8v18h-8V3zM5 5v14h4V5H5zm10 0v14h4V5h-4zm-6 8v2h1v-2H9zm6 0v2h1v-2h-1z',
+  'door-sliding': 'M3 3h18v18H3V3zm2 2v14h6V5H5zm8 0v14h6V5h-6zM9 12v2h1v-2H9zm4 0v2h1v-2h-1zM3 21h18v1H3v-1z',
+  'door-glass':   'M6 2h12v20H6V2zm2 2v16h8V4H8zm1 2h6v10H9V6zm5 8v2h1v-2h-1z',
+
+  // Lock variants
+  'lock-smart': 'M12 2a5 5 0 0 0-5 5v3H5v12h14V10h-2V7a5 5 0 0 0-5-5zm-3 8V7a3 3 0 0 1 6 0v3H9zm-1 4h8v2H8v-2zm0 3h8v1H8v-1z',
+  padlock:      'M12 2a5 5 0 0 0-5 5v3H5v12h14V10h-2V7a5 5 0 0 0-5-5zm-3 8V7a3 3 0 0 1 6 0v3H9zm3 3a2 2 0 0 1 1 3.7V19h-2v-2.3A2 2 0 0 1 12 13z',
+  deadbolt:     'M12 2a5 5 0 0 0-5 5v3H5v12h14V10h-2V7a5 5 0 0 0-5-5zm-3 8V7a3 3 0 0 1 6 0v3H9zm3 3h4v2h-4v-2z',
+
+  // Bed variants
+  'bed-single': 'M4 8h8a4 4 0 0 1 4 4v3h2v5h-2v-2H6v2H4V8zm2 2v5h8v-3a2 2 0 0 0-2-2H6zm2 1a2 2 0 1 1 4 0 2 2 0 0 1-4 0z',
+  'bed-double': 'M2 8v11h2v-2h16v2h2v-6a4 4 0 0 0-4-4h-6a2 2 0 0 0-2 2h-2a2 2 0 0 0-2-2H4V8H2zm3 3a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm14 0a2 2 0 1 1 0 4 2 2 0 0 1 0-4z',
+  crib:         'M4 4h1v16H4V4zm15 0h1v16h-1V4zM6 8h12v10H6V8zm2 2v6h1v-6H8zm3 0v6h1v-6h-1zm3 0v6h1v-6h-1zm3 0v6h1v-6h-1z',
+
+  // Vehicle variants
+  'car-side':   'M2 15v3h2v1h3v-1h10v1h3v-1h2v-3l-2-5h-4l-3-2H8L5 12H2v3zm5-5h4l1-2H8l-1 2zm5 0h4l1 2h-6l1-2zM5 15a1 1 0 1 1 2 0 1 1 0 0 1-2 0zm12 0a1 1 0 1 1 2 0 1 1 0 0 1-2 0z',
+  'car-front':  'M4 8h16v6l-2 2v3h-3v-3H9v3H6v-3l-2-2V8zm2 2v3h12v-3H6zm2 5a1 1 0 1 1 2 0 1 1 0 0 1-2 0zm8 0a1 1 0 1 1 2 0 1 1 0 0 1-2 0zm-3-9h2v2h-2V6z',
+  suv:          'M2 14v4h2v1h3v-1h10v1h3v-1h2v-4l-3-6H8L5 12H2v2zm4-2 1-2h4v2H6zm6-2h4l1 2h-5v-2zM5 16a2 2 0 1 1 4 0 2 2 0 0 1-4 0zm10 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0z',
+  bicycle:      'M6 15a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm12 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM8 8h3l4 6-2 1-3-4-1 4H7l1-7zM15 5h4v2h-3l1 4h-2l-2 5-1-1 3-5-2-3z',
+  scooter:      'M4 16a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm14 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM14 4h6v2h-4l-2 8h-3l-2-3h-3v-2h4l1 3h1l2-8z',
+
+  // Camera variants
+  'camera-dome':   'M12 3a9 5 0 0 0-9 5v3h18V8a9 5 0 0 0-9-5zm-3 4a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM3 12v3h18v-3H3zm2 5v4h4v-4H5zm10 0v4h4v-4h-4z',
+  'camera-bullet': 'M3 8h4l1-2h10l1 2h2v8h-2l-1 2H8l-1-2H3V8zm2 2v4h2l1 2h8l1-2h2v-4h-2l-1-2H8L7 10H5zm5 2a2 2 0 1 1 4 0 2 2 0 0 1-4 0z',
+  'camera-ptz':    'M3 6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6zm2 0v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H6a1 1 0 0 0-1 1zm3 4a3 3 0 1 1 6 0 3 3 0 0 1-6 0zM7 20h10v2H7v-2z',
+
+  // Sensors
+  sensor:  'M4 4h16v16H4V4zm2 2v12h12V6H6zm2 2h8v2H8V8zm0 3h8v2H8v-2zm0 3h5v2H8v-2z',
+  radar:   'M12 3a9 9 0 1 0 9 9h-2a7 7 0 1 1-7-7V3zm0 3a6 6 0 1 0 6 6h-2a4 4 0 1 1-4-4V6zm0 3a3 3 0 1 0 3 3h-2a1 1 0 1 1-1-1V9z',
+
+  // Window variants
+  'window-round': 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 2a7 7 0 1 1 0 14 7 7 0 0 1 0-14zm-1 1v12h2V6h-2zm-5 5h12v2H6v-2z',
+  skylight:       'M3 4h18v3H3V4zm2 5h14v11H5V9zm2 2v7h4v-7H7zm6 0v7h4v-7h-4z',
+
+  // Furniture variants
+  armchair: 'M4 8a3 3 0 0 1 3 3v3h10v-3a3 3 0 1 1 3 3v6h-2v-2H6v2H4v-6a3 3 0 0 1 0-6zm3 6h10v-2a3 3 0 0 0-3-3h-4a3 3 0 0 0-3 3v2z',
+  stool:    'M6 4h12v3l-3 4-3-4-3 4-3-4V4zm5 8h2v6h4v2H7v-2h4v-6z',
+  bench:    'M2 10h20v3H2v-3zm3 3v6h2v-4h10v4h2v-6H5z',
+
+  // Drinkware
+  mug:      'M4 6h12v11a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V6zm2 2v9a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V8H6zm10 2h2a3 3 0 0 1 0 6h-1v-2h1a1 1 0 0 0 0-2h-2v-2z',
+  glass:    'M6 3h12l-1 17a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 3zm2 2 .5 8h7L16 5H8zm1 10 .5 5h5l.5-5H9z',
+  wine:     'M8 3h8l-1 6a3 3 0 0 1-3 3 3 3 0 0 1-3-3l-1-6zm2 2 .7 4h4.6L16 5h-6zm2 8v6H9v2h6v-2h-3v-6z',
+
+  // Plants variants
+  flower:  'M12 2a3 3 0 0 0-2.5 4.7A3 3 0 0 0 7 12a3 3 0 0 0 5 2 3 3 0 0 0 5-2 3 3 0 0 0-2.5-5.3A3 3 0 0 0 12 2zm-1 12h2v8h-2v-8z',
+  cactus:  'M9 21v-3H6a2 2 0 0 1-2-2v-4a2 2 0 0 1 4 0v3h1v-9a3 3 0 0 1 6 0v6h1v-2a2 2 0 0 1 4 0v3a2 2 0 0 1-2 2h-3v6h-2v-6h-2v3H9z',
+  palm:    'M12 3c-4 0-6 2-6 5 2-2 4-2 6-2s4 0 6 2c0-3-2-5-6-5zm-1 5v14h2V8h-2zM3 8c1-1 3-1 6 0-2 0-4 0-6 2v-2zm12 0c3-1 5-1 6 0v2c-2-2-4-2-6-2z',
+
+  // Tools
+  screwdriver: 'M14 3l7 4-9 9-3-1-1 3-2-2 3-1-1-3 6-6zm-2 4 2 2 5-3-2-2-5 3z',
+  hammer:      'M13 2l7 7-3 3-4-4-1 1 6 6-2 2-6-6-1 1 3 3-2 2-3-3 6-6-4-4 4-2z',
+  toolbox:     'M8 3h8v3h4v14H4V6h4V3zm2 2v1h4V5h-4zM6 8v10h12V8H6zm2 2h2v2H8v-2zm4 0h2v2h-2v-2z',
+
+  // Weather variants
+  cloud:    'M6 18a4 4 0 0 1 1-8 5 5 0 0 1 9 1 4 4 0 0 1-1 8H6z',
+  thunder:  'M6 15a4 4 0 0 1 1-8 5 5 0 0 1 9 1 4 4 0 0 1-1 8H6zm5 3h3l-4 5 1-4H8l3-1z',
+  fog:      'M3 8h18v2H3V8zm2 4h14v2H5v-2zm-2 4h18v2H3v-2zm2 4h14v2H5v-2z',
+  umbrella: 'M12 3a9 8 0 0 0-9 8h4a5 5 0 0 1 5-5 5 5 0 0 1 5 5h4a9 8 0 0 0-9-8zm-1 8v8a1 1 0 0 0 2 0v-8h-2z',
+
+  // Recreation
+  bbq:      'M4 4h16v3l-2 3H6L4 7V4zm2 2v1l1 1h10l1-1V6H6zm-1 6h14l-1 4h-3v4h-2v-4h-2v4H8v-4H6l-1-4z',
+  firepit:  'M12 3s-2 3-2 6a2 2 0 1 0 4 0c0-3-2-6-2-6zm-3 9h6l1 3H8l1-3zm-6 4h18l-2 4H5l-2-4z',
+  hammock:  'M3 6l3 4 6-1 6 1 3-4M3 6a3 3 0 0 1 5 0M16 6a3 3 0 0 1 5 0M6 10c2 3 4 4 6 4s4-1 6-4',
+
+  // Notifications
+  'phone-ring': 'M4 4h6l1 6-3 2a11 11 0 0 0 4 4l2-3 6 1v6a2 2 0 0 1-2 2A16 16 0 0 1 2 6a2 2 0 0 1 2-2zm14-2 3 3-1 1-3-3 1-1zm-1 4 3 3-1 1-3-3 1-1z',
+  message:      'M3 4h18v14H8l-4 4V4zm2 2v11l2-2h12V6H5zm2 2h10v1H7V8zm0 3h10v1H7v-1zm0 3h6v1H7v-1z',
+  envelope:     'M3 5h18v14H3V5zm2 2v10h14V7H5zm0 0 7 5 7-5v2l-7 5-7-5V7z',
 };
 
 const DOMAIN_TO_ICON = {
@@ -587,6 +798,7 @@ const DOMAIN_TO_ICON = {
 // than solid fill. Keeps outlets/wifi/sun/etc. legible at tile sizes.
 const STROKE_ICONS = new Set([
   'sun', 'wifi', 'router', 'led-strip', 'wind', 'snow',
+  'string-light', 'hammock',
 ]);
 
 function TileIcon({ iconKey, domain, on }) {
@@ -622,10 +834,18 @@ function TileIcon({ iconKey, domain, on }) {
 
 export { TileIcon };
 
-// Number tile icon. Heuristic dispatch: unit → temp / humidity; entity id
-// and name → waste-tank depth, door/contact sensors. Falls through to a
-// generic gauge so every number tile still gets a glyph next to the label.
+// Number tile icon. If the user explicitly picked an icon in the tile
+// editor we honour that first; otherwise fall back to heuristic dispatch
+// (unit → temp / humidity, name/entity id → tank / door / contact) so
+// every number tile still gets a glyph next to the label.
 function NumberTileIcon({ spec, unit }) {
+  if (spec.icon && spec.icon !== 'auto') {
+    return (
+      <span className="custom-num-icon" aria-hidden>
+        <TileIcon iconKey={spec.icon} domain={spec.domain} on={true} />
+      </span>
+    );
+  }
   const name = (spec.name || '').toLowerCase();
   const eid = (spec.entityId || '').toLowerCase();
   const u = (unit || spec.unit || '').toString().toLowerCase();

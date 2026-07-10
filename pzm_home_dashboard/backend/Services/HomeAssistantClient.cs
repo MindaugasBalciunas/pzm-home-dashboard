@@ -176,6 +176,29 @@ public sealed class HomeAssistantClient
         var currentMode = attrs.TryGetValue("color_mode", out var cm)
             && cm.ValueKind == JsonValueKind.String ? cm.GetString() : null;
 
+        string[]? effectList = null;
+        if (attrs.TryGetValue("effect_list", out var elArr)
+            && elArr.ValueKind == JsonValueKind.Array)
+        {
+            var list = new List<string>();
+            foreach (var el in elArr.EnumerateArray())
+            {
+                if (el.ValueKind == JsonValueKind.String)
+                {
+                    var s = el.GetString();
+                    if (!string.IsNullOrWhiteSpace(s)) list.Add(s);
+                }
+            }
+            if (list.Count > 0) effectList = list.ToArray();
+        }
+
+        var currentEffect = attrs.TryGetValue("effect", out var eff)
+            && eff.ValueKind == JsonValueKind.String ? eff.GetString() : null;
+
+        // HA convention: SUPPORT_EFFECT = 4 inside `supported_features`.
+        int? supportedFeatures = TryReadInt(attrs, "supported_features");
+        bool featureFlagEffect = supportedFeatures.HasValue && (supportedFeatures.Value & 4) != 0;
+
         bool colorish(string m) =>
             m.Equals("rgb", StringComparison.OrdinalIgnoreCase)
             || m.Equals("rgbw", StringComparison.OrdinalIgnoreCase)
@@ -189,10 +212,15 @@ public sealed class HomeAssistantClient
         bool supportsColorTemp = modes.Contains("color_temp")
                                  || (currentMode != null && currentMode.Equals("color_temp", StringComparison.OrdinalIgnoreCase))
                                  || colorTemp != null;
+        bool supportsEffect = (effectList != null && effectList.Length > 0) || featureFlagEffect;
+
+        var modesArray = modes.Count > 0 ? modes.ToArray() : null;
 
         return new LightAttrs(
             brightness, rgb, colorTemp, minColorTemp, maxColorTemp,
-            supportsBrightness, supportsColor, supportsColorTemp);
+            currentEffect, effectList,
+            currentMode, modesArray,
+            supportsBrightness, supportsColor, supportsColorTemp, supportsEffect);
     }
 
     private static int? TryReadInt(Dictionary<string, JsonElement> attrs, string key)
@@ -325,8 +353,16 @@ public sealed class HomeAssistantClient
 
     // Long-term statistics come from HA's Statistics table (indefinite retention),
     // which is only accessible via the WebSocket API, not the REST /history endpoint.
-    public async Task<Dictionary<string, IReadOnlyList<HaSample>>> GetMonthlyStatisticsAsync(
+    public Task<Dictionary<string, IReadOnlyList<HaSample>>> GetMonthlyStatisticsAsync(
         IReadOnlyList<string> entityIds, DateTime startTime, DateTime endTime, CancellationToken ct)
+        => GetStatisticsAsync(entityIds, startTime, endTime, "month", ct);
+
+    public Task<Dictionary<string, IReadOnlyList<HaSample>>> GetDailyStatisticsAsync(
+        IReadOnlyList<string> entityIds, DateTime startTime, DateTime endTime, CancellationToken ct)
+        => GetStatisticsAsync(entityIds, startTime, endTime, "day", ct);
+
+    public async Task<Dictionary<string, IReadOnlyList<HaSample>>> GetStatisticsAsync(
+        IReadOnlyList<string> entityIds, DateTime startTime, DateTime endTime, string period, CancellationToken ct)
     {
         var result = new Dictionary<string, IReadOnlyList<HaSample>>();
         if (entityIds.Count == 0) return result;
@@ -370,7 +406,8 @@ public sealed class HomeAssistantClient
                 return result;
             }
 
-            // Request statistics — month buckets, change field.
+            // Request statistics — bucket per requested period; ask HA for
+            // sum / state / change so the delta path in the caller works.
             var reqMsg = JsonSerializer.Serialize(new
             {
                 id = 1,
@@ -378,7 +415,7 @@ public sealed class HomeAssistantClient
                 start_time = startTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssK", CultureInfo.InvariantCulture),
                 end_time   = endTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssK", CultureInfo.InvariantCulture),
                 statistic_ids = entityIds,
-                period = "month",
+                period,
                 types = new[] { "sum", "state", "change" },
             });
             await SendAsync(ws, reqMsg, ct);

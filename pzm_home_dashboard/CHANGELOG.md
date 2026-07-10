@@ -4,6 +4,59 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.10
+
+- **LED colour actually works now**. `entity/action` was serialising
+  JSON arrays (`rgb_color: [0, 111, 255]`) as raw-JSON strings so Home
+  Assistant ignored the parameter. `JsonToObject` now recurses into
+  arrays and objects, so `rgb_color`, `hs_color`, and any other list /
+  dict argument round-trip correctly.
+- **Light modal grows a Pattern / Effect picker** for WLED-style
+  RGBIC strips. Backend `LightAttrs` now carries `effect`,
+  `effectList`, `colorMode`, and `supportedColorModes`.
+- **Number tiles can pick an icon** now — the icon picker is shown for
+  both button and number kinds in the add + edit modals, and
+  `NumberTileIcon` honours `spec.icon` before falling back to
+  heuristics.
+- **Electricity tile**: Solar (PV Total) callout enlarged and now
+  carries a "Today" sub-line with cumulative kWh harvested so far.
+  Home callout enlarged and moved up next to PV — the flow line now
+  terminates at the callout's edge instead of running under it. House
+  background zoomed ~116% for a bigger, more legible image; inner
+  padding shrunk on all sides.
+- **Today Solar chip** now shows hourly bars of PV production (from
+  `pvTotal` history bucketed by hour) instead of the cumulative
+  today-solar area chart — reads directly as "how much did we make
+  each hour today."
+- **Total Solar chip** switched from monthly bars (last 12 months) to
+  daily columns for the last 7 days. New backend endpoint
+  `/api/ha/solar/daily?days=N` powered by the same recorder statistics
+  path as the monthly view.
+- **Security card**: gate buttons stack vertically in landscape /
+  wide layouts (thumb-friendly on horizontal tiles) and their names
+  wrap to two lines instead of getting truncated with an ellipsis. In
+  portrait the gate row stays horizontal but narrower buttons fall
+  back to icon-only. Zones ↔ PIR gap tightened by ~40%.
+- **Zone / PIR chips restyled again**: no border, icon + label
+  together whenever the chip has room; only the icon shows when the
+  chip is genuinely too narrow for the smallest label. No ellipsis
+  ever. Contact-state parser tolerates more state values (motion,
+  detected, tampered, wet, alarm…) and treats empty / unknown /
+  unavailable as neutral instead of "off / OK".
+- **Rounded corners** across custom tiles (buttons + numbers), gate
+  buttons and tile-inner icon halos, driven by `--radius-sm` /
+  `--radius-md` variables. Overall padding tightened on gate row,
+  custom-button inner, and security section gap.
+- **Icon catalog expanded to ~180 glyphs**. First pass revised the
+  weakest paths (bed, sofa, kitchen, stairs, garage, outlet, light,
+  torch, lamp). Second pass added ~50 variants so the picker offers
+  multiple visual styles for the same concept (Edison / round / flame
+  bulbs; single vs double vs sliding vs glass doors; padlock vs smart
+  vs deadbolt; single vs double vs crib beds; side / front / SUV cars;
+  dome / bullet / PTZ cameras; radar; skylight; armchair / stool /
+  bench; mug / glass / wine; flower / cactus / palm; tools; weather
+  variants; hammock / firepit / BBQ).
+
 ## 0.2.9
 
 - **Zone / PIR chips restyled as status, not buttons**. The rectangle
