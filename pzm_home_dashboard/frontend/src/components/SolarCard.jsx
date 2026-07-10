@@ -3,6 +3,40 @@ import { useEffect, useRef, useState } from 'react';
 const HISTORY_LEN = 80;
 const POLL_MS = 3000;
 
+// House photo variants: public/ ships one render per season × day-phase
+// (16 total, `<season>-<phase>.png`). The live card picks by wall clock;
+// the BG demo loop (Experiments menu) cycles through all of them.
+const SEASONS = ['spring', 'summer', 'autumn', 'winter'];
+const DAY_PHASES = ['morning', 'day', 'evening', 'night'];
+
+function seasonForMonth(m) {
+  if (m === 11 || m <= 1) return 'winter';
+  if (m <= 4) return 'spring';
+  if (m <= 7) return 'summer';
+  return 'autumn';
+}
+
+function phaseForHour(h) {
+  if (h < 6) return 'night';
+  if (h < 11) return 'morning';
+  if (h < 17) return 'day';
+  if (h < 22) return 'evening';
+  return 'night';
+}
+
+function backgroundForNow(now = new Date()) {
+  const season = seasonForMonth(now.getMonth());
+  const phase = phaseForHour(now.getHours());
+  return { file: `${season}-${phase}.png`, label: `${season} · ${phase}` };
+}
+
+const DEMO_BACKGROUNDS = SEASONS.flatMap((season) =>
+  DAY_PHASES.map((phase) => ({
+    file: `${season}-${phase}.png`,
+    label: `${season} · ${phase}`,
+  })));
+const DEMO_STEP_MS = 2000;
+
 const POWER_METRICS = [
   { key: 'pvTotal',  label: 'PV Total', accent: 'good' },
   { key: 'houseUse', label: 'House',    accent: 'neutral' },
@@ -385,7 +419,15 @@ function HouseView({
   impPeakW,
   expPeakW,
   runModeText,
+  bgImage = 'house.png',
+  bgLabel = null,
 }) {
+  // Previous background stays mounted beneath the incoming one so image
+  // swaps (hour/season boundaries, demo loop) crossfade instead of pop.
+  const prevBgRef = useRef(bgImage);
+  const prevBg = prevBgRef.current;
+  useEffect(() => { prevBgRef.current = bgImage; }, [bgImage]);
+
   const pv = toNumber(pvState) ?? 0;
   const pv1 = toNumber(pv1State) ?? 0;
   const pv2 = toNumber(pv2State) ?? 0;
@@ -440,11 +482,19 @@ function HouseView({
     <div className="house-view">
       {/* Background is set inline so the URL resolves against the document base
           rather than the CSS file location — under HAOS ingress the stylesheet
-          lives in /assets/, but house.png sits next to index.html. */}
+          lives in /assets/, but the photos sit next to index.html. */}
+      {prevBg !== bgImage && (
+        <div
+          className="house-view-bg"
+          style={{ backgroundImage: `url('${prevBg}')` }}
+        />
+      )}
       <div
-        className="house-view-bg"
-        style={{ backgroundImage: "url('house.png')" }}
+        key={bgImage}
+        className="house-view-bg house-view-bg-fade"
+        style={{ backgroundImage: `url('${bgImage}')` }}
       />
+      {bgLabel && <div className="hv-bg-pill">{bgLabel}</div>}
 
       {/*
         Straight vertical/horizontal segments only, junction at (63, 55) near the
@@ -971,15 +1021,29 @@ function TodayGraph({ samples, accent }) {
 export default function SolarCard({
   col, row, colSpan, rowSpan, editMode,
   onStartMove, onStartResize,
+  bgDemo = false,
 }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [history, setHistory] = useState({});
   const [history24h, setHistory24h] = useState({});
   const [monthly, setMonthly] = useState([]);
+  const [demoIdx, setDemoIdx] = useState(0);
   const timerRef = useRef(null);
   const historyTimerRef = useRef(null);
   const monthlyTimerRef = useRef(null);
+
+  // Experiments → BG demo loop: cycle every season × day-phase variant.
+  useEffect(() => {
+    if (!bgDemo) return undefined;
+    setDemoIdx(0);
+    const id = setInterval(() => setDemoIdx((i) => i + 1), DEMO_STEP_MS);
+    return () => clearInterval(id);
+  }, [bgDemo]);
+
+  const bg = bgDemo
+    ? DEMO_BACKGROUNDS[demoIdx % DEMO_BACKGROUNDS.length]
+    : backgroundForNow();
 
   useEffect(() => {
     let cancelled = false;
@@ -1162,6 +1226,8 @@ export default function SolarCard({
             pvPeakW={peakOf(history24h?.pvTotal)}
             impPeakW={peakOf(history24h?.import)}
             expPeakW={peakOf(history24h?.export)}
+            bgImage={bg.file}
+            bgLabel={bgDemo ? bg.label : null}
             runModeText={data?.runMode ? formatMode(data.runMode) : null}
           />
         </div>

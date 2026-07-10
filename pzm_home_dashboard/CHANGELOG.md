@@ -4,6 +4,18 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.15
+
+- **Season & time-of-day house photos.** The Electricity tile now picks its
+  background from 16 shipped renders (`<season>-<phase>.png`, 4 seasons ×
+  morning/day/evening/night) by the wall clock: months map to seasons and
+  hours map to phases (06–10 morning, 11–16 day, 17–21 evening, else night).
+  Background swaps crossfade instead of popping.
+- **Experiments section in the side menu** with a **BG demo loop** button:
+  cycles the photo through every variant every 2 s with a season · phase
+  label pill, for eyeballing all 16 renders without waiting a year.
+- Renamed `autum-night.png` → `autumn-night.png`.
+
 ## 0.2.14
 
 - **Electricity tile spacing tightened**: top padding removed and side /

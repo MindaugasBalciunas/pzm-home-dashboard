@@ -9,6 +9,8 @@ export default function SideMenu({
   onToggleEdit,
   onResetLayout,
   onAddTile,
+  bgDemo,
+  onToggleBgDemo,
 }) {
   const [open, setOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -181,6 +183,21 @@ export default function SideMenu({
             <div className="side-menu-note">
               Buttons trigger an entity (switch, script, button, cover, light).
               Numbers display a live sensor reading.
+            </div>
+          </section>
+
+          <section className="side-menu-section">
+            <div className="side-menu-section-title">Experiments</div>
+            <div className="side-menu-row">
+              <button
+                type="button"
+                className={`side-menu-btn-primary ${bgDemo ? 'is-active' : ''}`}
+                onClick={() => onToggleBgDemo?.()}
+              >{bgDemo ? 'Stop BG demo' : 'BG demo loop'}</button>
+            </div>
+            <div className="side-menu-note">
+              Cycles the Electricity house photo through every season and
+              time-of-day variant. Live mode picks one by the wall clock.
             </div>
           </section>
         </div>

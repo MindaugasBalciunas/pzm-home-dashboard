@@ -170,6 +170,8 @@ export default function App() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
+  // Experiments: loop the Electricity house photo through all variants.
+  const [bgDemo, setBgDemo] = useState(false);
   // `overrides` is the full layout object stored server-side. Keys are tile
   // ids: camera ids, "solar", "security", or user-added "custom-*" ids.
   // Values include position/size plus per-type extras (fit for cameras,
@@ -448,6 +450,8 @@ export default function App() {
         onToggleEdit={() => setEditMode((v) => !v)}
         onResetLayout={resetLayout}
         onAddTile={addCustomTile}
+        bgDemo={bgDemo}
+        onToggleBgDemo={() => setBgDemo((v) => !v)}
       />
 
       <main
@@ -494,6 +498,7 @@ export default function App() {
             editMode={editMode}
             onStartMove={(e) => startDrag(SOLAR_ID, e, 'move')}
             onStartResize={(e) => startDrag(SOLAR_ID, e, 'resize')}
+            bgDemo={bgDemo}
           />
         )}
         {layout[SECURITY_ID] && (
