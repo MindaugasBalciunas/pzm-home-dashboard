@@ -10,11 +10,22 @@ public sealed class HomeAssistantController : ControllerBase
 {
     private readonly HomeAssistantClient _client;
     private readonly HomeAssistantOptions _opts;
+    private readonly WeatherService _weather;
 
-    public HomeAssistantController(HomeAssistantClient client, HomeAssistantOptions opts)
+    public HomeAssistantController(HomeAssistantClient client, HomeAssistantOptions opts, WeatherService weather)
     {
         _client = client;
         _opts = opts;
+        _weather = weather;
+    }
+
+    // Hourly forecast (next 24 h) + sunrise/sunset for the weather card.
+    // Server-cached; safe to poll.
+    [HttpGet("weather")]
+    public async Task<IActionResult> Weather(CancellationToken ct)
+    {
+        Response.Headers["Cache-Control"] = "no-store";
+        return Ok(await _weather.GetForecastAsync(ct));
     }
 
     [HttpGet("solar")]

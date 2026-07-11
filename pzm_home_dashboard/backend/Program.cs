@@ -12,6 +12,7 @@ builder.Services.AddSingleton<StreamManager>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<StreamManager>());
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<HomeAssistantClient>();
+builder.Services.AddSingleton<WeatherService>();
 builder.Services.AddSingleton<LayoutStore>();
 builder.Services.AddControllers();
 

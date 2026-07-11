@@ -133,6 +133,40 @@ public sealed class HomeAssistantClient
         }
     }
 
+    // Home coordinates from HA's /api/config — the weather card fetches
+    // its forecast for wherever Home Assistant says home is, so the addon
+    // needs no address configuration of its own.
+    public async Task<(double Lat, double Lon)?> GetHomeCoordinatesAsync(CancellationToken ct)
+    {
+        var (baseUrl, token) = ResolveCreds();
+        if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(token)) return null;
+
+        var http = _factory.CreateClient();
+        http.Timeout = TimeSpan.FromSeconds(5);
+        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        try
+        {
+            using var resp = await http.GetAsync(baseUrl + "config", ct);
+            if (!resp.IsSuccessStatusCode) return null;
+            await using var stream = await resp.Content.ReadAsStreamAsync(ct);
+            using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
+            if (doc.RootElement.TryGetProperty("latitude", out var lat)
+                && doc.RootElement.TryGetProperty("longitude", out var lon)
+                && lat.ValueKind == JsonValueKind.Number
+                && lon.ValueKind == JsonValueKind.Number)
+            {
+                return (lat.GetDouble(), lon.GetDouble());
+            }
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "HA config fetch failed");
+            return null;
+        }
+    }
+
     // Select-domain entities (e.g. the TrackMix PTZ preset select) carry
     // their choices in attributes.options; the generic state DTO drops
     // attributes, so the PTZ card gets this dedicated fetch.

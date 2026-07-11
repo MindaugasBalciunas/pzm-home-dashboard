@@ -2756,6 +2756,208 @@ input[type="color"].bg-swatch::-webkit-color-swatch {
   white-space: nowrap;
 }
 
+/* ---------- Weather card ----------
+   Wide hourly-forecast strip: one cell per hour (icon, temp, wind) with
+   sunrise/sunset cells slotted in chronologically. The strip scrolls
+   horizontally; icons carry gentle CSS animations. */
+.weather-tile {
+  background: linear-gradient(145deg, #0f131a 0%, #151922 100%);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+.wx-inner {
+  position: absolute;
+  inset: 0;
+  padding: 0.25rem 0.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-height: 0;
+}
+.wx-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.wx-title {
+  font-size: 0.56rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 800;
+}
+.wx-now {
+  font-size: 0.95rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.wx-head-spacer { flex: 1 1 auto; }
+.wx-sun-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #f5a623;
+}
+.wx-sun-chip .wx-icon { width: 18px; height: 18px; color: #f5a623; }
+
+.wx-strip {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  gap: 0.25rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  padding-bottom: 2px;
+}
+.wx-cell {
+  flex: 0 0 auto;
+  width: 62px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  padding: 0.25rem 0.15rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.025);
+  scroll-snap-align: start;
+}
+/* First cell is always the current hour. */
+.wx-strip > .wx-cell:first-child {
+  border-color: rgba(74, 163, 255, 0.55);
+  background: rgba(74, 163, 255, 0.10);
+}
+.wx-cell.wx-night { background: rgba(58, 84, 138, 0.10); }
+.wx-cell-time {
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.wx-cell-icon { width: 34px; height: 34px; }
+.wx-cell-temp {
+  font-size: 0.85rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.wx-cell-wind {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.wx-wind-unit { font-size: 0.5rem; font-weight: 700; }
+.wx-wind-arrow { width: 10px; height: 10px; color: var(--accent); flex: 0 0 auto; }
+.wx-cell-precip {
+  font-size: 0.58rem;
+  font-weight: 800;
+  color: #4aa3ff;
+  min-height: 0.7rem;
+  line-height: 1.1;
+}
+.wx-precip-quiet { visibility: hidden; }
+.wx-cell-sun {
+  background: rgba(245, 166, 35, 0.10);
+  border-color: rgba(245, 166, 35, 0.45);
+}
+.wx-cell-sun .wx-cell-icon { width: 30px; height: 30px; }
+.wx-cell-sunlabel {
+  font-size: 0.54rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #f5a623;
+  white-space: nowrap;
+}
+
+/* --- Weather glyph colours (parts fill with currentColor) --- */
+.wx-icon { width: 100%; height: 100%; display: block; }
+.wx-icon .wx-sun,
+.wx-kind-sunrise, .wx-kind-sunset { color: #f5a623; }
+.wx-icon .wx-moon { color: #cfd8e3; }
+.wx-icon .wx-cloud { color: #97a3b4; }
+.wx-icon .wx-drops { color: #4aa3ff; }
+.wx-icon .wx-flakes { color: #dbe9ff; }
+.wx-icon .wx-bolt { color: #f5a623; }
+.wx-icon .wx-fog { color: #9aa7b8; }
+
+/* --- Weather animations --- */
+.wx-icon .wx-rays,
+.wx-icon .wx-cloud,
+.wx-icon .wx-drop,
+.wx-icon .wx-flake,
+.wx-icon .wx-bolt,
+.wx-icon .wx-fog-line,
+.wx-icon .wx-sun-rise,
+.wx-icon .wx-sun-set {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.wx-icon .wx-rays { animation: wx-spin 26s linear infinite; }
+.wx-icon .wx-core { animation: wx-glow 3.2s ease-in-out infinite alternate; }
+.wx-icon .wx-cloud { animation: wx-drift 5.5s ease-in-out infinite alternate; }
+.wx-icon .wx-drop { animation: wx-fall 1.15s linear infinite; }
+.wx-icon .wx-drop-1 { animation-delay: 0.38s; }
+.wx-icon .wx-drop-2 { animation-delay: 0.76s; }
+.wx-icon .wx-flake { animation: wx-snowfall 2.6s linear infinite; }
+.wx-icon .wx-flake-1 { animation-delay: 0.85s; }
+.wx-icon .wx-flake-2 { animation-delay: 1.7s; }
+.wx-icon .wx-bolt { animation: wx-flash 3.2s ease-in-out infinite; }
+.wx-icon .wx-fog-0 { animation: wx-fog-slide 4s ease-in-out infinite alternate; }
+.wx-icon .wx-fog-1 { animation: wx-fog-slide 4s ease-in-out infinite alternate-reverse; }
+.wx-icon .wx-sun-rise { animation: wx-rise 3s ease-in-out infinite alternate; }
+.wx-icon .wx-sun-set { animation: wx-set 3s ease-in-out infinite alternate; }
+
+@keyframes wx-spin { to { transform: rotate(360deg); } }
+@keyframes wx-glow { from { opacity: 0.8; } to { opacity: 1; } }
+@keyframes wx-drift { from { transform: translateX(-1px); } to { transform: translateX(1.4px); } }
+@keyframes wx-fall {
+  0% { transform: translateY(-1px); opacity: 0; }
+  20% { opacity: 1; }
+  75% { opacity: 1; }
+  100% { transform: translateY(4.5px); opacity: 0; }
+}
+@keyframes wx-snowfall {
+  0% { transform: translate(0, -1px); opacity: 0; }
+  20% { opacity: 1; }
+  60% { transform: translate(1.4px, 2.5px); opacity: 1; }
+  100% { transform: translate(-0.6px, 5px); opacity: 0; }
+}
+@keyframes wx-flash {
+  0%, 78% { opacity: 0.85; }
+  82% { opacity: 0.15; }
+  86% { opacity: 1; }
+  90% { opacity: 0.4; }
+  94%, 100% { opacity: 0.85; }
+}
+@keyframes wx-fog-slide { from { transform: translateX(-1.6px); } to { transform: translateX(1.6px); } }
+@keyframes wx-rise { from { transform: translateY(1px); } to { transform: translateY(-1px); } }
+@keyframes wx-set { from { transform: translateY(-1px); } to { transform: translateY(1px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .wx-icon * { animation: none !important; }
+}
+
 /* Mobile/tablet: nothing needed here yet — kept as a hook for future
    touch-only overrides. */
 

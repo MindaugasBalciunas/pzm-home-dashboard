@@ -3,6 +3,7 @@ import CameraTile from './components/CameraTile.jsx';
 import SolarCard from './components/SolarCard.jsx';
 import SecurityCard from './components/SecurityCard.jsx';
 import PtzCard from './components/PtzCard.jsx';
+import WeatherCard from './components/WeatherCard.jsx';
 import SideMenu from './components/SideMenu.jsx';
 import SimpleTile from './components/SimpleTile.jsx';
 import TileEditor from './components/TileEditor.jsx';
@@ -22,6 +23,9 @@ const SECURITY_ID = 'security';
 const PTZ_ID = 'ptz';
 const PTZ_W = 10;
 const PTZ_H = 7;
+const WEATHER_ID = 'weather';
+const WEATHER_W = 24;
+const WEATHER_H = 6;
 
 const FIT_MODES = ['fit', 'center', 'stretch'];
 const DEFAULT_FIT = 'fit';
@@ -29,9 +33,9 @@ const DEFAULT_FIT = 'fit';
 // Marker that the initial template has already been seeded. Once present in
 // `overrides`, we never re-seed even if the user deletes template tiles.
 const TEMPLATE_MARKER = '_seededTemplate';
-// v2 added the Camera PTZ preset card; v1 layouts get just that tile
-// seeded into their first free slot on upgrade.
-const TEMPLATE_VERSION = 'v2';
+// v2 added the Camera PTZ preset card, v3 the Weather card. Older layouts
+// get only the tiles they're missing, each seeded into a free slot.
+const TEMPLATE_VERSION = 'v3';
 
 // Dashboard-wide appearance settings ride along in the shared layout under
 // this key (like the template marker, it's not a tile). Currently: `bg`,
@@ -84,9 +88,10 @@ function seedTemplateLayout(startRow) {
     const { col: c, row: r } = advance(numbersW, numbersH);
     out[t.id] = { col: c, row: r, colSpan: numbersW, rowSpan: numbersH, spec: { kind: 'number', entityId: t.entityId, domain: t.domain, name: t.name, unit: t.unit } };
   }
-  // Camera PTZ preset card on its own row below the strip.
+  // Camera PTZ preset card + Weather card on their own row below the strip.
   row += numbersH;
   out[PTZ_ID] = { col: 1, row, colSpan: PTZ_W, rowSpan: PTZ_H };
+  out[WEATHER_ID] = { col: PTZ_W + 1, row, colSpan: WEATHER_W, rowSpan: WEATHER_H };
   return out;
 }
 
@@ -280,14 +285,19 @@ export default function App() {
           setOverrides(seeded);
           saveLayout(seeded);
         } else if (marker !== TEMPLATE_VERSION) {
-          // Template v1 → v2: the only addition is the Camera PTZ preset
-          // card — drop it into the first free slot of the existing layout.
-          const spot = findFreeSpot(initial, PTZ_W, PTZ_H);
-          const seeded = {
-            ...initial,
-            [PTZ_ID]: initial[PTZ_ID] || { ...spot, colSpan: PTZ_W, rowSpan: PTZ_H },
-            [TEMPLATE_MARKER]: TEMPLATE_VERSION,
-          };
+          // Older template: seed only the built-in cards this layout is
+          // missing, each into the first free slot (sequentially, so the
+          // second one sees the first one's spot as taken).
+          const seeded = { ...initial };
+          for (const [id, w, h] of [
+            [PTZ_ID, PTZ_W, PTZ_H],
+            [WEATHER_ID, WEATHER_W, WEATHER_H],
+          ]) {
+            if (seeded[id]) continue;
+            const spot = findFreeSpot(seeded, w, h);
+            seeded[id] = { ...spot, colSpan: w, rowSpan: h };
+          }
+          seeded[TEMPLATE_MARKER] = TEMPLATE_VERSION;
           setOverrides(seeded);
           saveLayout(seeded);
         } else {
@@ -326,9 +336,12 @@ export default function App() {
     }
     out[SOLAR_ID] = { ...defaults[SOLAR_ID], ...(overrides[SOLAR_ID] || {}) };
     out[SECURITY_ID] = { ...defaults[SECURITY_ID], ...(overrides[SECURITY_ID] || {}) };
-    // PTZ card only renders once seeded into the layout (template v2+).
+    // PTZ / Weather cards only render once seeded into the layout.
     if (overrides[PTZ_ID]) {
       out[PTZ_ID] = { colSpan: PTZ_W, rowSpan: PTZ_H, ...overrides[PTZ_ID] };
+    }
+    if (overrides[WEATHER_ID]) {
+      out[WEATHER_ID] = { colSpan: WEATHER_W, rowSpan: WEATHER_H, ...overrides[WEATHER_ID] };
     }
     for (const [id, entry] of Object.entries(overrides)) {
       if (!entry || typeof entry !== 'object') continue;
@@ -733,6 +746,18 @@ export default function App() {
             editMode={editMode}
             onStartMove={tileHandlers(PTZ_ID).onStartMove}
             onStartResize={tileHandlers(PTZ_ID).onStartResize}
+          />
+        )}
+        {layout[WEATHER_ID] && (
+          <WeatherCard
+            key={WEATHER_ID}
+            col={layout[WEATHER_ID].col}
+            row={layout[WEATHER_ID].row}
+            colSpan={layout[WEATHER_ID].colSpan}
+            rowSpan={layout[WEATHER_ID].rowSpan}
+            editMode={editMode}
+            onStartMove={tileHandlers(WEATHER_ID).onStartMove}
+            onStartResize={tileHandlers(WEATHER_ID).onStartResize}
           />
         )}
         {customEntries.map(([id, entry]) => {

@@ -4,6 +4,20 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.29
+
+- **Weather card.** New wide built-in card with the next 24 hours of
+  forecast in a horizontally scrollable strip — animated weather icons
+  (spinning sun rays, drifting clouds, falling rain/snow, lightning
+  flashes, sliding fog), temperature, wind speed with a direction arrow,
+  and precipitation probability per hour. Sunrise and sunset appear both
+  as header chips and as amber cells slotted chronologically into the
+  strip; hours after sunset render with a night tint and moon icons.
+  Data comes from Open-Meteo (no API key) for Home Assistant's home
+  coordinates, cached server-side for 15 minutes. The card seeds itself
+  into a free slot of existing layouts and moves/resizes like any tile;
+  animations respect `prefers-reduced-motion`.
+
 ## 0.2.28
 
 - **Camera PTZ preset card.** New built-in card listing the TrackMix
