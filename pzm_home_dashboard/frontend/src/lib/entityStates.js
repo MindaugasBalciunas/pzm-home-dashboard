@@ -67,6 +67,11 @@ function onVisible() {
   if (!document.hidden) pollAll();
 }
 
+// In-place refresh (pull-to-refresh) — re-poll every subscribed tile at once.
+function onRefresh() {
+  if (!document.hidden) pollAll();
+}
+
 function subscribe(entityId, cb) {
   let set = subscribers.get(entityId);
   if (!set) { set = new Set(); subscribers.set(entityId, set); }
@@ -74,6 +79,7 @@ function subscribe(entityId, cb) {
   if (!timer) {
     timer = setInterval(pollAll, POLL_MS);
     document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('pzm:refresh', onRefresh);
   }
   schedulePoll();
   return () => {
@@ -83,6 +89,7 @@ function subscribe(entityId, cb) {
       clearInterval(timer);
       timer = null;
       document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('pzm:refresh', onRefresh);
     }
   };
 }

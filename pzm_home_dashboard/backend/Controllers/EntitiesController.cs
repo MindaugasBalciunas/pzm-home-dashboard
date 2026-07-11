@@ -58,10 +58,13 @@ public sealed class EntitiesController : ControllerBase
     [HttpPost("entity/state")]
     public async Task<IActionResult> States([FromBody] StatesReq body, CancellationToken ct)
     {
+        // Custom tiles poll their entities through here — resolve them from
+        // the shared /states snapshot so a screenful of tiles costs one HA
+        // fetch, not one request per tile.
         var ids = body?.Ids ?? Array.Empty<string>();
         var tasks = ids.Where(id => !string.IsNullOrWhiteSpace(id))
                        .Distinct()
-                       .Select(id => _client.GetStateAsync(id, ct))
+                       .Select(id => _client.GetStateCachedAsync(id, ct))
                        .ToArray();
         var results = await Task.WhenAll(tasks);
         Response.Headers["Cache-Control"] = "no-store";

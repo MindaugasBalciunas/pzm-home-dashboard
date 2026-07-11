@@ -78,9 +78,19 @@ function SecurityCard({
   const [snapshot, setSnapshot] = useState(null);
   const [error, setError] = useState(null);
   const [pending, setPending] = useState({});     // gateIndex -> boolean
+  // Opening a physical gate is a two-tap action: the first tap arms the
+  // button ("Tap to open") and only a second tap within ARM_TIMEOUT_MS
+  // actually fires, so a stray brush on the wall can't open a gate. A modal
+  // confirm() is avoided on purpose — Webview kiosks can suppress it.
+  const [armed, setArmed] = useState({});          // gateIndex -> boolean
+  const armTimersRef = useRef({});
   // Compare raw payload text so an all-quiet poll (no zone changed) skips
   // the setState — the card stops re-rendering every 4 s.
   const lastPayloadRef = useRef('');
+
+  useEffect(() => () => {
+    for (const t of Object.values(armTimersRef.current)) clearTimeout(t);
+  }, []);
 
   const loadRef = useRef(null);
   loadRef.current = async () => {
@@ -99,7 +109,33 @@ function SecurityCard({
 
   useEffect(() => startPolling(() => loadRef.current(), POLL_MS), []);
 
-  const triggerGate = async (index) => {
+  const ARM_TIMEOUT_MS = 3000;
+
+  const disarmGate = (index) => {
+    if (armTimersRef.current[index]) {
+      clearTimeout(armTimersRef.current[index]);
+      delete armTimersRef.current[index];
+    }
+    setArmed((a) => {
+      if (!a[index]) return a;
+      const next = { ...a }; delete next[index]; return next;
+    });
+  };
+
+  // First tap arms; a second tap while armed fires. Auto-disarms after a few
+  // seconds so a half-finished action doesn't stay hot.
+  const onGateTap = (index) => {
+    if (armed[index]) {
+      disarmGate(index);
+      doTriggerGate(index);
+      return;
+    }
+    setArmed((a) => ({ ...a, [index]: true }));
+    if (armTimersRef.current[index]) clearTimeout(armTimersRef.current[index]);
+    armTimersRef.current[index] = setTimeout(() => disarmGate(index), ARM_TIMEOUT_MS);
+  };
+
+  const doTriggerGate = async (index) => {
     setPending((p) => ({ ...p, [index]: true }));
     try {
       const r = await fetch(`api/ha/security/gate/${index}`, { method: 'POST' });
@@ -145,7 +181,10 @@ function SecurityCard({
         data-zones={hasZones ? '' : undefined}
         data-pir={hasPir ? '' : undefined}
       >
-        {error && <div className="solar-note solar-note-error">{error}</div>}
+        {/* Only shout about an error before the first successful load; once
+            we have a snapshot, a transient poll blip keeps the last-good
+            panel rather than flashing red across the wall. */}
+        {error && !snapshot && <div className="solar-note solar-note-error">{error}</div>}
         {!error && !configured && (
           <div className="solar-note">Home Assistant not configured.</div>
         )}
@@ -160,6 +199,7 @@ function SecurityCard({
           {gates.map((g, i) => {
             const open = contactOpen(g.contactState);
             const busy = !!pending[i];
+            const isArmed = !!armed[i];
             const stateText = open != null
               ? zoneStateLabel(g.contactKind || 'contact', open)
               : (g.state?.state && g.state.state !== 'unknown' && g.state.state !== 'unavailable')
@@ -170,9 +210,10 @@ function SecurityCard({
               <button
                 key={g.entity || i}
                 type="button"
-                className={`gate-btn gate-btn-${stateAccent} ${busy ? 'gate-btn-busy' : ''}`}
+                className={`gate-btn gate-btn-${stateAccent} ${busy ? 'gate-btn-busy' : ''} ${isArmed ? 'gate-btn-armed' : ''}`}
                 disabled={busy || !g.entity}
-                onClick={() => triggerGate(i)}
+                onClick={() => onGateTap(i)}
+                onBlur={() => isArmed && disarmGate(i)}
                 title={g.entity || ''}
               >
                 <div className="gate-icon" aria-hidden>
@@ -180,8 +221,8 @@ function SecurityCard({
                 </div>
                 <div className="gate-body">
                   <div className="gate-name">{g.name || `Gate ${i + 1}`}</div>
-                  <div className={`gate-state gate-state-${stateAccent}`}>
-                    {busy ? 'Triggering…' : stateText}
+                  <div className={`gate-state gate-state-${isArmed ? 'armed' : stateAccent}`}>
+                    {busy ? 'Triggering…' : isArmed ? 'Tap to open' : stateText}
                   </div>
                 </div>
               </button>

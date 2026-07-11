@@ -88,7 +88,7 @@ function flowDur(v) {
   return `${Math.max(0.4, 2.6 - Math.log10(w) * 0.4).toFixed(2)}s`;
 }
 
-function HouseView({
+function HouseViewImpl({
   pvState,
   pv1State,
   pv2State,
@@ -669,7 +669,7 @@ function HouseView({
   );
 }
 
-function EnergyChip({ metric, state, samples, hourlyPv }) {
+function EnergyChipImpl({ metric, state, samples, hourlyPv }) {
   const v = toNumber(state);
   const { text, unit } = formatValue(v, state?.unit);
   const useHourly = metric.key === 'todaySolar' && hourlyPv && hourlyPv.length > 0;
@@ -722,7 +722,7 @@ function EnergyChip({ metric, state, samples, hourlyPv }) {
 // Generic bar-per-bucket chart used for both weekly (last 7 days) and
 // hourly (today so far) breakdowns. `items` is [{key, v}]; each entry
 // becomes one bar sized against the tallest bar in the set.
-function BarChart({ items, accent, keyPrefix }) {
+function BarChartImpl({ items, accent, keyPrefix }) {
   if (!items || items.length === 0) return null;
   const w = 100, h = 30;
   let maxV = 0;
@@ -851,7 +851,7 @@ function bucketPairByHour(impSamples, expSamples) {
 // Mirrored hourly grid chart: export grows up from the axis (green),
 // import grows down (red). Position — not color alone — separates the
 // two series, and both scale against the same max so heights compare.
-function DualBarChart({ items }) {
+function DualBarChartImpl({ items }) {
   if (!items || items.length === 0) return null;
   const w = 100, h = 30;
   const mid = h / 2;
@@ -888,7 +888,7 @@ function DualBarChart({ items }) {
   );
 }
 
-function TodayGraph({ samples, accent }) {
+function TodayGraphImpl({ samples, accent }) {
   if (!samples || samples.length < 2) return null;
   const w = 100, h = 30;
   const values = samples.map((s) => (typeof s === 'number' ? s : s.v));
@@ -917,6 +917,16 @@ function TodayGraph({ samples, accent }) {
     </svg>
   );
 }
+
+// Memoised boundaries: SolarCard re-renders every few seconds as live
+// wattages change, but the charts' data only moves every 5–30 min and the
+// house diagram only when its own props change — memo keeps their SVG
+// subtrees from re-diffing on every snapshot tick.
+const HouseView = memo(HouseViewImpl);
+const EnergyChip = memo(EnergyChipImpl);
+const BarChart = memo(BarChartImpl);
+const DualBarChart = memo(DualBarChartImpl);
+const TodayGraph = memo(TodayGraphImpl);
 
 function SolarCard({
   col, row, colSpan, rowSpan, editMode,

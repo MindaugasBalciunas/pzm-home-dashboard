@@ -59,10 +59,13 @@ public sealed class HomeAssistantController : ControllerBase
             ("p1ImportTotal", s.P1ImportTotal),
             ("p1ExportTotal", s.P1ExportTotal),
         };
+        // All entities resolve from one shared /states snapshot (see
+        // HomeAssistantClient) — the awaits collapse onto a single HA fetch
+        // instead of ~25 per-entity requests.
         var tasks = pairs
             .Select(async p => (p.Key, State: string.IsNullOrWhiteSpace(p.EntityId)
                 ? null
-                : await _client.GetStateAsync(p.EntityId!, ct)))
+                : await _client.GetStateCachedAsync(p.EntityId!, ct)))
             .ToArray();
         var results = await Task.WhenAll(tasks);
         var payload = new Dictionary<string, object?>();
@@ -78,7 +81,7 @@ public sealed class HomeAssistantController : ControllerBase
             icon = c.Icon,
             state = string.IsNullOrWhiteSpace(c.Entity)
                 ? null
-                : await _client.GetStateAsync(c.Entity, ct),
+                : await _client.GetStateCachedAsync(c.Entity, ct),
         }).ToArray();
         payload["controls"] = await Task.WhenAll(controlTasks);
 

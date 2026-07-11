@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 
 // Pull-to-refresh. Watches touchstart at the very top of the viewport and,
-// if the user drags down past a threshold, triggers a full reload so every
-// tile re-fetches (cameras, HA snapshot, layout, SSE reconnect).
+// if the user drags down past a threshold, broadcasts a `pzm:refresh` event
+// that every poller and camera listens for — an in-place refresh, NOT a full
+// page reload. A reload tore down every hls.js player and forced the whole
+// wall through a 10-45 s cold-start black screen; refreshing in place re-polls
+// data and nudges the streams back to live without killing them.
 //
 // Also renders a visible affordance in the top-center that follows the
 // finger — a chevron that rotates to a spinner when the release threshold
@@ -63,10 +66,15 @@ export default function PullToRefresh() {
         setRefreshing(true);
         dyRef.current = TRIGGER_PX;
         setDy(TRIGGER_PX);
-        // Small delay so the user sees the spinner engage before the reload.
+        // Broadcast an in-place refresh, then let the spinner show briefly
+        // before retracting — no page reload, so streams stay alive.
+        try { window.dispatchEvent(new Event('pzm:refresh')); } catch { /* ignore */ }
         setTimeout(() => {
-          try { window.location.reload(); } catch { /* ignore */ }
-        }, 150);
+          refreshingRef.current = false;
+          setRefreshing(false);
+          dyRef.current = 0;
+          setDy(0);
+        }, 700);
       } else {
         dyRef.current = 0;
         setDy(0);

@@ -4,6 +4,47 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.37
+
+Performance, stability and UX pass across the whole add-on.
+
+**Camera placeholders (new).** While a stream warms up — or if it drops —
+the tile now shows the camera's own Reolink snapshot (a blurred still) with a
+"Connecting…" spinner over it, instead of a black rectangle. The snapshot is
+proxied by the backend so the camera password never reaches the browser.
+
+**Streaming stability.**
+- ffmpeg no longer respawns in a tight loop for an unreachable camera: a
+  failed start now triggers a 30 s cooldown, so a down camera can't peg the
+  CPU. Leftover HLS segment dirs are wiped at startup.
+- The camera tile's rebuild watchdog backs off and rebuilds are globally
+  rate-limited, so several tiles freezing under decoder load can no longer
+  cascade into a synchronized rebuild storm.
+
+**Backend load.** The Solar, Security and custom-tile endpoints shared ~50
+individual Home Assistant REST calls per refresh cycle; they now read from a
+single 2 s-cached `/states` snapshot — one HA request instead of ~50. Layout
+writes are debounced (less flash wear) and the layout read is now torn-free.
+
+**Fixes.** Solar daily/monthly statistics now connect under HAOS (the
+WebSocket URL dropped the supervisor's `/core` prefix). Minor resource leaks
+closed (a timer per stream stop; stale tile handlers on remove).
+
+**Frontend weight.** Switched to the lighter hls.js build and lazy-loaded the
+edit-mode modals — ~200 kB less to download and parse on kiosk boot. The solar
+diagram and charts are memoised so they stop re-rendering every 3 s.
+
+**Touch UX.**
+- Opening a gate now takes two taps (arm, then confirm) so a stray brush on
+  the wall can't open it.
+- Switch/light tiles flip instantly on tap (optimistic) instead of waiting a
+  poll round-trip.
+- Pull-to-refresh reloads data in place instead of doing a full page reload
+  (which used to black-screen every camera).
+- A transient poll failure keeps the last-good values with a small stale dot,
+  instead of turning every tile into red error text.
+- Bigger resize/edit hit areas and a keyboard focus ring on all controls.
+
 ## 0.2.36
 
 Security hardening release — no functional changes.

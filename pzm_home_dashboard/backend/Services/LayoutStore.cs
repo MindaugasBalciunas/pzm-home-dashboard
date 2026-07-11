@@ -9,12 +9,23 @@ namespace PzmHomeDashboard.Services;
 public sealed class LayoutStore
 {
     private readonly string _path;
-    private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly ILogger<LayoutStore> _log;
     private readonly List<Channel<LayoutSnapshot>> _subscribers = new();
     private readonly object _subLock = new();
+
+    // The whole layout state is one immutable snapshot swapped atomically, so
+    // a reader (GET / SSE) can never observe a JsonElement half-updated by a
+    // concurrent PUT.
+    private volatile LayoutSnapshot _snapshot = new(0, default);
     private long _revision;
-    private JsonElement _current;
+
+    // Disk persistence is debounced: in-memory state and the SSE broadcast
+    // update immediately, but the file is written at most once per window so
+    // a drag gesture's stream of PUTs doesn't hammer eMMC/SD flash.
+    private static readonly TimeSpan WriteDebounce = TimeSpan.FromSeconds(2);
+    private readonly object _writeLock = new();
+    private Timer? _writeTimer;
+    private LayoutSnapshot? _pendingWrite;
 
     public LayoutStore(ILogger<LayoutStore> log)
     {
@@ -23,33 +34,44 @@ public sealed class LayoutStore
         Load();
     }
 
-    public LayoutSnapshot Get() => new(_revision, _current);
+    public LayoutSnapshot Get() => _snapshot;
 
-    public async Task<LayoutSnapshot> SetAsync(JsonElement layout, CancellationToken ct)
+    public Task<LayoutSnapshot> SetAsync(JsonElement layout, CancellationToken ct)
     {
-        await _lock.WaitAsync(ct);
+        var snap = new LayoutSnapshot(Interlocked.Increment(ref _revision), layout.Clone());
+        _snapshot = snap;
+        ScheduleWrite(snap);
+        Broadcast(snap);
+        return Task.FromResult(snap);
+    }
+
+    private void ScheduleWrite(LayoutSnapshot snap)
+    {
+        lock (_writeLock)
+        {
+            _pendingWrite = snap;
+            _writeTimer ??= new Timer(_ => FlushPending(), null, Timeout.Infinite, Timeout.Infinite);
+            _writeTimer.Change(WriteDebounce, Timeout.InfiniteTimeSpan);
+        }
+    }
+
+    private void FlushPending()
+    {
+        LayoutSnapshot? snap;
+        lock (_writeLock) { snap = _pendingWrite; _pendingWrite = null; }
+        if (snap is null) return;
         try
         {
-            _revision++;
-            _current = layout.Clone();
-            var json = JsonSerializer.Serialize(new { revision = _revision, layout = _current });
-            try
-            {
-                var dir = Path.GetDirectoryName(_path);
-                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-                    Directory.CreateDirectory(dir);
-                await File.WriteAllTextAsync(_path, json, ct);
-            }
-            catch (Exception ex)
-            {
-                _log.LogWarning(ex, "Failed to persist layout to {Path}", _path);
-            }
+            var json = JsonSerializer.Serialize(new { revision = snap.Revision, layout = snap.Layout });
+            var dir = Path.GetDirectoryName(_path);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                Directory.CreateDirectory(dir);
+            File.WriteAllText(_path, json);
         }
-        finally { _lock.Release(); }
-
-        var snap = new LayoutSnapshot(_revision, _current);
-        Broadcast(snap);
-        return snap;
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Failed to persist layout to {Path}", _path);
+        }
     }
 
     public Channel<LayoutSnapshot> Subscribe()
@@ -93,14 +115,16 @@ public sealed class LayoutStore
             {
                 var text = File.ReadAllText(_path);
                 using var doc = JsonDocument.Parse(text);
+                long revision = 0;
                 if (doc.RootElement.TryGetProperty("revision", out var rev)
                     && rev.ValueKind == JsonValueKind.Number)
                 {
-                    _revision = rev.GetInt64();
+                    revision = rev.GetInt64();
                 }
                 if (doc.RootElement.TryGetProperty("layout", out var layout))
                 {
-                    _current = layout.Clone();
+                    _revision = revision;
+                    _snapshot = new LayoutSnapshot(revision, layout.Clone());
                     return;
                 }
             }
@@ -110,7 +134,7 @@ public sealed class LayoutStore
             _log.LogWarning(ex, "Failed to load layout from {Path}", _path);
         }
         using var empty = JsonDocument.Parse("{}");
-        _current = empty.RootElement.Clone();
+        _snapshot = new LayoutSnapshot(0, empty.RootElement.Clone());
     }
 }
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import CameraTile from './components/CameraTile.jsx';
 import SolarCard from './components/SolarCard.jsx';
 import SecurityCard from './components/SecurityCard.jsx';
@@ -6,9 +6,11 @@ import PtzCard from './components/PtzCard.jsx';
 import WeatherCard from './components/WeatherCard.jsx';
 import SideMenu from './components/SideMenu.jsx';
 import SimpleTile from './components/SimpleTile.jsx';
-import TileEditor from './components/TileEditor.jsx';
-import SecurityOptions from './components/SecurityOptions.jsx';
 import PullToRefresh from './components/PullToRefresh.jsx';
+// Edit-only modals (and their icon/entity pickers) — the kiosk almost never
+// enters edit mode, so keep them out of the initial bundle and load on demand.
+const TileEditor = lazy(() => import('./components/TileEditor.jsx'));
+const SecurityOptions = lazy(() => import('./components/SecurityOptions.jsx'));
 import { isFreePlacement } from './lib/placement.js';
 import { repairLayout } from './lib/layoutRepair.js';
 import { textVarsFor } from './lib/color.js';
@@ -483,6 +485,9 @@ export default function App() {
   };
 
   const removeCustomTile = useCallback((id) => {
+    // Drop the tile's cached event handlers too — otherwise every add/remove
+    // cycle over a long kiosk uptime leaks a stale handler object.
+    tileHandlersRef.current.delete(id);
     setOverrides((prev) => {
       if (!(id in prev)) return prev;
       const next = { ...prev };
@@ -837,23 +842,25 @@ export default function App() {
         })}
       </main>
 
-      {editingTileId === SECURITY_ID && (
-        <SecurityOptions
-          showZones={layout[SECURITY_ID]?.showZones !== false}
-          showPir={layout[SECURITY_ID]?.showPir !== false}
-          onChange={(patch) => updateTile(SECURITY_ID, patch, true)}
-          onClose={() => setEditingTileId(null)}
-        />
-      )}
-      {editingTileId && editingTileId !== SECURITY_ID && overrides[editingTileId] && (
-        <TileEditor
-          id={editingTileId}
-          entry={overrides[editingTileId]}
-          onSave={updateTileSpec}
-          onDelete={(id) => { removeCustomTile(id); setEditingTileId(null); }}
-          onCancel={() => setEditingTileId(null)}
-        />
-      )}
+      <Suspense fallback={null}>
+        {editingTileId === SECURITY_ID && (
+          <SecurityOptions
+            showZones={layout[SECURITY_ID]?.showZones !== false}
+            showPir={layout[SECURITY_ID]?.showPir !== false}
+            onChange={(patch) => updateTile(SECURITY_ID, patch, true)}
+            onClose={() => setEditingTileId(null)}
+          />
+        )}
+        {editingTileId && editingTileId !== SECURITY_ID && overrides[editingTileId] && (
+          <TileEditor
+            id={editingTileId}
+            entry={overrides[editingTileId]}
+            onSave={updateTileSpec}
+            onDelete={(id) => { removeCustomTile(id); setEditingTileId(null); }}
+            onCancel={() => setEditingTileId(null)}
+          />
+        )}
+      </Suspense>
     </>
   );
 }

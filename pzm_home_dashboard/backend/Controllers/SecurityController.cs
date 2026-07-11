@@ -22,9 +22,14 @@ public sealed class SecurityController : ControllerBase
     {
         var sec = _opts.Security;
 
+        // Alarm, every gate (entity + contact) and every zone all resolve
+        // from the one shared /states snapshot, so the whole security card is
+        // a single HA fetch rather than ~17 per-entity requests.
+        async Task<HaStateDto?> ResolveAlarmAsync(string panel)
+            => await _client.GetStateCachedAsync(panel, ct);
         var alarmTask = string.IsNullOrWhiteSpace(sec.AlarmPanel)
             ? Task.FromResult<HaStateDto?>(null)
-            : _client.GetStateAsync(sec.AlarmPanel!, ct);
+            : ResolveAlarmAsync(sec.AlarmPanel!);
 
         var gateTasks = sec.Gates.Select(async g =>
         {
@@ -40,10 +45,10 @@ public sealed class SecurityController : ControllerBase
                 ContactKind = contactKind,
                 state = string.IsNullOrWhiteSpace(entity)
                     ? null
-                    : await _client.GetStateAsync(entity!, ct),
+                    : await _client.GetStateCachedAsync(entity!, ct),
                 contactState = string.IsNullOrWhiteSpace(contact)
                     ? null
-                    : await _client.GetStateAsync(contact!, ct),
+                    : await _client.GetStateCachedAsync(contact!, ct),
             };
         }).ToArray();
 
@@ -54,7 +59,7 @@ public sealed class SecurityController : ControllerBase
             z.Kind,
             state = string.IsNullOrWhiteSpace(z.Entity)
                 ? null
-                : await _client.GetStateAsync(z.Entity, ct),
+                : await _client.GetStateCachedAsync(z.Entity, ct),
         }).ToArray();
 
         await Task.WhenAll(

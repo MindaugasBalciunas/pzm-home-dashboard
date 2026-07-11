@@ -9,6 +9,11 @@ import { textVarsFor, withAlpha } from '../lib/color.js';
 const LONG_PRESS_MS = 450;
 const LONG_PRESS_MOVE_PX = 8;
 
+// Domains whose default action is a toggle — for these we can flip the tile
+// optimistically on tap. press/scene/script have no on/off to predict.
+const TOGGLE_DOMAINS = new Set(['switch', 'light', 'input_boolean', 'fan', 'cover']);
+const domainOf = (eid) => String(eid || '').split('.')[0];
+
 function isOnState(s) {
   if (s == null) return null;
   const v = String(s).toLowerCase();
@@ -156,11 +161,40 @@ function SimpleTile({
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState(null);
   const [lightOpen, setLightOpen] = useState(false);
-  const error = actionError || pollError;
+  // Optimistic on/off after a tap: the tile flips instantly instead of
+  // sitting dead for a poll round-trip. Cleared once the real state confirms
+  // it (or times out if the guess was wrong — see the effect below).
+  const [optimistic, setOptimistic] = useState(null);
+  // A failed tap (actionError) is worth a loud red line. A transient batch
+  // poll failure while we still hold a last-good value is NOT — otherwise one
+  // backend blip turns the whole wall into red "HTTP 5xx" text. In that case
+  // keep showing the last value and mark the tile subtly stale instead.
+  const hasData = state != null;
+  const stale = !!pollError && hasData;
+  const shownError = actionError || (pollError && !hasData ? pollError : null);
+  const errorOrStale = shownError
+    ? <div className="side-menu-note" style={{ color: 'var(--danger)' }}>{shownError}</div>
+    : stale
+      ? <span className="tile-stale-dot" title="Reconnecting — showing last known value" aria-hidden />
+      : null;
+
+  const realOn = isOnState(state?.state);
+  const on = optimistic != null ? optimistic : realOn;
+
+  useEffect(() => {
+    if (optimistic == null) return undefined;
+    if (realOn === optimistic) { setOptimistic(null); return undefined; }
+    // Real state hasn't caught up yet — revert after a moment so a wrong or
+    // ignored prediction can't stick.
+    const t = setTimeout(() => setOptimistic(null), 4000);
+    return () => clearTimeout(t);
+  }, [optimistic, realOn]);
 
   const trigger = async () => {
     if (busy) return;
     setBusy(true);
+    const dom = spec.domain || domainOf(spec.entityId);
+    if (TOGGLE_DOMAINS.has(dom) && (on === true || on === false)) setOptimistic(!on);
     try {
       const r = await fetch('api/ha/entity/action', {
         method: 'POST',
@@ -172,6 +206,7 @@ function SimpleTile({
       setTimeout(refreshEntities, 700);
     } catch (e) {
       setActionError(String(e));
+      setOptimistic(null); // revert the flip — the call didn't land
     } finally {
       setTimeout(() => setBusy(false), 800);
     }
@@ -179,7 +214,6 @@ function SimpleTile({
 
   const style = tilePlacementStyle(col, row, colSpan, rowSpan);
 
-  const on = isOnState(state?.state);
   // HA-level "unavailable"/"unknown" (device offline — Tuya devices drop
   // out like this when they lose WiFi/cloud) is rendered as an explicit
   // Offline badge, NOT a mute dash: a dash reads as "dashboard broken",
@@ -314,7 +348,7 @@ function SimpleTile({
           {display === 'bar' && (
             <ProgressBar num={num} min={spec.min} max={spec.max} level={level} />
           )}
-          {error && <div className="side-menu-note" style={{ color: 'var(--danger)' }}>{error}</div>}
+          {errorOrStale}
         </div>
         {editHeader}
       </div>
@@ -400,7 +434,7 @@ function SimpleTile({
               ))}
             </div>
           )}
-          {error && <div className="side-menu-note" style={{ color: 'var(--danger)' }}>{error}</div>}
+          {errorOrStale}
         </div>
         {editHeader}
       </div>
@@ -492,7 +526,7 @@ function SimpleTile({
         <div className={`custom-btn-state ${labelCls}`}>
           {busy ? 'Triggering…' : activeEffect || stateText}
         </div>
-        {error && <div className="side-menu-note" style={{ color: 'var(--danger)' }}>{error}</div>}
+        {errorOrStale}
       </button>
       {editHeader}
       {/* Portaled to <body>: the tile root may carry a custom opacity,

@@ -1,5 +1,8 @@
 import { memo, useEffect, useRef, useState } from 'react';
-import Hls from 'hls.js';
+// Light build: ~190 KB smaller than the full one. These are plain live
+// H.264 HLS streams — no alt-audio, subtitles or EME — so the trimmed build
+// covers everything the kiosk needs and cold-starts faster.
+import Hls from 'hls.js/light';
 import { tilePlacementStyle } from '../lib/placement.js';
 
 const FIT_TO_CSS = {
@@ -21,6 +24,24 @@ const MAX_BEHIND_LIVE_S = 3;
 const WATCHDOG_MS = 2000;
 const FROZEN_REBUILD_MS = 8000;
 const CONNECT_REBUILD_MS = 45000;
+// Backoff cap and the "played steadily this long → forget past failures"
+// window, so a tile that recovers resets to fast rebuilds.
+const REBUILD_BACKOFF_CAP = 4;
+const STEADY_RESET_MS = 30000;
+
+// Global rebuild rate-limiter shared by every camera tile. Rebuilding an
+// hls.js player (destroy + new MediaSource) is heavy; when the shared Android
+// decoder is saturated, tiles freeze together and would otherwise all rebuild
+// at once, spiking load and causing more freezes — a positive-feedback loop.
+// Serialising rebuilds to one per interval breaks that cascade.
+const GLOBAL_REBUILD_SPACING_MS = 1500;
+let lastGlobalRebuildAt = 0;
+function claimRebuildSlot() {
+  const now = Date.now();
+  if (now - lastGlobalRebuildAt < GLOBAL_REBUILD_SPACING_MS) return false;
+  lastGlobalRebuildAt = now;
+  return true;
+}
 
 function CameraTile({
   camera,
@@ -41,6 +62,9 @@ function CameraTile({
   // Bumped by the watchdog to tear the whole player down and rebuild it —
   // the only reliable escape from a wedged WebView decoder.
   const [rebuildToken, setRebuildToken] = useState(0);
+  // Consecutive rebuilds without a sustained recovery, persisted across the
+  // effect's rebuilds so the frozen/connect thresholds back off.
+  const rebuildCountRef = useRef(0);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -113,9 +137,15 @@ function CameraTile({
             case Hls.ErrorTypes.MEDIA_ERROR: hls.recoverMediaError(); break;
             default:
               // Unrecoverable: retry from scratch instead of leaving the
-              // tile dead until the next page reload.
+              // tile dead until the next page reload. Backs off with the
+              // rebuild count and waits for a free global rebuild slot.
               hls.destroy(); hls = null;
-              rebuildTimer = setTimeout(() => setRebuildToken((t) => t + 1), 5000);
+              rebuildTimer = setTimeout(function retry() {
+                if (destroyed) return;
+                if (!claimRebuildSlot()) { rebuildTimer = setTimeout(retry, 500); return; }
+                rebuildCountRef.current += 1;
+                setRebuildToken((t) => t + 1);
+              }, 5000 * Math.min(REBUILD_BACKOFF_CAP, 1 + rebuildCountRef.current));
           }
         }
       });
@@ -148,44 +178,64 @@ function CameraTile({
     let lastTime = -1;
     let frozenMs = 0;
     let connectingMs = 0;
+    let steadyMs = 0;
+    const rebuild = () => {
+      // Only rebuild if the global limiter grants a slot; otherwise leave the
+      // accumulated counter so the next tick retries once the slot frees.
+      if (!claimRebuildSlot()) return false;
+      rebuildCountRef.current += 1;
+      setRebuildToken((t) => t + 1);
+      return true;
+    };
     const watchdog = setInterval(() => {
       if (destroyed || document.hidden) return;
+      const backoff = Math.min(REBUILD_BACKOFF_CAP, 1 + rebuildCountRef.current);
       if (!hasPlayed) {
         connectingMs += WATCHDOG_MS;
-        if (connectingMs >= CONNECT_REBUILD_MS) {
-          connectingMs = 0;
-          setRebuildToken((t) => t + 1);
-        }
+        if (connectingMs >= CONNECT_REBUILD_MS * backoff && rebuild()) connectingMs = 0;
         return;
       }
       seekToLive();
       if (!video.paused && video.currentTime === lastTime) {
         frozenMs += WATCHDOG_MS;
-        if (frozenMs >= FROZEN_REBUILD_MS) {
-          frozenMs = 0;
-          setRebuildToken((t) => t + 1);
-        }
+        if (frozenMs >= FROZEN_REBUILD_MS * backoff && rebuild()) frozenMs = 0;
       } else {
         frozenMs = 0;
         lastTime = video.currentTime;
+        // Sustained clean playback clears the backoff so a since-recovered
+        // tile rebuilds promptly if it ever wedges again.
+        steadyMs += WATCHDOG_MS;
+        if (steadyMs >= STEADY_RESET_MS && rebuildCountRef.current > 0) {
+          rebuildCountRef.current = 0;
+        }
       }
     }, WATCHDOG_MS);
 
-    // Returning to the foreground: resume loading and jump straight to
-    // live instead of replaying whatever was buffered before the tab slept.
-    const onVisibility = () => {
+    // Returning to the foreground: resume loading and jump straight to live
+    // instead of replaying whatever was buffered before the tab slept. A
+    // small random delay staggers the wake across tiles so N cameras don't
+    // all re-request segments (and trigger ffmpeg cold-starts) at t=0.
+    let wakeTimer = null;
+    const nudgeToLive = () => {
       if (destroyed || document.hidden) return;
-      try { hls?.startLoad(); } catch { /* already loading */ }
-      seekToLive();
-      video.play().catch(() => { /* autoplay may need a gesture */ });
+      wakeTimer = setTimeout(() => {
+        if (destroyed || document.hidden) return;
+        try { hls?.startLoad(); } catch { /* already loading */ }
+        seekToLive();
+        video.play().catch(() => { /* autoplay may need a gesture */ });
+      }, Math.random() * 500);
     };
-    document.addEventListener('visibilitychange', onVisibility);
+    document.addEventListener('visibilitychange', nudgeToLive);
+    // Pull-to-refresh: jump the stream back to live in place (no reload).
+    window.addEventListener('pzm:refresh', nudgeToLive);
 
     return () => {
       destroyed = true;
       clearInterval(watchdog);
       if (rebuildTimer) clearTimeout(rebuildTimer);
-      document.removeEventListener('visibilitychange', onVisibility);
+      if (wakeTimer) clearTimeout(wakeTimer);
+      document.removeEventListener('visibilitychange', nudgeToLive);
+      window.removeEventListener('pzm:refresh', nudgeToLive);
       if (cleanup) cleanup();
       if (hls) { try { hls.destroy(); } catch { /* ignore */ } }
     };
@@ -194,6 +244,15 @@ function CameraTile({
   const tileStyle = tilePlacementStyle(col, row, colSpan, rowSpan);
 
   const objectFit = FIT_TO_CSS[fit] || 'contain';
+
+  // Reolink still, proxied by the backend (credentials stay server-side), used
+  // as the <video> poster and the connecting/error backdrop so a warming-up or
+  // dropped stream shows the last real frame instead of a black rectangle. The
+  // rebuild token busts the cache so each (re)connect pulls a fresh still.
+  const snapshotUrl = `api/cameras/${encodeURIComponent(camera.id)}/snapshot?t=${rebuildToken}`;
+  const backdropStyle = status === 'playing'
+    ? undefined
+    : { backgroundImage: `url("${snapshotUrl}")` };
 
   const handleTileDown = (e) => {
     if (!editMode) return;
@@ -216,15 +275,29 @@ function CameraTile({
       onPointerDown={handleTileDown}
     >
       <div className="tile-video-wrap">
+        {/* Snapshot backdrop behind the video: visible through the letterbox
+            bars and while the stream is connecting / errored. */}
+        <div
+          className={`tile-snapshot${status === 'playing' ? ' is-hidden' : ''}`}
+          style={backdropStyle}
+          aria-hidden
+        />
         <video
           ref={videoRef}
           className="tile-video"
           style={{ objectFit }}
+          poster={snapshotUrl}
           muted
           autoPlay
           playsInline
           controls={false}
         />
+        {status === 'connecting' && (
+          <div className="tile-overlay tile-overlay-connecting">
+            <span className="tile-spinner" aria-hidden />
+            <span>Connecting…</span>
+          </div>
+        )}
         {status === 'error' && (
           <div className="tile-overlay">{errorMessage || 'Stream unavailable'}</div>
         )}

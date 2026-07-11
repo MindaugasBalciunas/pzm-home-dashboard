@@ -16,6 +16,13 @@ public sealed class StreamManager : BackgroundService, IAsyncDisposable
     // they run as plain stream copy until the add-on restarts, instead of
     // black-screening (weak CPU, odd codec, missing filter, …).
     private readonly HashSet<string> _copyFallback = new(StringComparer.OrdinalIgnoreCase);
+    // Per-camera cooldown: after a start fails to produce a playlist, refuse
+    // to respawn ffmpeg for this window. A tile pointed at an unreachable
+    // camera otherwise retries the playlist every few seconds and each miss
+    // spawns a fresh ffmpeg that dies immediately — a spin loop that pegs a
+    // weak ARM box. The cooldown clears the moment a start succeeds again.
+    private readonly Dictionary<string, DateTime> _cooldownUntil = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly TimeSpan FailureCooldown = TimeSpan.FromSeconds(30);
     private readonly object _gate = new();
 
     public StreamManager(
@@ -28,6 +35,26 @@ public sealed class StreamManager : BackgroundService, IAsyncDisposable
         _log = log;
         _hlsRoot = Environment.GetEnvironmentVariable("HLS_ROOT") ?? "/tmp/rtspviewer";
         Directory.CreateDirectory(_hlsRoot);
+        PurgeHlsRoot();
+    }
+
+    // Wipe leftover per-camera segment dirs at startup. A hard kill (SIGKILL,
+    // container restart) or a renamed camera leaves orphaned directories that
+    // nothing reclaims — on boxes where the HLS root is tmpfs they sit in RAM.
+    private void PurgeHlsRoot()
+    {
+        try
+        {
+            foreach (var dir in Directory.EnumerateDirectories(_hlsRoot))
+            {
+                try { Directory.Delete(dir, recursive: true); } catch { /* best effort */ }
+            }
+            foreach (var f in Directory.EnumerateFiles(_hlsRoot))
+            {
+                try { File.Delete(f); } catch { /* best effort */ }
+            }
+        }
+        catch { /* best effort */ }
     }
 
     public string GetOutputDir(string cameraId) => Path.Combine(_hlsRoot, cameraId);
@@ -57,6 +84,12 @@ public sealed class StreamManager : BackgroundService, IAsyncDisposable
             {
                 if (!_sessions.TryGetValue(cameraId, out session!))
                 {
+                    // Recently failed: don't respawn ffmpeg until the cooldown
+                    // elapses (a 404 here just tells the player to keep waiting).
+                    if (_cooldownUntil.TryGetValue(cameraId, out var until) && DateTime.UtcNow < until)
+                    {
+                        return null;
+                    }
                     var transcode = _options.LowLatencyTranscode && !_copyFallback.Contains(cameraId);
                     session = StartFfmpeg(cameraId, camera, transcode);
                     _sessions[cameraId] = session;
@@ -70,6 +103,7 @@ public sealed class StreamManager : BackgroundService, IAsyncDisposable
             {
                 if (File.Exists(playlist))
                 {
+                    lock (_gate) _cooldownUntil.Remove(cameraId);
                     return playlist;
                 }
                 if (session.Process.HasExited)
@@ -84,13 +118,17 @@ public sealed class StreamManager : BackgroundService, IAsyncDisposable
                 ? $"ffmpeg exited with code {session.Process.ExitCode} before producing a playlist"
                 : "timed out waiting for the HLS playlist";
 
+            // Only the caller that owns this session in the dictionary tears
+            // it down; concurrent viewers of the same failed camera must not
+            // double-Kill the process or race to spawn a replacement.
+            bool owns;
             lock (_gate)
             {
-                if (_sessions.TryGetValue(cameraId, out var current) && ReferenceEquals(current, session))
-                {
-                    _sessions.Remove(cameraId);
-                }
+                owns = _sessions.TryGetValue(cameraId, out var current) && ReferenceEquals(current, session);
+                if (owns) _sessions.Remove(cameraId);
             }
+            if (!owns) return null;
+
             await StopSessionAsync(session, reason: "no playlist");
 
             if (session.Transcoded && attempt == 0)
@@ -102,7 +140,9 @@ public sealed class StreamManager : BackgroundService, IAsyncDisposable
                 continue;
             }
 
-            _log.LogWarning("Camera {Id}: {Reason}.", cameraId, reason);
+            _log.LogWarning("Camera {Id}: {Reason}. Cooling down for {Seconds}s.",
+                cameraId, reason, (int)FailureCooldown.TotalSeconds);
+            lock (_gate) _cooldownUntil[cameraId] = DateTime.UtcNow + FailureCooldown;
             return null;
         }
     }
@@ -248,7 +288,8 @@ public sealed class StreamManager : BackgroundService, IAsyncDisposable
             {
                 _log.LogInformation("Stopping ffmpeg for camera {Id} ({Reason}).", session.CameraId, reason);
                 try { session.Process.Kill(entireProcessTree: true); } catch { /* best effort */ }
-                try { await session.Process.WaitForExitAsync(new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token); }
+                using var waitCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                try { await session.Process.WaitForExitAsync(waitCts.Token); }
                 catch { /* best effort */ }
             }
         }

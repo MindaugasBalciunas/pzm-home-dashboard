@@ -12,9 +12,12 @@ export default defineConfig({
         // Vendor libs in their own hashed chunks: a dashboard release only
         // changes the small app chunk, so the kiosk re-downloads ~80 kB
         // instead of ~800 kB (hls.js/react hashes stay put → cache hits).
-        manualChunks: {
-          hls: ['hls.js'],
-          react: ['react', 'react-dom'],
+        // Function form so the hls.js/light subpath lands in the hls chunk too.
+        manualChunks(id) {
+          if (id.includes('node_modules/hls.js')) return 'hls';
+          if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')
+              || id.includes('node_modules/scheduler')) return 'react';
+          return undefined;
         },
       },
     },

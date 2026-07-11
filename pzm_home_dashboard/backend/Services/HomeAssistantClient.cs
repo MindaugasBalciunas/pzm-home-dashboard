@@ -14,6 +14,16 @@ public sealed class HomeAssistantClient
     private readonly HomeAssistantOptions _opts;
     private readonly ILogger<HomeAssistantClient> _log;
 
+    // Short-lived snapshot of HA's full /states dump. The dashboard's Solar,
+    // Security and custom-tile endpoints each used to fan out one REST call
+    // per entity (~50 GET /states/{id} per refresh cycle); they now share
+    // this single dump, refreshed at most every couple of seconds.
+    private static readonly TimeSpan SnapshotTtl = TimeSpan.FromSeconds(2);
+    private readonly SemaphoreSlim _snapshotLock = new(1, 1);
+    private Dictionary<string, HaStateDto>? _snapshotById;
+    private List<HaEntitySummary>? _snapshotSummaries;
+    private DateTime _snapshotAtUtc = DateTime.MinValue;
+
     public HomeAssistantClient(IHttpClientFactory factory, HomeAssistantOptions opts, ILogger<HomeAssistantClient> log)
     {
         _factory = factory;
@@ -32,24 +42,59 @@ public sealed class HomeAssistantClient
 
     public async Task<IReadOnlyList<HaEntitySummary>> GetAllStatesAsync(CancellationToken ct)
     {
-        var (baseUrl, token) = ResolveCreds();
-        if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(token))
-            return Array.Empty<HaEntitySummary>();
+        await EnsureSnapshotAsync(ct);
+        return _snapshotSummaries is { } s
+            ? s
+            : (IReadOnlyList<HaEntitySummary>)Array.Empty<HaEntitySummary>();
+    }
 
-        var http = _factory.CreateClient();
-        http.Timeout = TimeSpan.FromSeconds(10);
-        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    // One cached entity's state from the shared /states snapshot. Same shape
+    // as GetStateAsync (light attrs included), but up to SnapshotTtl stale —
+    // fine for a dashboard that polls every few seconds, and it collapses a
+    // whole poll's worth of per-entity fetches into a single HA request.
+    public async Task<HaStateDto> GetStateCachedAsync(string entityId, CancellationToken ct)
+    {
+        if (!IsSafeEntityId(entityId)) return new HaStateDto(entityId, null, null, null);
+        await EnsureSnapshotAsync(ct);
+        return _snapshotById is not null && _snapshotById.TryGetValue(entityId, out var dto)
+            ? dto
+            : new HaStateDto(entityId, null, null, null);
+    }
 
+    // Refresh the /states snapshot if it's older than SnapshotTtl. Concurrent
+    // callers (many entities resolving in one poll) collapse onto a single
+    // fetch via the double-checked lock; a failed refresh keeps the last
+    // snapshot rather than blanking the dashboard.
+    private async Task EnsureSnapshotAsync(CancellationToken ct)
+    {
+        if (_snapshotById is not null && DateTime.UtcNow - _snapshotAtUtc < SnapshotTtl) return;
+
+        await _snapshotLock.WaitAsync(ct);
         try
         {
+            if (_snapshotById is not null && DateTime.UtcNow - _snapshotAtUtc < SnapshotTtl) return;
+
+            var (baseUrl, token) = ResolveCreds();
+            if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(token))
+            {
+                _snapshotById = new(StringComparer.OrdinalIgnoreCase);
+                _snapshotSummaries = new();
+                _snapshotAtUtc = DateTime.UtcNow;
+                return;
+            }
+
+            var http = _factory.CreateClient();
+            http.Timeout = TimeSpan.FromSeconds(10);
+            http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
             using var resp = await http.GetAsync(baseUrl + "states", ct);
-            if (!resp.IsSuccessStatusCode) return Array.Empty<HaEntitySummary>();
+            if (!resp.IsSuccessStatusCode) return; // keep last snapshot
             await using var stream = await resp.Content.ReadAsStreamAsync(ct);
             using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
-                return Array.Empty<HaEntitySummary>();
+            if (doc.RootElement.ValueKind != JsonValueKind.Array) return;
 
-            var list = new List<HaEntitySummary>();
+            var byId = new Dictionary<string, HaStateDto>(StringComparer.OrdinalIgnoreCase);
+            var summaries = new List<HaEntitySummary>();
             foreach (var item in doc.RootElement.EnumerateArray())
             {
                 if (item.ValueKind != JsonValueKind.Object) continue;
@@ -66,6 +111,7 @@ public sealed class HomeAssistantClient
                     state = st.GetString();
 
                 string? unit = null, friendly = null, deviceClass = null;
+                LightAttrs? light = null;
                 if (item.TryGetProperty("attributes", out var attrs)
                     && attrs.ValueKind == JsonValueKind.Object)
                 {
@@ -75,15 +121,27 @@ public sealed class HomeAssistantClient
                         && f.ValueKind == JsonValueKind.String) friendly = f.GetString();
                     if (attrs.TryGetProperty("device_class", out var d)
                         && d.ValueKind == JsonValueKind.String) deviceClass = d.GetString();
+                    if (domain.Equals("light", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var attrMap = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+                        foreach (var p in attrs.EnumerateObject()) attrMap[p.Name] = p.Value;
+                        light = ExtractLightAttrs(attrMap);
+                    }
                 }
-                list.Add(new HaEntitySummary(entityId, domain, state, unit, friendly, deviceClass));
+                summaries.Add(new HaEntitySummary(entityId, domain, state, unit, friendly, deviceClass));
+                byId[entityId] = new HaStateDto(entityId, state, unit, friendly, light);
             }
-            return list;
+            _snapshotById = byId;
+            _snapshotSummaries = summaries;
+            _snapshotAtUtc = DateTime.UtcNow;
         }
         catch (Exception ex)
         {
-            _log.LogWarning(ex, "HA getAllStates failed");
-            return Array.Empty<HaEntitySummary>();
+            _log.LogWarning(ex, "HA states snapshot failed");
+        }
+        finally
+        {
+            _snapshotLock.Release();
         }
     }
 
@@ -486,13 +544,20 @@ public sealed class HomeAssistantClient
         var (baseUrl, token) = ResolveCreds();
         if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(token)) return result;
 
-        // Build ws:// URL from the REST base URL.
+        // Build the ws:// URL from the REST base, PRESERVING its path. Under
+        // the supervisor, baseUrl is http://supervisor/core/api/ — the old
+        // code rebuilt the URL from host only and produced
+        // ws://supervisor/api/websocket, dropping the /core proxy prefix, so
+        // statistics never connected in the primary HAOS deployment. Keep the
+        // full path and just append /websocket.
         Uri restUri;
         try { restUri = new Uri(baseUrl); }
         catch { return result; }
-        var wsScheme = restUri.Scheme == "https" ? "wss" : "ws";
-        var portPart = restUri.IsDefaultPort ? "" : $":{restUri.Port}";
-        var wsUri = new Uri($"{wsScheme}://{restUri.Host}{portPart}/api/websocket");
+        var wsUri = new UriBuilder(restUri)
+        {
+            Scheme = restUri.Scheme == "https" ? "wss" : "ws",
+            Path = restUri.AbsolutePath.TrimEnd('/') + "/websocket",
+        }.Uri;
 
         using var ws = new ClientWebSocket();
         try

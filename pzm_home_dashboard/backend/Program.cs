@@ -10,6 +10,7 @@ var options = LoadDashboardOptions(builder.Configuration);
 builder.Services.AddSingleton(options);
 builder.Services.AddSingleton(options.HomeAssistant);
 builder.Services.AddSingleton<CameraRegistry>();
+builder.Services.AddSingleton<CameraSnapshotService>();
 builder.Services.AddSingleton<StreamManager>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<StreamManager>());
 builder.Services.AddHttpClient();

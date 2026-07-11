@@ -7,13 +7,20 @@
 export function startPolling(fn, intervalMs) {
   let stopped = false;
   const run = () => { if (!stopped && !document.hidden) fn(); };
-  fn();
+  // Skip the mount fetch while the screen is blanked — the catch-up call on
+  // the next visibilitychange fetches fresh data the moment it's shown.
+  if (!document.hidden) fn();
   const id = setInterval(run, intervalMs);
   const onVisible = () => { if (!stopped && !document.hidden) fn(); };
+  // Pull-to-refresh (and any manual refresh) fans out through this event so
+  // every card re-fetches in place without a page reload.
+  const onRefresh = () => { if (!stopped && !document.hidden) fn(); };
   document.addEventListener('visibilitychange', onVisible);
+  window.addEventListener('pzm:refresh', onRefresh);
   return () => {
     stopped = true;
     clearInterval(id);
     document.removeEventListener('visibilitychange', onVisible);
+    window.removeEventListener('pzm:refresh', onRefresh);
   };
 }
