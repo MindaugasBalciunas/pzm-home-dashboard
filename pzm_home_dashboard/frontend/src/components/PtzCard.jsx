@@ -31,14 +31,36 @@ function presetIcon(name) {
   return 'camera-ptz';
 }
 
-// Camera PTZ preset card. Lists the options of the configured select
-// entity (TrackMix position presets) as icon buttons; tapping one calls
-// select.select_option so the camera drives to that preset. The active
-// option (the select's current state) is highlighted.
+// How long the overlay stays readable after the last interaction before
+// ghosting back over the camera view.
+const WAKE_MS = 6000;
+
+// Camera PTZ preset card, designed to sit ON TOP of the camera view
+// (drag it over the TrackMix tile with "Snap to grid" off). It idles as a
+// near-invisible ghost (5% opacity); the first tap anywhere on it wakes
+// it to 60% so the presets are readable — that tap never fires a preset —
+// and it fades back after a few idle seconds. Presets render as icon
+// buttons in a single row; tapping one calls select.select_option and the
+// active option (the select's current state) is highlighted.
 function PtzCard({ col, row, colSpan, rowSpan, editMode, onStartMove, onStartResize }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(null);
+  const [awake, setAwake] = useState(false);
+  const awakeRef = useRef(false);
+  useEffect(() => { awakeRef.current = awake; }, [awake]);
+  const wakeTimerRef = useRef(null);
+  // True when the current tap landed while the card was still a ghost —
+  // that tap only wakes the card, it must not trigger a preset.
+  const wakeTapRef = useRef(false);
+  const wake = () => {
+    setAwake(true);
+    if (wakeTimerRef.current) clearTimeout(wakeTimerRef.current);
+    wakeTimerRef.current = setTimeout(() => setAwake(false), WAKE_MS);
+  };
+  useEffect(() => () => {
+    if (wakeTimerRef.current) clearTimeout(wakeTimerRef.current);
+  }, []);
   // Skip re-renders while nothing changed (same trick as the Solar card):
   // compare the raw payload before parsing.
   const lastPayloadRef = useRef('');
@@ -58,6 +80,10 @@ function PtzCard({ col, row, colSpan, rowSpan, editMode, onStartMove, onStartRes
   }, POLL_MS), []);
 
   const select = async (option) => {
+    // The tap that woke the ghost is consumed — selecting a preset you
+    // couldn't see would drive the camera blindly.
+    if (wakeTapRef.current) { wakeTapRef.current = false; return; }
+    wake();
     if (busy) return;
     setBusy(option);
     try {
@@ -85,9 +111,16 @@ function PtzCard({ col, row, colSpan, rowSpan, editMode, onStartMove, onStartRes
 
   return (
     <div
-      className={`tile ptz-tile${editMode ? ' tile-editing' : ''}`}
+      className={`tile ptz-tile ptz-overlay${awake ? ' ptz-awake' : ''}${editMode ? ' tile-editing' : ''}`}
       style={style}
-      onPointerDown={editMode ? (e) => e.button === 0 && onStartMove(e) : undefined}
+      onPointerDown={editMode
+        ? (e) => e.button === 0 && onStartMove(e)
+        : () => {
+          // Fresh per tap: a ghost tap is a wake-only tap; an awake tap
+          // just resets the fade timer and lets the click through.
+          wakeTapRef.current = !awakeRef.current;
+          wake();
+        }}
       title={data?.entityId || 'PTZ presets'}
     >
       <div className="ptz-inner">

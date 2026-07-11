@@ -4,6 +4,19 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.30
+
+- **PTZ card is now a camera overlay.** Presets always render in a
+  single row (equal widths, however many presets there are), and the
+  card is built to sit on top of the camera view: it idles as a
+  near-invisible ghost (5 % opacity) and the first tap anywhere on it
+  wakes it to a readable 60 % — that tap never fires a preset, so you
+  can't drive the camera blindly. It fades back after ~6 idle seconds;
+  every interaction resets the timer. Translucent glass background keeps
+  the video visible behind the buttons while awake; edit mode forces
+  full visibility so the card stays grabbable. Drag it over the TrackMix
+  tile with "Snap to grid" off.
+
 ## 0.2.29
 
 - **Weather card.** New wide built-in card with the next 24 hours of
