@@ -8,10 +8,12 @@ namespace PzmHomeDashboard.Controllers;
 public sealed class HlsController : ControllerBase
 {
     private readonly StreamManager _streams;
+    private readonly CameraRegistry _registry;
 
-    public HlsController(StreamManager streams)
+    public HlsController(StreamManager streams, CameraRegistry registry)
     {
         _streams = streams;
+        _registry = registry;
     }
 
     [HttpGet("{cameraId}/index.m3u8")]
@@ -31,6 +33,13 @@ public sealed class HlsController : ControllerBase
     [HttpGet("{cameraId}/{segment}")]
     public IActionResult Segment(string cameraId, string segment)
     {
+        // cameraId feeds Path.Combine below — only ids the registry minted
+        // (slugs) may reach the filesystem, or an encoded ../ walks out of
+        // the HLS root (e.g. into /data/options.json).
+        if (!_registry.TryGet(cameraId, out _))
+        {
+            return NotFound();
+        }
         if (!IsSafeSegmentName(segment))
         {
             return BadRequest();

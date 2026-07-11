@@ -4,6 +4,32 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.36
+
+Security hardening release — no functional changes.
+
+- **LAN-only guard.** The add-on has no authentication of its own (HA
+  ingress provides it), so the backend now refuses any request whose
+  source address is not private: loopback, RFC1918, link-local, IPv6
+  unique-local and CGNAT (Tailscale) ranges stay allowed — ingress and
+  home-network access are unaffected — but if the optional 8099 port is
+  ever mapped and forwarded to the internet, outside requests get 403.
+- **Fixed a path traversal in the HLS segment endpoint.** The camera id
+  in `/hls/{cameraId}/{segment}` was used in a filesystem path without
+  validation; an encoded `../` could read files outside the HLS root —
+  including `/data/options.json`, which holds camera passwords and the
+  HA token. Camera ids are now checked against the registry first.
+- **HA identifier validation.** Entity ids, domains and services coming
+  from the web UI are spliced into Home Assistant API URLs; they are now
+  restricted to HA's `domain.object_id` shape so a crafted id can't
+  redirect the (supervisor-token-authenticated) request to a different
+  HA endpoint.
+- **Camera credentials scrubbed from logs.** ffmpeg echoes the RTSP URL
+  — `user:password@host` included — in its error output, which lands in
+  the add-on log visible from the HA UI. `rtsp://…@` credentials are now
+  redacted before logging.
+- The example camera in `config.yaml` uses a generic placeholder address.
+
 ## 0.2.35
 
 - **Fix: camera tiles stuck on a black screen after 0.2.34.** Two causes,

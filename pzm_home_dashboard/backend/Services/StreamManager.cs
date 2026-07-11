@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using System.Text.RegularExpressions;
 using PzmHomeDashboard.Models;
 
 namespace PzmHomeDashboard.Services;
@@ -169,14 +170,14 @@ public sealed class StreamManager : BackgroundService, IAsyncDisposable
         {
             if (!string.IsNullOrEmpty(e.Data))
             {
-                _log.LogWarning("[ffmpeg {Id}] {Msg}", cameraId, e.Data);
+                _log.LogWarning("[ffmpeg {Id}] {Msg}", cameraId, RedactCredentials(e.Data));
             }
         };
         proc.OutputDataReceived += (_, e) =>
         {
             if (!string.IsNullOrEmpty(e.Data))
             {
-                _log.LogInformation("[ffmpeg {Id}] {Msg}", cameraId, e.Data);
+                _log.LogInformation("[ffmpeg {Id}] {Msg}", cameraId, RedactCredentials(e.Data));
             }
         };
 
@@ -270,6 +271,14 @@ public sealed class StreamManager : BackgroundService, IAsyncDisposable
         }
         catch { /* best effort */ }
     }
+
+    // ffmpeg echoes the input URL — user:pass@host included — in error
+    // lines, and these land in the add-on log visible from the HA UI.
+    private static readonly Regex UrlCredentials =
+        new(@"(rtsps?://)[^@/\s]+@", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private static string RedactCredentials(string line) =>
+        UrlCredentials.Replace(line, "$1***@");
 
     private static string BuildRtspUrl(CameraOptions cam)
     {

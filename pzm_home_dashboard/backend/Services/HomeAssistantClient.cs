@@ -87,8 +87,36 @@ public sealed class HomeAssistantClient
         }
     }
 
+    // Entity ids, domains and services get spliced into HA API URLs. They
+    // come from the (unauthenticated) frontend as well as from options, so
+    // anything beyond HA's `alnum_underscore.alnum_underscore` shape is
+    // refused — a `../`-bearing id would otherwise shift the request onto a
+    // different HA endpoint.
+    private static bool IsSafeHaToken(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return false;
+        foreach (var ch in value)
+        {
+            if (!char.IsAsciiLetterOrDigit(ch) && ch != '_') return false;
+        }
+        return true;
+    }
+
+    private static bool IsSafeEntityId(string? entityId)
+    {
+        if (string.IsNullOrEmpty(entityId)) return false;
+        var dot = entityId.IndexOf('.');
+        if (dot <= 0 || dot != entityId.LastIndexOf('.')) return false;
+        return IsSafeHaToken(entityId[..dot]) && IsSafeHaToken(entityId[(dot + 1)..]);
+    }
+
     public async Task<HaStateDto?> GetStateAsync(string entityId, CancellationToken ct)
     {
+        if (!IsSafeEntityId(entityId))
+        {
+            return new HaStateDto(entityId, null, null, null);
+        }
+
         var (baseUrl, token) = ResolveCreds();
         if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(token))
         {
@@ -173,6 +201,7 @@ public sealed class HomeAssistantClient
     public async Task<HaSelectDto> GetSelectAsync(string entityId, CancellationToken ct)
     {
         var empty = new HaSelectDto(entityId, null, Array.Empty<string>(), null);
+        if (!IsSafeEntityId(entityId)) return empty;
         var (baseUrl, token) = ResolveCreds();
         if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(token)) return empty;
 
@@ -314,6 +343,12 @@ public sealed class HomeAssistantClient
     public async Task<bool> CallServiceAsync(
         string domain, string service, object? data, CancellationToken ct)
     {
+        if (!IsSafeHaToken(domain) || !IsSafeHaToken(service))
+        {
+            _log.LogWarning("HA service call refused: invalid domain/service name.");
+            return false;
+        }
+
         var (baseUrl, token) = ResolveCreds();
         if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(token))
         {
@@ -351,6 +386,7 @@ public sealed class HomeAssistantClient
         IReadOnlyList<string> entityIds, DateTime since, CancellationToken ct)
     {
         var result = new Dictionary<string, IReadOnlyList<HaSample>>();
+        entityIds = entityIds.Where(IsSafeEntityId).ToArray();
         if (entityIds.Count == 0) return result;
 
         var (baseUrl, token) = ResolveCreds();

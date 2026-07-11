@@ -1,5 +1,5 @@
 name: PZM Home Dashboard
-version: "0.2.35"
+version: "0.2.36"
 slug: pzm_home_dashboard
 description: >-
   RTSP camera streams (transcoded on-demand to HLS via ffmpeg) plus a live
@@ -25,7 +25,7 @@ ports_description:
 options:
   cameras:
     - name: Front Door
-      url: rtsp://192.168.0.186/h264Preview_01_sub
+      url: rtsp://192.168.1.10/h264Preview_01_sub
       username: admin
       password: ""
       transport: tcp
