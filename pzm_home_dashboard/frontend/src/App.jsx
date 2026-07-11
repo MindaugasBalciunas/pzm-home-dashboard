@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import CameraTile from './components/CameraTile.jsx';
 import SolarCard from './components/SolarCard.jsx';
 import SecurityCard from './components/SecurityCard.jsx';
+import PtzCard from './components/PtzCard.jsx';
 import SideMenu from './components/SideMenu.jsx';
 import SimpleTile from './components/SimpleTile.jsx';
 import TileEditor from './components/TileEditor.jsx';
@@ -18,6 +19,9 @@ const GRID_COLS = 48;
 const HERO_ID = 'frontgate';
 const SOLAR_ID = 'solar';
 const SECURITY_ID = 'security';
+const PTZ_ID = 'ptz';
+const PTZ_W = 10;
+const PTZ_H = 7;
 
 const FIT_MODES = ['fit', 'center', 'stretch'];
 const DEFAULT_FIT = 'fit';
@@ -25,7 +29,9 @@ const DEFAULT_FIT = 'fit';
 // Marker that the initial template has already been seeded. Once present in
 // `overrides`, we never re-seed even if the user deletes template tiles.
 const TEMPLATE_MARKER = '_seededTemplate';
-const TEMPLATE_VERSION = 'v1';
+// v2 added the Camera PTZ preset card; v1 layouts get just that tile
+// seeded into their first free slot on upgrade.
+const TEMPLATE_VERSION = 'v2';
 
 // Dashboard-wide appearance settings ride along in the shared layout under
 // this key (like the template marker, it's not a tile). Currently: `bg`,
@@ -78,6 +84,9 @@ function seedTemplateLayout(startRow) {
     const { col: c, row: r } = advance(numbersW, numbersH);
     out[t.id] = { col: c, row: r, colSpan: numbersW, rowSpan: numbersH, spec: { kind: 'number', entityId: t.entityId, domain: t.domain, name: t.name, unit: t.unit } };
   }
+  // Camera PTZ preset card on its own row below the strip.
+  row += numbersH;
+  out[PTZ_ID] = { col: 1, row, colSpan: PTZ_W, rowSpan: PTZ_H };
   return out;
 }
 
@@ -270,6 +279,17 @@ export default function App() {
           const seeded = { ...initial, ...seedTemplateLayout(maxRow), [TEMPLATE_MARKER]: TEMPLATE_VERSION };
           setOverrides(seeded);
           saveLayout(seeded);
+        } else if (marker !== TEMPLATE_VERSION) {
+          // Template v1 → v2: the only addition is the Camera PTZ preset
+          // card — drop it into the first free slot of the existing layout.
+          const spot = findFreeSpot(initial, PTZ_W, PTZ_H);
+          const seeded = {
+            ...initial,
+            [PTZ_ID]: initial[PTZ_ID] || { ...spot, colSpan: PTZ_W, rowSpan: PTZ_H },
+            [TEMPLATE_MARKER]: TEMPLATE_VERSION,
+          };
+          setOverrides(seeded);
+          saveLayout(seeded);
         } else {
           setOverrides(initial);
         }
@@ -306,6 +326,10 @@ export default function App() {
     }
     out[SOLAR_ID] = { ...defaults[SOLAR_ID], ...(overrides[SOLAR_ID] || {}) };
     out[SECURITY_ID] = { ...defaults[SECURITY_ID], ...(overrides[SECURITY_ID] || {}) };
+    // PTZ card only renders once seeded into the layout (template v2+).
+    if (overrides[PTZ_ID]) {
+      out[PTZ_ID] = { colSpan: PTZ_W, rowSpan: PTZ_H, ...overrides[PTZ_ID] };
+    }
     for (const [id, entry] of Object.entries(overrides)) {
       if (!entry || typeof entry !== 'object') continue;
       if (id.startsWith('custom-') || id.startsWith('tpl-')) {
@@ -697,6 +721,18 @@ export default function App() {
             onStartResize={tileHandlers(SECURITY_ID).onStartResize}
             showZones={layout[SECURITY_ID].showZones !== false}
             showPir={layout[SECURITY_ID].showPir !== false}
+          />
+        )}
+        {layout[PTZ_ID] && (
+          <PtzCard
+            key={PTZ_ID}
+            col={layout[PTZ_ID].col}
+            row={layout[PTZ_ID].row}
+            colSpan={layout[PTZ_ID].colSpan}
+            rowSpan={layout[PTZ_ID].rowSpan}
+            editMode={editMode}
+            onStartMove={tileHandlers(PTZ_ID).onStartMove}
+            onStartResize={tileHandlers(PTZ_ID).onStartResize}
           />
         )}
         {customEntries.map(([id, entry]) => {

@@ -133,6 +133,52 @@ public sealed class HomeAssistantClient
         }
     }
 
+    // Select-domain entities (e.g. the TrackMix PTZ preset select) carry
+    // their choices in attributes.options; the generic state DTO drops
+    // attributes, so the PTZ card gets this dedicated fetch.
+    public async Task<HaSelectDto> GetSelectAsync(string entityId, CancellationToken ct)
+    {
+        var empty = new HaSelectDto(entityId, null, Array.Empty<string>(), null);
+        var (baseUrl, token) = ResolveCreds();
+        if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(token)) return empty;
+
+        var http = _factory.CreateClient();
+        http.Timeout = TimeSpan.FromSeconds(5);
+        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        try
+        {
+            using var resp = await http.GetAsync(baseUrl + "states/" + entityId, ct);
+            if (!resp.IsSuccessStatusCode) return empty;
+            await using var stream = await resp.Content.ReadAsStreamAsync(ct);
+            var raw = await JsonSerializer.DeserializeAsync<HaStateJson>(stream, cancellationToken: ct);
+            if (raw is null) return empty;
+
+            string? friendly = null;
+            var options = new List<string>();
+            if (raw.Attributes is { } attrs)
+            {
+                if (attrs.TryGetValue("friendly_name", out var f) && f.ValueKind == JsonValueKind.String)
+                    friendly = f.GetString();
+                if (attrs.TryGetValue("options", out var opts) && opts.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var el in opts.EnumerateArray())
+                    {
+                        if (el.ValueKind != JsonValueKind.String) continue;
+                        var s = el.GetString();
+                        if (!string.IsNullOrWhiteSpace(s)) options.Add(s!);
+                    }
+                }
+            }
+            return new HaSelectDto(entityId, raw.State, options, friendly);
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "HA select fetch failed for {Entity}", entityId);
+            return empty;
+        }
+    }
+
     // Pull the small set of light-domain attributes the frontend cares
     // about (dim slider + colour picker). `supported_color_modes` /
     // `supported_features` tell us which controls to render — a plain

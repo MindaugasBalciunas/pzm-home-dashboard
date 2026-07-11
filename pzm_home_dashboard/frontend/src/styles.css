@@ -2674,6 +2674,88 @@ input[type="color"].bg-swatch::-webkit-color-swatch {
   color: var(--accent);
 }
 
+/* ---------- Camera PTZ preset card ----------
+   One icon button per preset of the TrackMix PTZ select entity; the
+   currently active preset is highlighted. Shares the custom tiles'
+   panel look. */
+.ptz-tile {
+  background: linear-gradient(145deg, #0f131a 0%, #151922 100%);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+.ptz-inner {
+  position: absolute;
+  inset: 0;
+  padding: 0.25rem 0.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-height: 0;
+}
+.ptz-title {
+  flex: 0 0 auto;
+  font-size: 0.56rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 800;
+}
+.ptz-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  grid-auto-rows: 1fr;
+  gap: 0.25rem;
+}
+.ptz-btn {
+  appearance: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(74, 163, 255, 0.06);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.3rem 0.25rem;
+  min-height: 0;
+  min-width: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.08s ease;
+}
+.ptz-btn:disabled { cursor: default; opacity: 0.6; }
+.ptz-btn:not(:disabled):active { transform: scale(0.96); }
+.ptz-btn.is-active {
+  border-color: rgba(74, 163, 255, 0.65);
+  background: rgba(74, 163, 255, 0.16);
+}
+.ptz-btn-icon {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ptz-btn-icon svg { width: 100%; height: 100%; }
+.ptz-btn-name {
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.1;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Mobile/tablet: nothing needed here yet — kept as a hook for future
    touch-only overrides. */
 

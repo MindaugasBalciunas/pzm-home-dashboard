@@ -76,6 +76,49 @@ public sealed class HomeAssistantController : ControllerBase
         return Ok(payload);
     }
 
+    // PTZ preset card: the TrackMix camera exposes its position presets as
+    // a select entity — list its options and the currently active one.
+    [HttpGet("ptz")]
+    public async Task<IActionResult> Ptz(CancellationToken ct)
+    {
+        Response.Headers["Cache-Control"] = "no-store";
+        var entity = _opts.PtzPresetSelect;
+        if (string.IsNullOrWhiteSpace(entity))
+        {
+            return Ok(new
+            {
+                configured = _client.IsConfigured,
+                entityId = (string?)null,
+                state = (string?)null,
+                options = Array.Empty<string>(),
+            });
+        }
+        var sel = await _client.GetSelectAsync(entity!, ct);
+        return Ok(new
+        {
+            configured = _client.IsConfigured,
+            entityId = entity,
+            state = sel.State,
+            options = sel.Options,
+        });
+    }
+
+    public sealed record PtzSelectRequest(string? Option);
+
+    [HttpPost("ptz/select")]
+    public async Task<IActionResult> PtzSelect([FromBody] PtzSelectRequest body, CancellationToken ct)
+    {
+        var entity = _opts.PtzPresetSelect;
+        if (string.IsNullOrWhiteSpace(entity))
+            return BadRequest(new { error = "No ptz_preset_select configured." });
+        if (string.IsNullOrWhiteSpace(body.Option))
+            return BadRequest(new { error = "Missing option." });
+
+        var ok = await _client.CallServiceAsync(
+            "select", "select_option", new { entity_id = entity, option = body.Option }, ct);
+        return ok ? Ok(new { ok = true }) : StatusCode(502, new { error = "HA call failed." });
+    }
+
     [HttpGet("solar/history")]
     public async Task<IActionResult> SolarHistory(
         [FromQuery] int hours = 24,

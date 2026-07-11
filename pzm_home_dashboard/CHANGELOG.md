@@ -4,6 +4,18 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.28
+
+- **Camera PTZ preset card.** New built-in card listing the TrackMix
+  camera's PTZ position presets (from `select.trackmix_ptz_preset`,
+  configurable via `home_assistant.ptz_preset_select`) as icon buttons —
+  tap one and the camera drives to that preset; the active preset is
+  highlighted. Icons are matched from the preset's name (gate, garage,
+  garden, yard, street, car, pool, terrace, track…, English or
+  Lithuanian), falling back to a PTZ camera glyph. The card seeds itself
+  into the first free slot of existing layouts and can be moved/resized
+  in edit mode like any tile.
+
 ## 0.2.27
 
 - **Gate opener chip controls its switch.** Tapping the Security card's

@@ -18,6 +18,13 @@ public sealed class HomeAssistantOptions
 
     [JsonPropertyName("security")]
     public SecurityEntities Security { get; set; } = new();
+
+    // Select entity holding the TrackMix camera's PTZ position presets;
+    // drives the PTZ preset card. The initializer keeps older installs
+    // (whose saved options predate the key) working without an options
+    // change.
+    [JsonPropertyName("ptz_preset_select")]
+    public string? PtzPresetSelect { get; set; } = "select.trackmix_ptz_preset";
 }
 
 public sealed class SecurityEntities
@@ -195,6 +202,12 @@ public sealed record HaStateDto(
     [property: JsonPropertyName("unit")] string? Unit,
     [property: JsonPropertyName("friendlyName")] string? FriendlyName,
     [property: JsonPropertyName("light")] LightAttrs? Light = null);
+
+public sealed record HaSelectDto(
+    [property: JsonPropertyName("entityId")] string EntityId,
+    [property: JsonPropertyName("state")] string? State,
+    [property: JsonPropertyName("options")] IReadOnlyList<string> Options,
+    [property: JsonPropertyName("friendlyName")] string? FriendlyName);
 
 // Compact bag of light attributes surfaced to the frontend when the
 // entity is a light. `null` means "not a light" or attributes missing —

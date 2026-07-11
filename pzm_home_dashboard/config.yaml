@@ -1,5 +1,5 @@
 name: PZM Home Dashboard
-version: "0.2.27"
+version: "0.2.28"
 slug: pzm_home_dashboard
 description: >-
   RTSP camera streams (transcoded on-demand to HLS via ffmpeg) plus a live
@@ -36,6 +36,9 @@ options:
     use_supervisor: true
     base_url: ""
     token: ""
+    # Select entity holding the TrackMix camera's PTZ position presets —
+    # drives the PTZ preset card (one icon button per preset).
+    ptz_preset_select: "select.trackmix_ptz_preset"
     solar:
       import: "sensor.solax_inverter_solax_grid_import"
       export: "sensor.solax_inverter_solax_grid_export"
@@ -192,6 +195,7 @@ schema:
     use_supervisor: bool?
     base_url: str?
     token: password?
+    ptz_preset_select: str?
     solar:
       import: str?
       export: str?
