@@ -1,5 +1,5 @@
 name: PZM Home Dashboard
-version: "0.2.25"
+version: "0.2.26"
 slug: pzm_home_dashboard
 description: >-
   RTSP camera streams (transcoded on-demand to HLS via ffmpeg) plus a live
@@ -66,11 +66,7 @@ options:
       grid_runtime: "sensor.solax_inverter_solax_grid_mode_runtime"
       # HomeWizard / Kaifa P1 utility meter — grid-side lifetime kWh totals.
       p1_import_total: "sensor.p1_meter_energy_import"
-      p1_import_t1:    "sensor.p1_meter_energy_import_tariff_1"
-      p1_import_t2:    "sensor.p1_meter_energy_import_tariff_2"
       p1_export_total: "sensor.p1_meter_energy_export"
-      p1_export_t1:    "sensor.p1_meter_energy_export_tariff_1"
-      p1_export_t2:    "sensor.p1_meter_energy_export_tariff_2"
       # Toggle chips rendered inside the Electricity tile. Any HA domain
       # works — switch / light / input_boolean / script / cover / lock.
       # `icon` uses the shared tile-icon catalog (auto, light, lamp,
@@ -215,6 +211,8 @@ schema:
       run_mode: str?
       grid_runtime: str?
       p1_import_total: str?
+      # Deprecated (ignored): kept in the schema so installs that still
+      # have tariff sensors in their stored options keep validating.
       p1_import_t1: str?
       p1_import_t2: str?
       p1_export_total: str?

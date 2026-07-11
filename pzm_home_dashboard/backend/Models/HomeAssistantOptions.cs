@@ -158,25 +158,14 @@ public sealed class SolarEntities
     public string? BatterySoc { get; set; }
 
     // P1 utility meter (grid-side measurement). Solax figures are inverter-
-    // side; the P1 meter is what the DSO bills us on. Six sensors: total
-    // import/export plus per-tariff (day / night) breakdown.
+    // side; the P1 meter is what the DSO bills us on. Lifetime import and
+    // export totals only — the per-tariff (T1/T2) splits were dropped from
+    // the dashboard; any p1_*_t1/t2 keys left in stored options are ignored.
     [JsonPropertyName("p1_import_total")]
     public string? P1ImportTotal { get; set; }
 
-    [JsonPropertyName("p1_import_t1")]
-    public string? P1ImportT1 { get; set; }
-
-    [JsonPropertyName("p1_import_t2")]
-    public string? P1ImportT2 { get; set; }
-
     [JsonPropertyName("p1_export_total")]
     public string? P1ExportTotal { get; set; }
-
-    [JsonPropertyName("p1_export_t1")]
-    public string? P1ExportT1 { get; set; }
-
-    [JsonPropertyName("p1_export_t2")]
-    public string? P1ExportT2 { get; set; }
 
     // One-tap toggle chips rendered inside the Electricity tile. Any HA
     // domain works — the backend service dispatch handles switch/light/

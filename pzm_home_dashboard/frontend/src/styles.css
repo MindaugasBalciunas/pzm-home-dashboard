@@ -1,5 +1,8 @@
 :root {
-  color-scheme: dark light;
+  /* Dark mode is enforced: the dashboard always renders its dark theme
+     regardless of the browser / OS preference (form controls, scrollbars
+     and picker popups follow via color-scheme). */
+  color-scheme: dark;
   --bg: #0f1216;
   --panel: #171b21;
   --border: #262b33;
@@ -24,26 +27,6 @@
   --roof-border: #4d1d16;
   --card-bg: rgba(22, 26, 33, 0.85);
   --card-border: rgba(255, 255, 255, 0.08);
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg: #f4f6f8;
-    --panel: #ffffff;
-    --border: #dcdfe4;
-    --text: #1c1f24;
-    --muted: #5a6270;
-
-    /* Isometric House light mode theme colors */
-    --house-wall: #f1f5f9;
-    --house-shadow: #e2e8f0;
-    --house-border: #cbd5e1;
-    --roof-color: #b86a5d;
-    --roof-shadow: #964e43;
-    --roof-border: #702f25;
-    --card-bg: rgba(255, 255, 255, 0.85);
-    --card-border: rgba(0, 0, 0, 0.06);
-  }
 }
 
 * { box-sizing: border-box; }
@@ -205,9 +188,6 @@ html, body {
   border-radius: var(--radius-sm);
   cursor: pointer;
 }
-@media (prefers-color-scheme: light) {
-  .sec-opt-row { background: rgba(0, 0, 0, 0.02); }
-}
 .sec-opt-row.is-on { border-color: rgba(87, 211, 140, 0.6); }
 .sec-opt-main { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
 .sec-opt-label { font-weight: 700; font-size: 0.85rem; }
@@ -308,16 +288,10 @@ html, body {
   container-type: size;
   container-name: solar;
 }
-@media (prefers-color-scheme: light) {
-  .solar-tile {
-    background: linear-gradient(145deg, #f7f9fc 0%, #edf2f7 100%);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-  }
-}
 .solar-inner {
   position: absolute;
   inset: 0;
-  padding: 0.7rem 0.85rem;
+  padding: 0.35rem 0.42rem;
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
@@ -327,7 +301,7 @@ html, body {
    hard on all sides — zero on top so the house view (and its callout
    cards) hugs the tile's top edge, hairline elsewhere. */
 .solar-inner-titleless {
-  padding: 0 0.15rem 0.15rem;
+  padding: 0 0.08rem 0.08rem;
   gap: 0.15rem;
 }
 .solar-title {
@@ -338,14 +312,6 @@ html, body {
   font-weight: 800;
   padding-bottom: 0.15rem;
   border-bottom: none;
-}
-@media (prefers-color-scheme: light) {
-  .solar-title { color: rgba(0, 0, 0, 0.5); }
-}
-@media (prefers-color-scheme: light) {
-  .solar-title {
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-  }
 }
 .solar-note {
   font-size: 0.72rem;
@@ -363,12 +329,6 @@ html, body {
   border: 1px dashed rgba(255, 255, 255, 0.03);
   padding: 0.4rem;
   margin-bottom: 0.2rem;
-}
-@media (prefers-color-scheme: light) {
-  .solar-flow {
-    background: rgba(0, 0, 0, 0.015);
-    border: 1px dashed rgba(0, 0, 0, 0.04);
-  }
 }
 .flow-svg { width: 100%; height: 100%; display: block; }
 
@@ -455,9 +415,6 @@ html, body {
   stroke-dasharray: 5 8;
   vector-effect: non-scaling-stroke;
 }
-@media (prefers-color-scheme: light) {
-  .hv-line { stroke: rgba(0, 0, 0, 0.30); }
-}
 .hv-line-active {
   stroke-width: 5;
   animation: flow-dash-forward linear infinite;
@@ -466,7 +423,7 @@ html, body {
 .hv-callout {
   position: absolute;
   min-width: 82px;
-  padding: 0.32rem 0.6rem;
+  padding: 0.16rem 0.3rem;
   /* Same rounding as button / number tiles so overlaid tiles and the
      electricity callouts read as one family. */
   border-radius: var(--radius-md);
@@ -483,15 +440,6 @@ html, body {
   color: #ffffff;
   line-height: 1.1;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-}
-@media (prefers-color-scheme: light) {
-  .hv-callout {
-    background: rgba(255, 255, 255, 0.45);
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-    color: #1c1f24;
-    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.6);
-  }
 }
 .hv-callout-resize {
   position: absolute;
@@ -526,9 +474,6 @@ html, body {
   font-weight: 700;
   margin-left: 0.05rem;
 }
-@media (prefers-color-scheme: light) {
-  .hv-callout-unit { color: rgba(0, 0, 0, 0.65); }
-}
 .hv-callout-label {
   display: flex;
   align-items: baseline;
@@ -541,9 +486,6 @@ html, body {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   line-height: 1.2;
-}
-@media (prefers-color-scheme: light) {
-  .hv-callout-label { color: rgba(0, 0, 0, 0.55); }
 }
 .hv-callout-pct {
   color: #f5a623;
@@ -560,9 +502,6 @@ html, body {
   padding-top: 0.22rem;
   border-top: 1px solid rgba(255, 255, 255, 0.14);
 }
-@media (prefers-color-scheme: light) {
-  .hv-callout-sub { border-top-color: rgba(0, 0, 0, 0.08); }
-}
 .hv-sub-chip {
   font-size: 0.58rem;
   font-weight: 800;
@@ -574,12 +513,6 @@ html, body {
   color: rgba(255, 255, 255, 0.88);
   line-height: 1.1;
   white-space: nowrap;
-}
-@media (prefers-color-scheme: light) {
-  .hv-sub-chip {
-    background: rgba(0, 0, 0, 0.06);
-    color: rgba(0, 0, 0, 0.72);
-  }
 }
 /* Two-column stat block inside a callout — used for Today|Total on the
    Solar card, Imp|Exp today on the Grid card, and the P1 meter lifetime
@@ -593,9 +526,6 @@ html, body {
   margin-top: 0.28rem;
   padding-top: 0.22rem;
   border-top: 1px solid rgba(255, 255, 255, 0.14);
-}
-@media (prefers-color-scheme: light) {
-  .hv-cols { border-top-color: rgba(0, 0, 0, 0.08); }
 }
 .hv-cell {
   display: flex;
@@ -612,9 +542,6 @@ html, body {
   line-height: 1.1;
   white-space: nowrap;
 }
-@media (prefers-color-scheme: light) {
-  .hv-cell-tag { color: rgba(0, 0, 0, 0.5); }
-}
 .hv-cell-val {
   font-size: 0.64rem;
   font-weight: 800;
@@ -623,16 +550,10 @@ html, body {
   line-height: 1.1;
   white-space: nowrap;
 }
-@media (prefers-color-scheme: light) {
-  .hv-cell-val { color: rgba(0, 0, 0, 0.85); }
-}
 .hv-cell-unit {
   font-size: 0.5rem;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.65);
-}
-@media (prefers-color-scheme: light) {
-  .hv-cell-unit { color: rgba(0, 0, 0, 0.5); }
 }
 /* Three-up variant (Solax today: Imp | Exp | House on the Grid callout)
    with a full-width caption row naming the source meter. */
@@ -646,42 +567,12 @@ html, body {
   color: rgba(255, 255, 255, 0.5);
   line-height: 1.1;
 }
-@media (prefers-color-scheme: light) {
-  .hv-cols-caption { color: rgba(0, 0, 0, 0.45); }
-}
 .hv-tag-imp   { color: rgba(255, 107, 107, 0.9); }
 .hv-tag-exp   { color: rgba(87, 211, 140, 0.9); }
 .hv-tag-house { color: rgba(74, 163, 255, 0.9); }
 .hv-tag-amber { color: #ffcf70; }
 .hv-val-amber { color: #ffcf70; }
-@media (prefers-color-scheme: light) {
-  .hv-tag-amber, .hv-val-amber { color: #d67f00; }
-}
 
-/* P1 tariff splits (T1/T2) under each meter total on the Home card. */
-.hv-p1-tariffs {
-  display: flex;
-  gap: 0.35rem;
-  color: rgba(255, 255, 255, 0.6);
-}
-@media (prefers-color-scheme: light) {
-  .hv-p1-tariffs { color: rgba(0, 0, 0, 0.5); }
-}
-.hv-p1-tariff {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.2rem;
-  font-size: 0.5rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-.hv-p1-tariff-tag {
-  font-size: 0.44rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  opacity: 0.8;
-}
 .hv-callout.hv-good  { border-color: rgba(87, 211, 140, 0.65); }
 .hv-callout.hv-bad   { border-color: rgba(255, 107, 107, 0.65); }
 .hv-callout.hv-good  .hv-callout-num { color: var(--ok); }
@@ -752,9 +643,6 @@ html, body {
 }
 .hv-callout-grid > .hv-mini-chart { grid-area: chart; }
 .hv-callout-grid > .hv-mini-stats { grid-area: stats; }
-@media (prefers-color-scheme: light) {
-  .hv-callout-grid > .hv-cols-3 { border-left-color: rgba(0, 0, 0, 0.08); }
-}
 /* Edit mode: callout cards are draggable. */
 .tile-editing .hv-callout { cursor: grab; }
 .tile-editing .hv-callout:active { cursor: grabbing; }
@@ -788,15 +676,6 @@ html, body {
 }
 .hv-string-unit { color: rgba(255, 255, 255, 0.75); font-weight: 700; }
 .hv-string-pct  { color: #ffcf70; font-weight: 800; }
-@media (prefers-color-scheme: light) {
-  .hv-callout-pv-total .hv-callout-num { color: #1c1f24; }
-  .hv-callout-pv-total .hv-callout-label { color: #d67f00; }
-  .hv-callout-strings { border-top-color: rgba(0, 0, 0, 0.08); }
-  .hv-string-name { color: rgba(0, 0, 0, 0.55); }
-  .hv-string-val  { color: #1c1f24; }
-  .hv-string-unit { color: rgba(0, 0, 0, 0.55); }
-  .hv-string-pct  { color: #d67f00; }
-}
 
 /* PV 2 sits just to the left of PV 1, both pinned at the very top now. */
 .hv-callout-pv2  { top: 1.5%; left: 36%; transform: translateX(-50%); }
@@ -875,11 +754,6 @@ html, body {
   stroke: rgba(255, 255, 255, 0.03);
   stroke-width: 2;
 }
-@media (prefers-color-scheme: light) {
-  .flow-line-bg {
-    stroke: rgba(0, 0, 0, 0.04);
-  }
-}
 .flow-line {
   fill: none;
   stroke-width: 2.5;
@@ -917,15 +791,6 @@ html, body {
   border-color: rgba(255, 255, 255, 0.15);
   transform: translateY(-1px);
 }
-@media (prefers-color-scheme: light) {
-  .solar-cell {
-    background: rgba(0, 0, 0, 0.015);
-  }
-  .solar-cell:hover {
-    background: rgba(0, 0, 0, 0.03);
-    border-color: rgba(0, 0, 0, 0.1);
-  }
-}
 .solar-accent-good    { --border-accent: var(--ok); }
 .solar-accent-bad     { --border-accent: var(--danger); }
 .solar-accent-neutral { --border-accent: var(--accent); }
@@ -959,11 +824,6 @@ html, body {
   font-variant-numeric: tabular-nums;
   color: var(--text);
   text-shadow: 0 1px 3px rgba(0,0,0,0.3);
-}
-@media (prefers-color-scheme: light) {
-  .solar-num {
-    text-shadow: none;
-  }
 }
 .solar-unit {
   font-size: 0.65rem;
@@ -999,11 +859,6 @@ html, body {
   border: 1px solid var(--border);
   border-radius: 0;
   padding: 0.4rem 0;
-}
-@media (prefers-color-scheme: light) {
-  .energy-grid {
-    background: rgba(0, 0, 0, 0.015);
-  }
 }
 .energy-cell {
   min-width: 0;
@@ -1065,15 +920,12 @@ html, body {
   border-radius: 0;
   overflow: hidden;
 }
-@media (prefers-color-scheme: light) {
-  .energy-chip { background: rgba(0, 0, 0, 0.018); }
-}
 .energy-chip.energy-accent-good { border-left: 3px solid var(--ok); }
 .energy-chip.energy-accent-bad  { border-left: 3px solid var(--danger); }
 .energy-chip-inner {
   position: relative;
   z-index: 1;
-  padding: 0.32rem 0.45rem;
+  padding: 0.16rem 0.22rem;
   display: flex;
   flex-direction: column;
   gap: 0.12rem;
@@ -1096,18 +948,12 @@ html, body {
   white-space: nowrap;
   min-width: 0;
 }
-@media (prefers-color-scheme: light) {
-  .energy-chip-label { color: rgba(0, 0, 0, 0.6); }
-}
 .energy-chip-max {
   font-size: 0.6rem;
   color: rgba(255, 255, 255, 0.65);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-}
-@media (prefers-color-scheme: light) {
-  .energy-chip-max { color: rgba(0, 0, 0, 0.55); }
 }
 .energy-chip-value {
   display: flex;
@@ -1128,9 +974,6 @@ html, body {
   font-size: 0.72rem;
   color: rgba(255, 255, 255, 0.65);
   font-weight: 700;
-}
-@media (prefers-color-scheme: light) {
-  .energy-chip-unit { color: rgba(0, 0, 0, 0.55); }
 }
 
 .today-graph {
@@ -1166,9 +1009,6 @@ html, body {
   border-top: 1px solid rgba(255, 255, 255, 0.14);
   overflow: hidden;
 }
-@media (prefers-color-scheme: light) {
-  .hv-mini-chart { border-top-color: rgba(0, 0, 0, 0.08); }
-}
 /* Weekday initials under the 7-day columns — one equal slot per bar. */
 .hv-mini-day-labels {
   display: flex;
@@ -1184,9 +1024,6 @@ html, body {
   color: rgba(255, 255, 255, 0.55);
   line-height: 1;
 }
-@media (prefers-color-scheme: light) {
-  .hv-mini-day-labels span { color: rgba(0, 0, 0, 0.45); }
-}
 
 /* Max/min annotations: peak PV in the Solar label row; best/lowest day
    under the 7-day columns; peak export (↑) / import (↓) under the hourly
@@ -1199,9 +1036,6 @@ html, body {
   white-space: nowrap;
   text-transform: none;
   letter-spacing: 0;
-}
-@media (prefers-color-scheme: light) {
-  .hv-peak { color: rgba(0, 0, 0, 0.55); }
 }
 .hv-mini-stats {
   display: flex;
@@ -1217,10 +1051,6 @@ html, body {
 }
 .hv-stat-max { color: rgba(255, 255, 255, 0.85); }
 .hv-stat-min { color: rgba(255, 255, 255, 0.55); }
-@media (prefers-color-scheme: light) {
-  .hv-stat-max { color: rgba(0, 0, 0, 0.75); }
-  .hv-stat-min { color: rgba(0, 0, 0, 0.45); }
-}
 .hv-stat-up   { color: var(--ok); }
 .hv-stat-down { color: var(--danger); }
 
@@ -1241,15 +1071,11 @@ html, body {
     gap: 0.2rem 0.4rem;
     flex-wrap: wrap;
   }
-  .hv-cell .hv-p1-tariffs {
-    flex-basis: 100%;
-    justify-content: flex-end;
-  }
   /* Compress the callout chrome so the numbers keep their room: thinner
      padding, no width floors, tighter dividers and slightly smaller type. */
-  .hv-callout { padding: 0.2rem 0.38rem; min-width: 0; }
+  .hv-callout { padding: 0.1rem 0.19rem; min-width: 0; }
   .hv-callout-pv-total,
-  .hv-callout-home { min-width: 88px; padding: 0.26rem 0.42rem; }
+  .hv-callout-home { min-width: 88px; padding: 0.13rem 0.21rem; }
   .hv-callout-grid { min-width: 88px; }
   .hv-callout-num { font-size: 1rem; }
   .hv-callout-pv-total .hv-callout-num,
@@ -1273,9 +1099,6 @@ html, body {
   stroke: rgba(255, 255, 255, 0.3);
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
-}
-@media (prefers-color-scheme: light) {
-  .dual-graph-axis { stroke: rgba(0, 0, 0, 0.25); }
 }
 
 .pv-string-row {
@@ -1329,9 +1152,6 @@ html, body {
   letter-spacing: 0.06em;
   font-weight: 700;
 }
-@media (prefers-color-scheme: light) {
-  .health-label { color: rgba(0, 0, 0, 0.55); }
-}
 .health-value {
   color: var(--text);
   font-weight: 800;
@@ -1347,7 +1167,7 @@ html, body {
   container-name: sec;
 }
 .security-inner {
-  padding: 0.2rem 0.25rem;
+  padding: 0.1rem 0.12rem;
   gap: 0.1rem;
 }
 /* Compact section titles inside the Security card so they don't push
@@ -1538,12 +1358,6 @@ html, body {
     .gate-btn > .gate-body { display: none; }
   }
 }
-@media (prefers-color-scheme: light) {
-  .gate-btn {
-    background: linear-gradient(145deg, rgba(0,0,0,0.03), rgba(0,0,0,0.005));
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  }
-}
 .gate-btn:hover:not(:disabled) {
   transform: translateY(-1px);
   border-color: var(--accent);
@@ -1658,11 +1472,6 @@ html, body {
   0%, 100% { opacity: 1; }
   50%      { opacity: 0.55; }
 }
-@media (prefers-color-scheme: light) {
-  .zone-chip {
-    background: linear-gradient(145deg, rgba(0,0,0,0.025), rgba(0,0,0,0.004));
-  }
-}
 .zone-icon {
   display: inline-flex;
   flex: 0 0 auto;
@@ -1675,9 +1484,6 @@ html, body {
 }
 .zone-chip-ok  .zone-icon { background: rgba(87, 211, 140, 0.14); color: var(--ok); }
 .zone-chip-bad .zone-icon { background: rgba(255, 107, 107, 0.16); color: var(--danger); }
-@media (prefers-color-scheme: light) {
-  .zone-chip-neutral .zone-icon { background: rgba(0, 0, 0, 0.05); }
-}
 .zone-icon svg { width: 14px; height: 14px; }
 
 .zone-body {
@@ -1727,7 +1533,6 @@ html, body {
   .zone-icon { width: 22px; height: 22px; }
   .zone-icon svg { width: 16px; height: 16px; }
 }
-
 
 /* Custom Flow Diagram Value Nodes & PV percentages */
 .solar-pct {
@@ -1802,9 +1607,6 @@ html, body {
   transition: opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease;
   will-change: transform, opacity;
 }
-@media (prefers-color-scheme: light) {
-  .ptr { background: rgba(255, 255, 255, 0.85); }
-}
 .ptr svg { width: 24px; height: 24px; }
 .ptr.is-armed {
   background: var(--accent);
@@ -1848,15 +1650,8 @@ html, body {
   background: rgba(0, 0, 0, 0.35);
   outline: none;
 }
-@media (prefers-color-scheme: light) {
-  .side-menu-btn:hover,
-  .side-menu-btn:focus-visible { background: rgba(255, 255, 255, 0.6); }
-}
 .side-menu-btn:active { transform: scale(0.94); }
 .side-menu-btn svg { width: 22px; height: 22px; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6)); }
-@media (prefers-color-scheme: light) {
-  .side-menu-btn svg { filter: drop-shadow(0 1px 2px rgba(255, 255, 255, 0.8)); }
-}
 
 .side-menu-edge {
   position: fixed;
@@ -2029,6 +1824,40 @@ html, body {
 }
 .picker-title { font-weight: 800; font-size: 0.9rem; letter-spacing: 0.05em; text-transform: uppercase; }
 .picker-form { padding: 0.7rem 1rem; display: flex; flex-direction: column; gap: 0.55rem; }
+/* Tile editor: the form IS the whole dialog body, and with the number-tile
+   extras it easily outgrows the 82vh cap. `.picker { overflow: hidden }`
+   was silently clipping everything past the fold — background, border and
+   opacity controls were unreachable ("the selectors don't work"). Let the
+   form itself scroll; header and actions stay pinned. */
+.picker-scrolls .picker-form {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+/* Wide variant for content-heavy dialogs (tile editor, add tile): more
+   room means the editor's fields can sit two per row. */
+.picker-wide { width: min(820px, 96vw); }
+/* Two-column form grid. Each .form-field stacks its label over its
+   control; .form-span rows (swatches, notes, the icon picker) span the
+   full dialog width. Falls back to one column on phones. */
+.picker-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem 1.2rem;
+  align-content: start;
+  align-items: start;
+}
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+.form-span { grid-column: 1 / -1; }
+@media (max-width: 640px) {
+  .picker-form-grid { grid-template-columns: 1fr; }
+}
 .picker-form label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
 .picker-form .field-value { color: var(--text); font-weight: 800; margin-left: 0.35rem; }
 .picker-form input[type="range"] {
@@ -2050,9 +1879,6 @@ html, body {
   font-size: 0.9rem;
   min-height: 40px;
 }
-@media (prefers-color-scheme: light) {
-  .picker-form input, .picker-form select { background: rgba(0, 0, 0, 0.02); }
-}
 .picker-form input:focus, .picker-form select:focus {
   outline: none;
   border-color: var(--accent);
@@ -2070,9 +1896,6 @@ html, body {
   padding: 0.4rem 0.6rem;
   font-size: 0.82rem;
   min-height: 36px;
-}
-@media (prefers-color-scheme: light) {
-  .icon-picker-search { background: rgba(0, 0, 0, 0.02); }
 }
 /* Themed-pack chips row between the search box and the icon grid. */
 .icon-picker-packs {
@@ -2096,9 +1919,6 @@ html, body {
   border-radius: var(--radius-sm);
   cursor: pointer;
   white-space: nowrap;
-}
-@media (prefers-color-scheme: light) {
-  .icon-pack-chip { background: rgba(0, 0, 0, 0.02); }
 }
 .icon-pack-chip.is-active {
   color: var(--text);
@@ -2136,9 +1956,6 @@ html, body {
   cursor: pointer;
   border-radius: 0;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
-}
-@media (prefers-color-scheme: light) {
-  .icon-picker-btn { background: rgba(0, 0, 0, 0.03); }
 }
 .icon-picker-btn:hover {
   border-color: var(--accent);
@@ -2276,12 +2093,6 @@ html, body {
   container-type: size;
   container-name: tile;
 }
-@media (prefers-color-scheme: light) {
-  .custom-tile {
-    background: linear-gradient(145deg, #f7f9fc 0%, #edf2f7 100%);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
-  }
-}
 
 .custom-btn-inner {
   position: absolute;
@@ -2294,7 +2105,7 @@ html, body {
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  padding: clamp(0.35rem, 4cqi, 0.75rem);
+  padding: clamp(0.18rem, 2cqi, 0.38rem);
   cursor: pointer;
   text-align: center;
   /* Remove the 300 ms tap delay + prevent double-tap zoom on mobile. */
@@ -2314,7 +2125,7 @@ html, body {
 /* Tiny tile: icon only. Border + tile tint carry the state read. */
 @container tile (max-width: 90px), (max-height: 90px) {
   .custom-btn-inner {
-    padding: 0.2rem;
+    padding: 0.1rem;
     gap: 0;
   }
   .custom-btn-name,
@@ -2335,7 +2146,7 @@ html, body {
     justify-content: flex-start;
     text-align: left;
     gap: 0.6rem;
-    padding: clamp(0.4rem, 5cqi, 0.9rem);
+    padding: clamp(0.2rem, 2.5cqi, 0.45rem);
   }
   .custom-btn-inner > .custom-btn-icon {
     width: min(48cqb, 34cqi);
@@ -2365,7 +2176,7 @@ html, body {
 @container tile (max-aspect-ratio: 0.65) {
   .custom-btn-inner {
     justify-content: flex-start;
-    padding-top: clamp(0.4rem, 5cqb, 0.8rem);
+    padding-top: clamp(0.2rem, 2.5cqb, 0.4rem);
     gap: 0.3rem;
   }
   .custom-btn-inner > .custom-btn-icon {
@@ -2401,14 +2212,6 @@ html, body {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
 .custom-tile-glass .custom-btn-inner { background: transparent; }
-@media (prefers-color-scheme: light) {
-  .custom-tile-glass {
-    background: rgba(255, 255, 255, 0.45);
-    border-color: rgba(0, 0, 0, 0.08);
-    color: #1c1f24;
-    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.6);
-  }
-}
 .custom-btn-icon {
   /* Sized to the tile itself, not the viewport: the smaller of 34% width
      or 48% height keeps a big icon on square tiles and a proportional
@@ -2479,7 +2282,7 @@ html, body {
 .custom-num-inner {
   position: absolute;
   inset: 0;
-  padding: 0.5rem 0.6rem;
+  padding: 0.25rem 0.3rem;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -2760,9 +2563,6 @@ input[type="color"].bg-swatch::-webkit-color-swatch {
   box-shadow: 0 0 24px rgba(255, 255, 255, 0.15);
   flex: 0 0 auto;
 }
-@media (prefers-color-scheme: light) {
-  .light-preview-swatch { border-color: rgba(0, 0, 0, 0.12); }
-}
 .light-preview-info { display: flex; flex-direction: column; gap: 0.2rem; }
 .light-preview-hex {
   font-size: 0.9rem;
@@ -2866,9 +2666,6 @@ input[type="color"].bg-swatch::-webkit-color-swatch {
   cursor: pointer;
   border-radius: 0;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-}
-@media (prefers-color-scheme: light) {
-  .effect-chip { background: rgba(0, 0, 0, 0.02); }
 }
 .effect-chip:hover { border-color: var(--accent); color: var(--accent); }
 .effect-chip.is-active {

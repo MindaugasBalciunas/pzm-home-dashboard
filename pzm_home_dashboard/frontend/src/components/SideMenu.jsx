@@ -5,7 +5,8 @@ import EntityPicker from './EntityPicker.jsx';
 // within `.side-menu-edge` (a thin strip anchored to the left viewport edge).
 // Closes on backdrop tap, swipe-left, or the ✕ button.
 // Dashboard background presets. `null` restores the stylesheet default
-// (which also keeps the automatic light/dark switch working).
+// (the enforced dark theme's --bg). Light custom colours are fine too —
+// the app flips its text colours dark to match.
 const DASH_BG_PRESETS = [
   { key: null,      label: 'Default' },
   { key: '#0b101c', label: 'Midnight' },

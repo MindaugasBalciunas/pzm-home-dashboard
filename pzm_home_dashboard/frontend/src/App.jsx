@@ -8,6 +8,7 @@ import TileEditor from './components/TileEditor.jsx';
 import SecurityOptions from './components/SecurityOptions.jsx';
 import PullToRefresh from './components/PullToRefresh.jsx';
 import { isFreePlacement } from './lib/placement.js';
+import { textVarsFor } from './lib/color.js';
 
 // Touch move-drags arm after this hold; taps and mouse drags stay instant.
 const HOLD_TO_DRAG_MS = 350;
@@ -576,14 +577,24 @@ export default function App() {
 
   // Dashboard background colour (shared appearance setting). Overrides the
   // theme's --bg variable at the root, so the grid, gaps and the page edge
-  // all follow; clearing it restores the stylesheet default (incl. the
-  // automatic light/dark switch).
+  // all follow; clearing it restores the stylesheet default. A light
+  // background also flips --text/--muted dark so page-level text (notices,
+  // tiles without their own background) stays readable on it.
   const themeBg = overrides[THEME_KEY]?.bg || null;
   useEffect(() => {
     const root = document.documentElement;
-    if (themeBg) root.style.setProperty('--bg', themeBg);
-    else root.style.removeProperty('--bg');
-    return () => root.style.removeProperty('--bg');
+    const textVars = themeBg ? textVarsFor(themeBg) : null;
+    const clear = () => {
+      root.style.removeProperty('--bg');
+      root.style.removeProperty('--text');
+      root.style.removeProperty('--muted');
+    };
+    clear();
+    if (themeBg) {
+      root.style.setProperty('--bg', themeBg);
+      for (const [k, v] of Object.entries(textVars || {})) root.style.setProperty(k, v);
+    }
+    return clear;
   }, [themeBg]);
 
   const setThemeBg = (bg) => {

@@ -4,6 +4,7 @@ import LightControl from './LightControl.jsx';
 import { useEntityState, refreshEntities } from '../lib/entityStates.js';
 import { startPolling } from '../lib/poll.js';
 import { tilePlacementStyle } from '../lib/placement.js';
+import { textVarsFor, withAlpha } from '../lib/color.js';
 
 const LONG_PRESS_MS = 450;
 const LONG_PRESS_MOVE_PX = 8;
@@ -16,14 +17,22 @@ function isOnState(s) {
   return null;
 }
 
-function formatNumber(state, unit) {
+// `decimals` is the per-tile override from the editor; when unset the
+// precision falls back to a magnitude heuristic (small numbers keep more
+// digits).
+function formatNumber(state, unit, decimals) {
   if (state == null || state === '' || state === 'unknown' || state === 'unavailable') return { n: '—', u: '' };
   const num = Number(state);
   if (!Number.isFinite(num)) return { n: String(state), u: unit || '' };
-  let precision = 0;
-  if (Math.abs(num) < 1) precision = 2;
-  else if (Math.abs(num) < 10) precision = 2;
-  else if (Math.abs(num) < 100) precision = 1;
+  let precision;
+  if (Number.isFinite(Number(decimals)) && decimals != null) {
+    precision = Math.max(0, Math.min(5, Math.round(Number(decimals))));
+  } else {
+    precision = 0;
+    if (Math.abs(num) < 1) precision = 2;
+    else if (Math.abs(num) < 10) precision = 2;
+    else if (Math.abs(num) < 100) precision = 1;
+  }
   return { n: num.toFixed(precision), u: unit || '' };
 }
 
@@ -218,20 +227,41 @@ function SimpleTile({
   // stays consistent.
   const display = spec.kind === 'number' ? (spec.display || 'value') : 'value';
   const samples = useTodayHistory(spec.entityId, spec.kind === 'number' && display === 'graph');
-  // Per-tile look overrides from the editor. Opacity is skipped in edit
-  // mode so a near-transparent overlay tile stays visible while you grab
-  // and place it.
+  // Per-tile look overrides from the editor. Opacity fades ONLY the
+  // background layer (plus its drop shadow) — text, icon and border stay
+  // solid, so a see-through overlay tile keeps a readable label. The fade
+  // is baked into the background colour's alpha channel instead of CSS
+  // `opacity`, which would dim the whole subtree.
   const isGlass = spec.bg === 'glass';
   const glassCls = isGlass ? ' custom-tile-glass' : '';
   const tileBg = {};
-  if (spec.bg && !isGlass) tileBg.background = spec.bg;
-  if (spec.borderColor) tileBg.borderColor = spec.borderColor;
-  if (!editMode && spec.opacity != null && Number(spec.opacity) < 1) {
-    tileBg.opacity = Number(spec.opacity);
+  const op = spec.opacity != null && Number.isFinite(Number(spec.opacity))
+    ? Math.max(0, Math.min(1, Number(spec.opacity)))
+    : 1;
+  const hasOp = op < 1;
+  if (isGlass) {
+    // Keep the glass blur/border; scale just the smoke tint (mirrors the
+    // stylesheet's rgba(10, 14, 20, 0.35) glass background).
+    if (hasOp) tileBg.background = `rgba(10, 14, 20, ${(0.35 * op).toFixed(3)})`;
+  } else if (spec.bg) {
+    tileBg.background = hasOp ? withAlpha(spec.bg, op) : spec.bg;
+    // Light backgrounds flip the tile's text vars to dark so the value,
+    // label and state stay readable. Judged on the faded colour: a white
+    // bg at 20% over the dark page reads dark, so light text stays.
+    Object.assign(tileBg, textVarsFor(tileBg.background) || {});
+  } else if (hasOp) {
+    // No custom colour: flatten the default panel gradient to its midpoint
+    // and fade that.
+    tileBg.background = `rgba(18, 22, 30, ${op.toFixed(3)})`;
   }
+  if (hasOp) tileBg.boxShadow = `0 6px 18px rgba(0, 0, 0, ${(0.25 * op).toFixed(3)})`;
+  if (spec.borderColor) tileBg.borderColor = spec.borderColor;
 
   if (spec.kind === 'number') {
-    const { n, u } = formatNumber(state?.state, spec.unit || state?.unit);
+    // spec.unit is the explicit editor override; without one the live HA
+    // unit applies. New tiles no longer bake the unit in at add time, so
+    // a stale stored unit (the old '%' bug) can't shadow the real one.
+    const { n, u } = formatNumber(state?.state, spec.unit || state?.unit, spec.decimals);
     const num = Number(state?.state);
     const level = levelFor(num, spec.warnAbove, spec.alertAbove);
     const fx = spec.iconFx && spec.iconFx !== 'none' ? `iconfx iconfx-${spec.iconFx}` : '';
@@ -331,6 +361,14 @@ function SimpleTile({
         type="button"
         className="custom-btn-inner"
         disabled={editMode || busy || offline}
+        // The stylesheet's on/off state tint paints over the tile
+        // background, so it must fade along with it (values mirror the
+        // .custom-tile-on/-off .custom-btn-inner tints).
+        style={hasOp && !isGlass ? {
+          background: on === true ? `rgba(87, 211, 140, ${(0.10 * op).toFixed(3)})`
+            : on === false ? `rgba(139, 147, 161, ${(0.06 * op).toFixed(3)})`
+            : 'transparent',
+        } : undefined}
         {...btnHandlers}
       >
         <div className={`custom-btn-icon ${iconCls} ${fxCls}`}>

@@ -4,6 +4,40 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.26
+
+- **Tile editor reworked.** The dialog grew from 520 px to 820 px with a
+  two-column layout, so every control is visible at once. It also
+  scrolls when it outgrows the screen — before, anything past ~82 % of
+  the screen height (background, border-colour and opacity controls,
+  sometimes even Save) was silently clipped and unreachable. The
+  add-tile dialog shares the wider frame.
+- **Background-only opacity.** The opacity slider (now 0–100 %) fades
+  just the tile's background, state tint and shadow — the label, value
+  and icon stay solid, so a fully transparent overlay tile keeps a
+  readable name. The fade previews live in edit mode.
+- **Number tiles: decimal places.** New "Decimal places" control
+  (Auto / 0 / 1 / 2 / 3) in the tile editor. Auto keeps the old
+  magnitude-based precision.
+- **Number tiles: unit control.** New "Unit" field in the tile editor —
+  blank uses the sensor's live unit from Home Assistant, text overrides
+  it, whitespace hides it. Newly added tiles no longer freeze the unit
+  at add time, which could pin a stale unit (e.g. a leftover "%") on
+  the tile forever.
+- **Stronger tile background tints.** Preset colours went from 10 % to
+  22 % alpha so picking one visibly changes the tile.
+- **Dark mode enforced.** The dashboard always renders its dark theme
+  regardless of the browser/OS preference; all light-mode styles were
+  removed. Tiles and the dashboard background flip their text colour to
+  dark automatically when you pick a light background colour.
+- **Halved card edge padding.** Electricity, Security, button/number
+  tiles, photo callouts and energy chips all hug their borders twice as
+  tightly, giving content more room at the same tile size.
+- **P1 tariff splits removed.** The T1/T2 import/export breakdown is
+  gone from the Home callout, the `/solar` payload and the add-on
+  option defaults (`p1_import_t1/t2`, `p1_export_t1/t2` are ignored if
+  still present in stored options). Lifetime P1 totals stay.
+
 ## 0.2.25
 
 - **Free tile placement.** New "Snap to grid" toggle in the side menu

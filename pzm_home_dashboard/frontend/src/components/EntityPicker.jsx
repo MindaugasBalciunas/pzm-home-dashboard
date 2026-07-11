@@ -82,19 +82,21 @@ export default function EntityPicker({ kind, onCancel, onConfirm }) {
 
   const submit = () => {
     if (!canSubmit) return;
+    // No `unit` here on purpose: tiles read the live unit from HA each
+    // poll. Baking in the snapshot unit made stale/wrong units (e.g. '%')
+    // stick forever; the tile editor's Unit field is the explicit override.
     onConfirm({
       kind,
       entityId: selected.entityId,
       domain: selected.domain,
       name: name.trim(),
-      unit: selected.unit || null,
       icon,
     });
   };
 
   return (
     <div className="picker-scrim" onClick={onCancel}>
-      <div className="picker" onClick={(e) => e.stopPropagation()}>
+      <div className="picker picker-wide" onClick={(e) => e.stopPropagation()}>
         <div className="picker-header">
           <span className="picker-title">
             Add {kind === 'button' ? 'button' : 'number'} tile

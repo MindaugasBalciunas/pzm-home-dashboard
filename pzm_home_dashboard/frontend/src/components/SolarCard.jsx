@@ -101,10 +101,6 @@ function HouseView({
   houseState,
   p1ImportTotal,
   p1ExportTotal,
-  p1ImportT1,
-  p1ImportT2,
-  p1ExportT1,
-  p1ExportT2,
   todaySolarState,
   totalSolarState,
   todayImportState,
@@ -321,13 +317,6 @@ function HouseView({
   const pv2Sub = formatPvSubBits(pv2VoltageState, pv2CurrentState);
   const p1ImpFmt = p1ImportTotal ? formatValue(toNumber(p1ImportTotal), p1ImportTotal?.unit || 'kWh') : null;
   const p1ExpFmt = p1ExportTotal ? formatValue(toNumber(p1ExportTotal), p1ExportTotal?.unit || 'kWh') : null;
-  const fmtOrNull = (s) => (s ? formatValue(toNumber(s), s?.unit || 'kWh') : null);
-  const p1ImpT1Fmt = fmtOrNull(p1ImportT1);
-  const p1ImpT2Fmt = fmtOrNull(p1ImportT2);
-  const p1ExpT1Fmt = fmtOrNull(p1ExportT1);
-  const p1ExpT2Fmt = fmtOrNull(p1ExportT2);
-  const hasImpTariff = (p1ImpT1Fmt && p1ImpT1Fmt.text !== '—') || (p1ImpT2Fmt && p1ImpT2Fmt.text !== '—');
-  const hasExpTariff = (p1ExpT1Fmt && p1ExpT1Fmt.text !== '—') || (p1ExpT2Fmt && p1ExpT2Fmt.text !== '—');
 
   const active = (v) => (v || 0) > 5;
   const isImporting = imp > 5;
@@ -591,32 +580,12 @@ function HouseView({
                 <div className="hv-cell">
                   <span className="hv-cell-tag hv-tag-imp">P1 Imp total</span>
                   <span className="hv-cell-val">{p1ImpFmt.text}<span className="hv-cell-unit"> {p1ImpFmt.unit}</span></span>
-                  {hasImpTariff && (
-                    <div className="hv-p1-tariffs">
-                      {p1ImpT1Fmt && p1ImpT1Fmt.text !== '—' && (
-                        <span className="hv-p1-tariff"><span className="hv-p1-tariff-tag">T1</span>{p1ImpT1Fmt.text}</span>
-                      )}
-                      {p1ImpT2Fmt && p1ImpT2Fmt.text !== '—' && (
-                        <span className="hv-p1-tariff"><span className="hv-p1-tariff-tag">T2</span>{p1ImpT2Fmt.text}</span>
-                      )}
-                    </div>
-                  )}
                 </div>
               )}
               {hasExpTotal && (
                 <div className="hv-cell">
                   <span className="hv-cell-tag hv-tag-exp">P1 Exp total</span>
                   <span className="hv-cell-val">{p1ExpFmt.text}<span className="hv-cell-unit"> {p1ExpFmt.unit}</span></span>
-                  {hasExpTariff && (
-                    <div className="hv-p1-tariffs">
-                      {p1ExpT1Fmt && p1ExpT1Fmt.text !== '—' && (
-                        <span className="hv-p1-tariff"><span className="hv-p1-tariff-tag">T1</span>{p1ExpT1Fmt.text}</span>
-                      )}
-                      {p1ExpT2Fmt && p1ExpT2Fmt.text !== '—' && (
-                        <span className="hv-p1-tariff"><span className="hv-p1-tariff-tag">T2</span>{p1ExpT2Fmt.text}</span>
-                      )}
-                    </div>
-                  )}
                 </div>
               )}
             </div>
@@ -1104,10 +1073,6 @@ function SolarCard({
             houseState={data?.houseUse}
             p1ImportTotal={data?.p1ImportTotal}
             p1ExportTotal={data?.p1ExportTotal}
-            p1ImportT1={data?.p1ImportT1}
-            p1ImportT2={data?.p1ImportT2}
-            p1ExportT1={data?.p1ExportT1}
-            p1ExportT2={data?.p1ExportT2}
             todaySolarState={data?.todaySolar}
             totalSolarState={data?.totalSolar}
             todayImportState={data?.todayImport}
