@@ -413,6 +413,14 @@ export default function App() {
     });
   }, [persist]);
 
+  // Restore a layout from a downloaded backup file. Replaces the whole
+  // shared layout (every client follows via SSE).
+  const restoreLayout = useCallback((layoutObj) => {
+    if (!layoutObj || typeof layoutObj !== 'object' || Array.isArray(layoutObj)) return;
+    setOverrides(layoutObj);
+    persist.schedule(layoutObj, 0);
+  }, [persist]);
+
   const resetLayout = () => {
     // Rebuild the starter template so an empty layout never actually reaches
     // any client — users always see something on first paint.
@@ -674,6 +682,7 @@ export default function App() {
         onToggleBgDemo={() => setBgDemo((v) => !v)}
         themeBg={themeBg}
         onSetThemeBg={setThemeBg}
+        onRestoreLayout={restoreLayout}
       />
 
       <main

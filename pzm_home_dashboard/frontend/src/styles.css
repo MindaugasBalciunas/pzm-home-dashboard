@@ -1625,29 +1625,36 @@ html, body {
 /* ---------- Side menu (swipe-in drawer) ---------- */
 /* Ghost hamburger — deliberately faint so it doesn't compete with the tiles.
    Becomes solid on hover/focus so it stays discoverable. */
+/* Hamburger: a real button now — glass chip pinned to the top-left with
+   a border and blur so it reads on any background (house photo, video,
+   custom colours) instead of the old ghost glyph that was easy to miss. */
 .side-menu-btn {
   position: fixed;
-  top: 0.5rem;
-  left: 0.5rem;
-  z-index: 12;
-  width: 36px;
-  height: 36px;
-  border-radius: 0;
-  background: transparent;
+  top: 0.6rem;
+  left: 0.6rem;
+  z-index: 25;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: rgba(13, 17, 23, 0.62);
   color: var(--text);
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: none;
-  opacity: 0.35;
+  opacity: 0.92;
   transition: opacity 0.2s ease, background 0.2s ease, transform 0.15s ease;
 }
+.side-menu-btn svg { width: 22px; height: 22px; }
 .side-menu-btn:hover,
 .side-menu-btn:focus-visible {
   opacity: 1;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(74, 163, 255, 0.25);
+  border-color: rgba(74, 163, 255, 0.6);
   outline: none;
 }
 .side-menu-btn:active { transform: scale(0.94); }
@@ -2161,7 +2168,7 @@ html, body {
   .custom-btn-inner > .custom-btn-name {
     flex: 1 1 auto;
     min-width: 0;
-    font-size: clamp(0.7rem, min(9cqi, 22cqb), 1.2rem);
+    font-size: clamp(0.6rem, min(6.5cqi, 15cqb), 0.9rem);
   }
   .custom-btn-inner > .custom-btn-state {
     order: 3;
@@ -2264,12 +2271,16 @@ html, body {
 .custom-btn-icon svg { width: 62%; height: 62%; }
 .custom-btn-name {
   font-weight: 800;
-  font-size: clamp(0.68rem, min(11cqi, 14cqb), 1.3rem);
+  /* Compact on purpose: a smaller label wraps to two lines instead of
+     ellipsizing, so the full name stays readable. */
+  font-size: clamp(0.58rem, min(7.5cqi, 10cqb), 0.9rem);
   line-height: 1.15;
   letter-spacing: 0.02em;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
   max-width: 100%;
   padding: 0 0.25rem;
 }
@@ -2778,14 +2789,24 @@ input[type="color"].bg-swatch::-webkit-color-swatch {
   justify-content: center;
 }
 .ptz-btn-icon svg { width: 100%; height: 100%; }
+.ptz-preset-icon path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 .ptz-btn-name {
-  font-size: 0.68rem;
+  font-size: 0.58rem;
   font-weight: 700;
   line-height: 1.1;
   max-width: 100%;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  text-align: center;
 }
 
 /* Ghost-overlay mode: the card lives on top of the camera view. Idle it
@@ -2829,27 +2850,6 @@ input[type="color"].bg-swatch::-webkit-color-swatch {
   gap: 0.2rem;
   min-height: 0;
 }
-.wx-head {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-width: 0;
-}
-.wx-title {
-  font-size: 0.56rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--muted);
-  font-weight: 800;
-}
-.wx-now {
-  font-size: 0.95rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-.wx-head-spacer { flex: 1 1 auto; }
 .wx-sun-chip {
   display: inline-flex;
   align-items: center;
@@ -2888,10 +2888,45 @@ input[type="color"].bg-swatch::-webkit-color-swatch {
   background: rgba(255, 255, 255, 0.025);
   scroll-snap-align: start;
 }
-/* First cell is always the current hour. */
-.wx-strip > .wx-cell:first-child {
+/* Wide "now" card at the head of the strip: current conditions plus
+   sunrise/sunset, so everything lives inside the strip itself. */
+.wx-cell-now {
+  width: 158px;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 0.25rem;
+  padding: 0.3rem 0.4rem;
   border-color: rgba(74, 163, 255, 0.55);
   background: rgba(74, 163, 255, 0.10);
+}
+.wx-now-top {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.wx-now-icon { width: 46px; height: 46px; flex: 0 0 auto; }
+.wx-now-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.wx-now-temp {
+  font-size: 1.4rem;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.wx-now-sun {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.3rem;
+  flex-wrap: wrap;
 }
 .wx-cell.wx-night { background: rgba(58, 84, 138, 0.10); }
 .wx-cell-time {

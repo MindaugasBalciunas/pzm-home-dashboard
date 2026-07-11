@@ -4,6 +4,27 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.32
+
+- **Layout backup & restore.** New Backup section in the side menu:
+  "Download backup" saves the whole dashboard layout (tiles, positions,
+  styling) as a JSON file on the device; "Restore…" loads one back and
+  replaces the shared layout for every client (with a confirmation).
+- **Weather: everything in the first card, 24-hour times.** The header
+  row is gone — the strip's first card is now a wider "now" panel with
+  the current conditions (big icon, temperature, wind, precipitation)
+  plus sunrise and sunset. All times render in 24-hour format.
+- **New PTZ preset icons.** The preset buttons swapped the filled
+  catalog glyphs for a dedicated thin-outline set (gate, garage, garden,
+  tree, street lamp, car, pool, terrace, house, door, ball, tracking,
+  PTZ dome) that reads lighter over the video.
+- **Visible hamburger.** The menu button is a proper glass chip now —
+  bordered, blurred, larger (44 px) and always ~full opacity instead of
+  the near-invisible ghost glyph.
+- **Smaller, wrapping button labels.** Custom tile and PTZ preset labels
+  render smaller and wrap to two lines instead of getting cut off with
+  an ellipsis, so full names stay visible.
+
 ## 0.2.31
 
 - **RGBIC strips wear their pattern on the tile border.** Light tiles

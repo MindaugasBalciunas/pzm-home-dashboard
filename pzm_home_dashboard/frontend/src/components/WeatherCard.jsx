@@ -153,7 +153,11 @@ function WindArrow({ dir }) {
 }
 
 function hhmm(tSec) {
-  return new Date(tSec * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return new Date(tSec * 1000).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
 }
 
 // Wide hourly-forecast card: next 24 h in a horizontally scrollable strip
@@ -215,7 +219,10 @@ function WeatherCard({ col, row, colSpan, rowSpan, editMode, onStartMove, onStar
 
   const style = tilePlacementStyle(col, row, colSpan, rowSpan);
   const configured = data ? data.configured !== false : true;
-  const nowHour = cells.find((c) => c.kind === 'hour');
+  // The first (current-hour) slot becomes the wide "now" card carrying
+  // the live conditions plus sunrise/sunset; the rest stay hourly cells.
+  const nowCell = cells.length > 0 && cells[0].kind === 'hour' ? cells[0] : null;
+  const restCells = nowCell ? cells.slice(1) : cells;
 
   return (
     <div
@@ -225,25 +232,6 @@ function WeatherCard({ col, row, colSpan, rowSpan, editMode, onStartMove, onStar
       title="Hourly forecast (Open-Meteo, HA home location)"
     >
       <div className="wx-inner">
-        <div className="wx-head">
-          <span className="wx-title">Weather</span>
-          {nowHour && Number.isFinite(nowHour.temp) && (
-            <span className="wx-now">
-              {Math.round(nowHour.temp)}°
-            </span>
-          )}
-          <span className="wx-head-spacer" />
-          {nextSun.rise && (
-            <span className="wx-sun-chip" title="Sunrise">
-              <SunEventIcon type="sunrise" />{hhmm(nextSun.rise.t)}
-            </span>
-          )}
-          {nextSun.set && (
-            <span className="wx-sun-chip" title="Sunset">
-              <SunEventIcon type="sunset" />{hhmm(nextSun.set.t)}
-            </span>
-          )}
-        </div>
         {error && <div className="solar-note solar-note-error">Fetch error</div>}
         {!error && !configured && (
           <div className="solar-note">Weather needs the Home Assistant connection (home coordinates).</div>
@@ -253,10 +241,44 @@ function WeatherCard({ col, row, colSpan, rowSpan, editMode, onStartMove, onStar
         )}
         {cells.length > 0 && (
           <div className="wx-strip">
-            {cells.map((c, i) => (c.kind === 'hour' ? (
+            {nowCell && (
+              <div className={`wx-cell wx-cell-now ${nowCell.night ? 'wx-night' : ''}`}>
+                <div className="wx-now-top">
+                  <span className="wx-now-icon">
+                    <WeatherIcon code={nowCell.code} night={nowCell.night} />
+                  </span>
+                  <div className="wx-now-col">
+                    <span className="wx-now-temp">
+                      {Number.isFinite(nowCell.temp) ? `${Math.round(nowCell.temp)}°` : '—'}
+                    </span>
+                    <span className="wx-cell-wind">
+                      <WindArrow dir={nowCell.windDir} />
+                      {Number.isFinite(nowCell.wind) ? Math.round(nowCell.wind) : '—'}
+                      <span className="wx-wind-unit">m/s</span>
+                    </span>
+                    {Number.isFinite(nowCell.precip) && nowCell.precip >= 20 && (
+                      <span className="wx-cell-precip">{Math.round(nowCell.precip)}%</span>
+                    )}
+                  </div>
+                </div>
+                <div className="wx-now-sun">
+                  {nextSun.rise && (
+                    <span className="wx-sun-chip" title="Sunrise">
+                      <SunEventIcon type="sunrise" />{hhmm(nextSun.rise.t)}
+                    </span>
+                  )}
+                  {nextSun.set && (
+                    <span className="wx-sun-chip" title="Sunset">
+                      <SunEventIcon type="sunset" />{hhmm(nextSun.set.t)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+            {restCells.map((c) => (c.kind === 'hour' ? (
               <div className={`wx-cell ${c.night ? 'wx-night' : ''}`} key={`h-${c.t}`}>
                 <span className="wx-cell-time">
-                  {i === 0 ? 'Now' : `${new Date(c.t * 1000).getHours()}:00`}
+                  {`${new Date(c.t * 1000).getHours()}:00`}
                 </span>
                 <span className="wx-cell-icon"><WeatherIcon code={c.code} night={c.night} /></span>
                 <span className="wx-cell-temp">

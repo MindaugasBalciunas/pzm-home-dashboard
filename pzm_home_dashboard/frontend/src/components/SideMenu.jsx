@@ -28,12 +28,66 @@ export default function SideMenu({
   onToggleBgDemo,
   themeBg,
   onSetThemeBg,
+  onRestoreLayout,
 }) {
   const [open, setOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [dragDx, setDragDx] = useState(0);
   const [pickerOpen, setPickerOpen] = useState(null); // null | 'button' | 'number'
+  const [backupNote, setBackupNote] = useState(null);
   const menuRef = useRef(null);
+  const restoreInputRef = useRef(null);
+
+  // Download the current shared layout as a JSON file — a local backup
+  // the Restore button can load back later.
+  const downloadBackup = async () => {
+    try {
+      const r = await fetch('api/layout', { cache: 'no-store' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const data = await r.json();
+      const payload = {
+        app: 'pzm-home-dashboard',
+        exportedAt: new Date().toISOString(),
+        revision: data.revision ?? null,
+        layout: data.layout ?? {},
+      };
+      const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pzm-dashboard-backup-${stamp}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      setBackupNote('Backup downloaded.');
+    } catch (e) {
+      setBackupNote(`Backup failed: ${e}`);
+    }
+  };
+
+  const restoreFromFile = async (file) => {
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      // Accept both the download wrapper and a bare layout object.
+      const layout = parsed && typeof parsed.layout === 'object' && parsed.layout !== null
+        ? parsed.layout
+        : parsed;
+      if (!layout || typeof layout !== 'object' || Array.isArray(layout)
+          || Object.keys(layout).length === 0) {
+        throw new Error('no layout found in file');
+      }
+      const when = typeof parsed.exportedAt === 'string' ? ` (saved ${parsed.exportedAt.slice(0, 16).replace('T', ' ')})` : '';
+      if (!window.confirm(`Replace the dashboard layout for everyone with this backup${when}?`)) return;
+      onRestoreLayout?.(layout);
+      setBackupNote('Layout restored.');
+    } catch (e) {
+      setBackupNote(`Restore failed: ${e}`);
+    }
+  };
   const startXRef = useRef(0);
   const startYRef = useRef(0);
   const startedInMenuRef = useRef(false);
@@ -246,6 +300,38 @@ export default function SideMenu({
               </div>
             </section>
           )}
+
+          <section className="side-menu-section">
+            <div className="side-menu-section-title">Backup</div>
+            <div className="side-menu-row">
+              <button
+                type="button"
+                className="side-menu-btn-primary"
+                onClick={downloadBackup}
+              >Download backup</button>
+              <button
+                type="button"
+                className="side-menu-btn-ghost"
+                onClick={() => restoreInputRef.current?.click()}
+              >Restore…</button>
+              <input
+                ref={restoreInputRef}
+                type="file"
+                accept="application/json,.json"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  restoreFromFile(e.target.files?.[0]);
+                  e.target.value = '';
+                }}
+              />
+            </div>
+            <div className="side-menu-note">
+              Backup saves the whole dashboard layout (tiles, positions,
+              styling) as a JSON file on this device. Restore loads one
+              back and replaces the layout for every client.
+            </div>
+            {backupNote && <div className="side-menu-note">{backupNote}</div>}
+          </section>
 
           <section className="side-menu-section">
             <div className="side-menu-section-title">Experiments</div>
