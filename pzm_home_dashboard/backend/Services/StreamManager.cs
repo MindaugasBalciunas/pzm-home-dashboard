@@ -11,6 +11,10 @@ public sealed class StreamManager : BackgroundService, IAsyncDisposable
     private readonly ILogger<StreamManager> _log;
     private readonly string _hlsRoot;
     private readonly Dictionary<string, StreamSession> _sessions = new(StringComparer.OrdinalIgnoreCase);
+    // Cameras whose low-latency transcode failed to deliver a playlist —
+    // they run as plain stream copy until the add-on restarts, instead of
+    // black-screening (weak CPU, odd codec, missing filter, …).
+    private readonly HashSet<string> _copyFallback = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _gate = new();
 
     public StreamManager(
@@ -45,42 +49,64 @@ public sealed class StreamManager : BackgroundService, IAsyncDisposable
             return null;
         }
 
-        StreamSession session;
-        lock (_gate)
+        for (var attempt = 0; ; attempt++)
         {
-            if (!_sessions.TryGetValue(cameraId, out session!))
+            StreamSession session;
+            lock (_gate)
             {
-                session = StartFfmpeg(cameraId, camera);
-                _sessions[cameraId] = session;
+                if (!_sessions.TryGetValue(cameraId, out session!))
+                {
+                    var transcode = _options.LowLatencyTranscode && !_copyFallback.Contains(cameraId);
+                    session = StartFfmpeg(cameraId, camera, transcode);
+                    _sessions[cameraId] = session;
+                }
+                session.LastAccessUtc = DateTime.UtcNow;
             }
-            session.LastAccessUtc = DateTime.UtcNow;
-        }
 
-        var playlist = Path.Combine(GetOutputDir(cameraId), "index.m3u8");
-        var deadline = DateTime.UtcNow.AddSeconds(15);
-        while (DateTime.UtcNow < deadline)
-        {
-            if (File.Exists(playlist))
+            var playlist = Path.Combine(GetOutputDir(cameraId), "index.m3u8");
+            var deadline = DateTime.UtcNow.AddSeconds(15);
+            while (DateTime.UtcNow < deadline)
             {
-                return playlist;
+                if (File.Exists(playlist))
+                {
+                    return playlist;
+                }
+                if (session.Process.HasExited)
+                {
+                    break;
+                }
+                try { await Task.Delay(200, ct); }
+                catch (OperationCanceledException) { return null; }
             }
-            if (session.Process.HasExited)
+
+            var reason = session.Process.HasExited
+                ? $"ffmpeg exited with code {session.Process.ExitCode} before producing a playlist"
+                : "timed out waiting for the HLS playlist";
+
+            lock (_gate)
+            {
+                if (_sessions.TryGetValue(cameraId, out var current) && ReferenceEquals(current, session))
+                {
+                    _sessions.Remove(cameraId);
+                }
+            }
+            await StopSessionAsync(session, reason: "no playlist");
+
+            if (session.Transcoded && attempt == 0)
             {
                 _log.LogWarning(
-                    "ffmpeg for camera {Id} exited before producing a playlist (code {Code}).",
-                    cameraId, session.Process.ExitCode);
-                lock (_gate) _sessions.Remove(cameraId);
-                return null;
+                    "Camera {Id}: {Reason}; falling back to stream copy (no transcode) for this camera.",
+                    cameraId, reason);
+                lock (_gate) _copyFallback.Add(cameraId);
+                continue;
             }
-            try { await Task.Delay(200, ct); }
-            catch (OperationCanceledException) { return null; }
-        }
 
-        _log.LogWarning("Timed out waiting for HLS playlist for camera {Id}.", cameraId);
-        return null;
+            _log.LogWarning("Camera {Id}: {Reason}.", cameraId, reason);
+            return null;
+        }
     }
 
-    private StreamSession StartFfmpeg(string cameraId, CameraOptions camera)
+    private StreamSession StartFfmpeg(string cameraId, CameraOptions camera, bool transcode)
     {
         var outDir = GetOutputDir(cameraId);
         Directory.CreateDirectory(outDir);
@@ -91,7 +117,7 @@ public sealed class StreamManager : BackgroundService, IAsyncDisposable
         // Low-latency mode pins segments at 1s — the whole point of the
         // re-encode is a keyframe cadence shorter than the camera's GOP,
         // and stored add-on options may still carry the old 2s default.
-        var segTime = _options.LowLatencyTranscode ? 1 : Math.Max(1, _options.HlsSegmentSeconds);
+        var segTime = transcode ? 1 : Math.Max(1, _options.HlsSegmentSeconds);
         var listSize = Math.Max(2, _options.HlsListSize);
 
         var args = new StringBuilder();
@@ -104,14 +130,16 @@ public sealed class StreamManager : BackgroundService, IAsyncDisposable
         args.Append("-timeout 5000000 ");
         args.Append($"-i \"{input}\" ");
         args.Append("-an ");
-        if (_options.LowLatencyTranscode)
+        if (transcode)
         {
             // Speed over quality: cheapest x264 settings, no encoder
             // lookahead, a keyframe forced every segment so HLS latency is
             // bound by hls_time instead of the camera's (often 2-4s) GOP.
             // Width is capped so an accidental main-stream URL doesn't
-            // melt the CPU; yuv420p keeps WebView/MSE decoders happy.
-            args.Append("-c:v libx264 -preset ultrafast -tune zerolatency ");
+            // melt the CPU; yuv420p keeps WebView/MSE decoders happy;
+            // threads capped so N encoders cold-starting together don't
+            // starve each other (and the whole box) of cores.
+            args.Append("-c:v libx264 -preset ultrafast -tune zerolatency -threads 2 ");
             args.Append("-crf 28 -maxrate 1500k -bufsize 3000k -pix_fmt yuv420p ");
             args.Append("-vf \"scale='min(1280,iw)':-2\" ");
             args.Append($"-force_key_frames \"expr:gte(t,n_forced*{segTime})\" ");
@@ -152,12 +180,14 @@ public sealed class StreamManager : BackgroundService, IAsyncDisposable
             }
         };
 
-        _log.LogInformation("Starting ffmpeg for camera {Id} ({Name}).", cameraId, camera.Name);
+        _log.LogInformation(
+            "Starting ffmpeg for camera {Id} ({Name}, {Mode}).",
+            cameraId, camera.Name, transcode ? "low-latency transcode" : "stream copy");
         proc.Start();
         proc.BeginErrorReadLine();
         proc.BeginOutputReadLine();
 
-        return new StreamSession(cameraId, proc, outDir, DateTime.UtcNow);
+        return new StreamSession(cameraId, proc, outDir, DateTime.UtcNow, transcode);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -270,17 +300,19 @@ public sealed class StreamManager : BackgroundService, IAsyncDisposable
 
     private sealed class StreamSession
     {
-        public StreamSession(string cameraId, Process process, string outputDir, DateTime lastAccessUtc)
+        public StreamSession(string cameraId, Process process, string outputDir, DateTime lastAccessUtc, bool transcoded)
         {
             CameraId = cameraId;
             Process = process;
             OutputDir = outputDir;
             LastAccessUtc = lastAccessUtc;
+            Transcoded = transcoded;
         }
 
         public string CameraId { get; }
         public Process Process { get; }
         public string OutputDir { get; }
         public DateTime LastAccessUtc { get; set; }
+        public bool Transcoded { get; }
     }
 }

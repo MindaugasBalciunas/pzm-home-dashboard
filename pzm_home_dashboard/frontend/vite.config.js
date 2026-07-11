@@ -22,8 +22,11 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': 'http://localhost:8099',
-      '/hls': 'http://localhost:8099',
+      // PZM_API_TARGET lets a second backend (e.g. one loaded with a layout
+      // backup under test) be plugged in without touching the default dev
+      // instance on 8099.
+      '/api': process.env.PZM_API_TARGET || 'http://localhost:8099',
+      '/hls': process.env.PZM_API_TARGET || 'http://localhost:8099',
     },
   },
 });

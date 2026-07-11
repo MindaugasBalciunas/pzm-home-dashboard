@@ -186,7 +186,14 @@ function SimpleTile({
   // an amber Offline points at the device. `state === undefined` (first
   // poll not landed yet) keeps the plain dash.
   const offline = state?.state === 'unavailable' || state?.state === 'unknown';
-  const stateText = state?.state && !offline ? String(state.state) : offline ? 'Offline' : '—';
+  // A poll landed but HA answered without a state: the entity id doesn't
+  // exist (deleted/renamed device). Distinct from Offline — say so, so a
+  // stale tile points at its own fix (edit the tile, repick the entity).
+  const missing = state != null && state.state == null;
+  const stateText = state?.state && !offline ? String(state.state)
+    : offline ? 'Offline'
+    : missing ? 'Not in HA'
+    : '—';
 
   const stopPropagation = (e) => { e.stopPropagation(); e.preventDefault?.(); };
   const editHeader = editMode && (
@@ -300,7 +307,9 @@ function SimpleTile({
             <span className="n">{n}</span>
             {u && <span className="u">{u}</span>}
           </div>
-          {offline && <div className="tile-offline-note">Offline</div>}
+          {(offline || missing) && (
+            <div className="tile-offline-note">{offline ? 'Offline' : 'Not in HA'}</div>
+          )}
           {display === 'graph' && <Sparkline samples={samples} level={level} />}
           {display === 'bar' && (
             <ProgressBar num={num} min={spec.min} max={spec.max} level={level} />
@@ -354,12 +363,12 @@ function SimpleTile({
           <div className="lfx-head">
             <span className="lfx-name">{spec.name}</span>
             <span className={`lfx-state ${on === true ? 'is-on' : ''}`}>
-              {offline ? 'Offline' : on === true ? (activeEffect || 'On') : on === false ? 'Off' : '—'}
+              {offline ? 'Offline' : missing ? 'Not in HA' : on === true ? (activeEffect || 'On') : on === false ? 'Off' : '—'}
             </span>
             <button
               type="button"
               className={`lfx-power ${on === true ? 'is-on' : ''}`}
-              disabled={editMode || busy || offline}
+              disabled={editMode || busy || offline || missing}
               onClick={trigger}
               title="Toggle light"
               aria-label="Toggle light"
@@ -372,7 +381,9 @@ function SimpleTile({
           </div>
           {effects.length === 0 && (
             <div className="side-menu-note">
-              {offline ? 'Strip is offline.' : 'No patterns reported by this light yet.'}
+              {offline ? 'Strip is offline.'
+                : missing ? 'Entity not found in Home Assistant — edit the tile to repoint it.'
+                : 'No patterns reported by this light yet.'}
             </div>
           )}
           {effects.length > 0 && (
@@ -382,7 +393,7 @@ function SimpleTile({
                   key={name}
                   type="button"
                   className={`lfx-chip ${activeEffect === name ? 'is-active' : ''}`}
-                  disabled={editMode || busy || offline}
+                  disabled={editMode || busy || offline || missing}
                   onClick={() => applyEffect(name)}
                   title={name}
                 >{name}</button>
@@ -403,8 +414,8 @@ function SimpleTile({
     : '';
   const iconCls = busy
     ? ''
-    : offline ? 'is-offline' : on === true ? 'is-on' : on === false ? 'is-off' : '';
-  const labelCls = offline ? 'is-offline' : on === true ? 'is-on' : on === false ? 'is-off' : '';
+    : (offline || missing) ? 'is-offline' : on === true ? 'is-on' : on === false ? 'is-off' : '';
+  const labelCls = (offline || missing) ? 'is-offline' : on === true ? 'is-on' : on === false ? 'is-off' : '';
   const tileStateCls = on === true ? 'custom-tile-on' : on === false ? 'custom-tile-off' : '';
 
   // For light entities that expose brightness or colour, a long-press on
@@ -463,7 +474,7 @@ function SimpleTile({
       <button
         type="button"
         className="custom-btn-inner"
-        disabled={editMode || busy || offline}
+        disabled={editMode || busy || offline || missing}
         // The stylesheet's on/off state tint paints over the tile
         // background, so it must fade along with it (values mirror the
         // .custom-tile-on/-off .custom-btn-inner tints).

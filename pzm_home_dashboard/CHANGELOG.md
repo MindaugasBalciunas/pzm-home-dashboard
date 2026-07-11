@@ -4,6 +4,24 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.35
+
+- **Fix: camera tiles stuck on a black screen after 0.2.34.** Two causes,
+  both fixed:
+  - The live-edge watchdog treated a still-connecting stream as "frozen"
+    (playhead pinned at 0) and rebuilt the player every 8s — aborting the
+    connect over and over, so tiles never left black. Live-edge seeks and
+    the frozen-rebuild check now only arm after the stream has actually
+    played; a separate 45s deadline rescues a truly wedged connect.
+  - Backend playlist warm-up (up to 15s while ffmpeg starts) overran
+    hls.js's 10s manifest timeout, surfacing as `manifestLoadError`.
+    Loader timeouts are now 20s, and if a camera's low-latency transcode
+    fails to produce a playlist at all (weak CPU, odd codec), the backend
+    automatically retries that camera as plain stream copy — the
+    pre-0.2.34 pipeline — until the add-on restarts, logging the reason.
+  - Each transcode is also capped at 2 encoder threads so several streams
+    cold-starting together don't starve the box.
+
 ## 0.2.34
 
 - **Camera streams: latency over quality.** Multiple RTSP tiles on the

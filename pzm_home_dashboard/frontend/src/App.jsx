@@ -10,6 +10,7 @@ import TileEditor from './components/TileEditor.jsx';
 import SecurityOptions from './components/SecurityOptions.jsx';
 import PullToRefresh from './components/PullToRefresh.jsx';
 import { isFreePlacement } from './lib/placement.js';
+import { repairLayout } from './lib/layoutRepair.js';
 import { textVarsFor } from './lib/color.js';
 
 // Touch move-drags arm after this hold; taps and mouse drags stay instant.
@@ -54,14 +55,16 @@ const TEMPLATE_TILES = [
   { id: 'tpl-street-sign',       kind: 'button', entityId: 'switch.street_sign_switch_1',       domain: 'switch', name: 'Street sign' },
   { id: 'tpl-street-lamp',       kind: 'button', entityId: 'switch.street_lamp_switch_socket_1', domain: 'switch', name: 'Street lamp' },
   { id: 'tpl-living-rgb',        kind: 'button', entityId: 'light.living_room_rgbic_led',       domain: 'light',  name: 'Living RGB' },
-  { id: 'tpl-garage-rgb',        kind: 'button', entityId: 'light.garage_rgbic_led',            domain: 'light',  name: 'Garage LED' },
-  // Environment sensors — number tiles.
-  { id: 'tpl-outside-temp',      kind: 'number', entityId: 'sensor.outside_temperature_humidity_sensor_temperature',      domain: 'sensor', name: 'Outside temp',      unit: '°C' },
-  { id: 'tpl-outside-hum',       kind: 'number', entityId: 'sensor.outside_temperature_humidity_sensor_humidity',         domain: 'sensor', name: 'Outside humidity',  unit: '%' },
-  { id: 'tpl-greenhouse-temp',   kind: 'number', entityId: 'sensor.greenhouse_temperature_humidity_sensor_2_temperature', domain: 'sensor', name: 'Greenhouse temp',   unit: '°C' },
-  { id: 'tpl-greenhouse-hum',    kind: 'number', entityId: 'sensor.greenhouse_temperature_humidity_sensor_2_humidity',    domain: 'sensor', name: 'Greenhouse hum.',   unit: '%' },
-  { id: 'tpl-waste-tank',        kind: 'number', entityId: 'sensor.waste_tank_level_depth',                               domain: 'sensor', name: 'Waste tank',        unit: null },
-  { id: 'tpl-garage-door',       kind: 'number', entityId: 'binary_sensor.garage_gates_contact_sensor_door',              domain: 'binary_sensor', name: 'Garage door',  unit: null },
+  { id: 'tpl-garage-rgb',        kind: 'button', entityId: 'light.garage_led_strip',            domain: 'light',  name: 'Garage LED' },
+  // Environment sensors — number tiles. No baked-in units: tiles read the
+  // live unit from HA each poll (a stored unit would shadow it forever —
+  // see the same policy note in EntityPicker).
+  { id: 'tpl-outside-temp',      kind: 'number', entityId: 'sensor.outside_temperature_humidity_sensor_temperature',      domain: 'sensor', name: 'Outside temp' },
+  { id: 'tpl-outside-hum',       kind: 'number', entityId: 'sensor.outside_temperature_humidity_sensor_humidity',         domain: 'sensor', name: 'Outside humidity' },
+  { id: 'tpl-greenhouse-temp',   kind: 'number', entityId: 'sensor.greenhouse_temperature_humidity_sensor_2_temperature', domain: 'sensor', name: 'Greenhouse temp' },
+  { id: 'tpl-greenhouse-hum',    kind: 'number', entityId: 'sensor.greenhouse_temperature_humidity_sensor_2_humidity',    domain: 'sensor', name: 'Greenhouse hum.' },
+  { id: 'tpl-waste-tank',        kind: 'number', entityId: 'sensor.waste_tank_level_depth',                               domain: 'sensor', name: 'Waste tank' },
+  { id: 'tpl-garage-door',       kind: 'number', entityId: 'binary_sensor.garage_gates_contact_sensor_door',              domain: 'binary_sensor', name: 'Garage door' },
 ];
 
 // Lay out template tiles in a clean strip beneath the top row of cameras/
@@ -89,7 +92,7 @@ function seedTemplateLayout(startRow) {
   col = 1; row += buttonsH;
   for (const t of numbers) {
     const { col: c, row: r } = advance(numbersW, numbersH);
-    out[t.id] = { col: c, row: r, colSpan: numbersW, rowSpan: numbersH, spec: { kind: 'number', entityId: t.entityId, domain: t.domain, name: t.name, unit: t.unit } };
+    out[t.id] = { col: c, row: r, colSpan: numbersW, rowSpan: numbersH, spec: { kind: 'number', entityId: t.entityId, domain: t.domain, name: t.name } };
   }
   // Camera PTZ preset card + Weather card on their own row below the strip.
   row += numbersH;
@@ -103,7 +106,7 @@ function seedTemplateLayout(startRow) {
   };
   out['tpl-garage-fx'] = {
     col: 13, row, colSpan: 12, rowSpan: 6,
-    spec: { kind: 'lightfx', entityId: 'light.garage_rgbic_led', domain: 'light', name: 'Garage patterns' },
+    spec: { kind: 'lightfx', entityId: 'light.garage_led_strip', domain: 'light', name: 'Garage patterns' },
   };
   return out;
 }
@@ -277,7 +280,11 @@ export default function App() {
         const cams = camRes.status === 'fulfilled' && Array.isArray(camRes.value) ? camRes.value : [];
         setCameras(cams);
         const layoutData = layoutRes.value;
-        const initial = layoutData?.layout && typeof layoutData.layout === 'object' ? layoutData.layout : {};
+        const stored = layoutData?.layout && typeof layoutData.layout === 'object' ? layoutData.layout : {};
+        // Heal known data defects (mojibake units, renamed entities) before
+        // anything renders or reseeds. When something was repaired the fixed
+        // layout is persisted below, so the shared copy heals too.
+        const { layout: initial, changed: repaired } = repairLayout(stored);
         setRevision(typeof layoutData?.revision === 'number' ? layoutData.revision : 0);
 
         // Seed the starter template on the very first load. Guard with a
@@ -307,11 +314,11 @@ export default function App() {
             { id: PTZ_ID, since: 2, w: PTZ_W, h: PTZ_H },
             { id: WEATHER_ID, since: 3, w: WEATHER_W, h: WEATHER_H },
             { id: 'tpl-garage-rgb', since: 4, w: 6, h: 6,
-              spec: { kind: 'button', entityId: 'light.garage_rgbic_led', domain: 'light', name: 'Garage LED' } },
+              spec: { kind: 'button', entityId: 'light.garage_led_strip', domain: 'light', name: 'Garage LED' } },
             { id: 'tpl-living-fx', since: 5, w: 12, h: 6,
               spec: { kind: 'lightfx', entityId: 'light.living_room_rgbic_led', domain: 'light', name: 'Living patterns' } },
             { id: 'tpl-garage-fx', since: 5, w: 12, h: 6,
-              spec: { kind: 'lightfx', entityId: 'light.garage_rgbic_led', domain: 'light', name: 'Garage patterns' } },
+              spec: { kind: 'lightfx', entityId: 'light.garage_led_strip', domain: 'light', name: 'Garage patterns' } },
           ];
           const fromVersion = Number(String(marker).replace(/^v/, '')) || 1;
           const seeded = { ...initial };
@@ -330,6 +337,7 @@ export default function App() {
           saveLayout(seeded);
         } else {
           setOverrides(initial);
+          if (repaired) saveLayout(initial);
         }
         setLoading(false);
       });
@@ -347,7 +355,12 @@ export default function App() {
         // Only accept newer revisions than what we already have.
         setRevision((current) => {
           if (data.revision <= current) return current;
-          setOverrides(data.layout && typeof data.layout === 'object' ? data.layout : {});
+          // Display-side repair only — the client that loads/edits next
+          // persists the fixed layout; repairing here without a PUT avoids
+          // several clients racing to heal the same snapshot.
+          setOverrides(data.layout && typeof data.layout === 'object'
+            ? repairLayout(data.layout).layout
+            : {});
           return data.revision;
         });
       } catch { /* ignore */ }
@@ -432,8 +445,11 @@ export default function App() {
   // shared layout (every client follows via SSE).
   const restoreLayout = useCallback((layoutObj) => {
     if (!layoutObj || typeof layoutObj !== 'object' || Array.isArray(layoutObj)) return;
-    setOverrides(layoutObj);
-    persist.schedule(layoutObj, 0);
+    // Backups taken before a repair shipped still carry the old defects —
+    // heal them on the way in so a restore can't reintroduce them.
+    const { layout: repaired } = repairLayout(layoutObj);
+    setOverrides(repaired);
+    persist.schedule(repaired, 0);
   }, [persist]);
 
   const resetLayout = () => {

@@ -11,10 +11,16 @@ const FIT_TO_CSS = {
 // Live-edge policy: how far playback may drift behind the target live
 // position before the watchdog hard-seeks back, how often it checks, and
 // how long the picture may stay frozen before the player is torn down and
-// rebuilt from scratch.
+// rebuilt from scratch. Frozen/seek enforcement only arms once the stream
+// has actually played — before that the tile is merely connecting, which
+// legitimately takes 10s+ when several backend transcodes cold-start at
+// once, and rebuilding mid-connect loops the tile on a black screen
+// forever. A separate (much longer) deadline rescues a truly wedged
+// connect.
 const MAX_BEHIND_LIVE_S = 3;
 const WATCHDOG_MS = 2000;
 const FROZEN_REBUILD_MS = 8000;
+const CONNECT_REBUILD_MS = 45000;
 
 function CameraTile({
   camera,
@@ -48,6 +54,7 @@ function CameraTile({
     let destroyed = false;
     let cleanup = null;
     let rebuildTimer = null;
+    let hasPlayed = false;
 
     // Target live position: hls.js exposes it directly; the native-HLS
     // path approximates it as just shy of the seekable end.
@@ -60,6 +67,10 @@ function CameraTile({
       return null;
     };
     const seekToLive = () => {
+      // Never fight hls.js's own startup positioning: seeking before the
+      // first frames render aborts in-flight buffering and can hold the
+      // tile black indefinitely.
+      if (!hasPlayed || video.readyState < 2) return;
       const pos = livePosition();
       if (pos != null && pos - video.currentTime > MAX_BEHIND_LIVE_S) {
         video.currentTime = pos;
@@ -78,6 +89,12 @@ function CameraTile({
         maxLiveSyncPlaybackRate: 1.5,
         maxBufferLength: 6,
         backBufferLength: 0,
+        // The backend intentionally holds the playlist request while
+        // ffmpeg warms up (up to ~15s, twice that when it falls back to
+        // stream copy) — keep the loader timeout above that so a slow
+        // cold start reads as "loading", not a fatal manifestLoadError.
+        manifestLoadingTimeOut: 20000,
+        levelLoadingTimeOut: 20000,
         manifestLoadingRetryDelay: 1000,
         manifestLoadingMaxRetry: 6,
       });
@@ -102,12 +119,12 @@ function CameraTile({
           }
         }
       });
-      const onPlaying = () => setStatus('playing');
+      const onPlaying = () => { hasPlayed = true; setStatus('playing'); };
       video.addEventListener('playing', onPlaying);
       cleanup = () => video.removeEventListener('playing', onPlaying);
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = src;
-      const onPlaying = () => setStatus('playing');
+      const onPlaying = () => { hasPlayed = true; setStatus('playing'); };
       const onError = () => { setStatus('error'); setErrorMessage('Playback error'); };
       video.addEventListener('playing', onPlaying);
       video.addEventListener('error', onError);
@@ -126,11 +143,21 @@ function CameraTile({
     // Force-refresh watchdog: keep playback pinned to the live edge, and
     // rebuild the player outright if the picture freezes — Android WebView
     // decoders stall under multi-stream load and leave <video> wedged
-    // without ever firing an error event.
+    // without ever firing an error event. Until first play the only check
+    // is the (long) connect deadline; hls.js's own retries do the rest.
     let lastTime = -1;
     let frozenMs = 0;
+    let connectingMs = 0;
     const watchdog = setInterval(() => {
       if (destroyed || document.hidden) return;
+      if (!hasPlayed) {
+        connectingMs += WATCHDOG_MS;
+        if (connectingMs >= CONNECT_REBUILD_MS) {
+          connectingMs = 0;
+          setRebuildToken((t) => t + 1);
+        }
+        return;
+      }
       seekToLive();
       if (!video.paused && video.currentTime === lastTime) {
         frozenMs += WATCHDOG_MS;
