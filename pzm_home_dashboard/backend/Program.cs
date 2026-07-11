@@ -6,6 +6,19 @@ using PzmHomeDashboard.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Non-blocking console logging. The default console logger's queue-full mode
+// is Wait: under a log flood the supervisor's stdout pipe can't drain fast
+// enough, the queue fills, and every thread that logs (Kestrel request
+// threads, ffmpeg stderr readers) BLOCKS — which stalled the whole web UI.
+// DropWrite discards excess log lines instead of blocking the caller, so a
+// flood can degrade logging but never wedge the server. Re-configures the
+// already-registered console provider (no duplicate output).
+builder.Logging.AddConsole(o =>
+{
+    o.QueueFullMode = Microsoft.Extensions.Logging.Console.ConsoleLoggerQueueFullMode.DropWrite;
+    o.MaxQueueLength = 8192;
+});
+
 var options = LoadDashboardOptions(builder.Configuration);
 builder.Services.AddSingleton(options);
 builder.Services.AddSingleton(options.HomeAssistant);

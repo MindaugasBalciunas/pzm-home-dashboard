@@ -4,6 +4,35 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.38
+
+Hotfix: the web UI could stop loading while the add-on log filled with
+thousands of `VBV underflow` lines and CPU sat around 56%.
+
+**Root cause.** ffmpeg was started with `-loglevel warning`, which makes
+libx264 emit a benign "VBV underflow" line *per frame* — across 8 cameras that
+is hundreds of lines/second. Every line (plus a `System.Net.Http.HttpClient`
+info line on each Home Assistant call) was written synchronously through the
+default .NET console logger, whose queue-full behaviour is *block the caller*.
+When the supervisor's log pipe couldn't drain fast enough, those writes blocked
+the thread pool — including the threads Kestrel serves the page from — so the
+UI stalled and Home Assistant calls timed out. The 56% CPU was just the eight
+transcodes, throttled by the stall.
+
+**Fixes.**
+- ffmpeg now runs at `-loglevel error`: the per-frame VBV/CSeq warnings are
+  gone at the source. Genuine errors still log; camera-failure detection is
+  playlist-based, so it's unaffected.
+- The console logger is now non-blocking (drops excess lines under a flood
+  instead of blocking the caller) — a log flood can never wedge the server
+  again.
+- Per-request HttpClient info logging is silenced.
+- Defense-in-depth: known-benign ffmpeg lines are filtered before logging.
+
+**New option — `stream_max_fps`.** Cap the transcoded frame rate to cut encode
+CPU on weak hardware (e.g. `12` or `15`). Default `0` leaves the camera's own
+rate untouched, so nothing changes unless you set it.
+
 ## 0.2.37
 
 Performance, stability and UX pass across the whole add-on.

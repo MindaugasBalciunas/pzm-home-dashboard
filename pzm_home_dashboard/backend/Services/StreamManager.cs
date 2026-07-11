@@ -162,7 +162,14 @@ public sealed class StreamManager : BackgroundService, IAsyncDisposable
         var listSize = Math.Max(2, _options.HlsListSize);
 
         var args = new StringBuilder();
-        args.Append("-nostdin -hide_banner -loglevel warning ");
+        // `error`, not `warning`: at warning level libx264 emits a "VBV
+        // underflow" line PER FRAME (a benign rate-control artifact of the
+        // forced 1s keyframes) — 8 cameras × frame rate flooded the add-on
+        // log, and every line synchronously hit the console logger on a
+        // thread-pool thread, back-pressuring and stalling the web server.
+        // Genuine ffmpeg errors still surface; failure detection is
+        // playlist-based, not stderr-based, so nothing else is affected.
+        args.Append("-nostdin -hide_banner -loglevel error ");
         args.Append("-fflags nobuffer -flags low_delay ");
         // Defaults are 5s / 5MB of probing before the first frame; RTSP's
         // SDP already carries the codec parameters, so trim it hard.
@@ -182,7 +189,13 @@ public sealed class StreamManager : BackgroundService, IAsyncDisposable
             // starve each other (and the whole box) of cores.
             args.Append("-c:v libx264 -preset ultrafast -tune zerolatency -threads 2 ");
             args.Append("-crf 28 -maxrate 1500k -bufsize 3000k -pix_fmt yuv420p ");
-            args.Append("-vf \"scale='min(1280,iw)':-2\" ");
+            // Optional frame-rate cap: encode cost is ~linear in fps, so
+            // capping (e.g. 12) noticeably cuts CPU on a weak box at the cost
+            // of motion smoothness. 0 = leave the camera's own rate untouched
+            // (default), so this is opt-in and changes nothing unless set.
+            var maxFps = _options.StreamMaxFps;
+            var fpsFilter = maxFps > 0 ? $",fps={maxFps}" : "";
+            args.Append($"-vf \"scale='min(1280,iw)':-2{fpsFilter}\" ");
             args.Append($"-force_key_frames \"expr:gte(t,n_forced*{segTime})\" ");
         }
         else
@@ -208,17 +221,13 @@ public sealed class StreamManager : BackgroundService, IAsyncDisposable
         var proc = new Process { StartInfo = psi, EnableRaisingEvents = true };
         proc.ErrorDataReceived += (_, e) =>
         {
-            if (!string.IsNullOrEmpty(e.Data))
-            {
-                _log.LogWarning("[ffmpeg {Id}] {Msg}", cameraId, RedactCredentials(e.Data));
-            }
+            if (string.IsNullOrEmpty(e.Data) || IsBenignFfmpegNoise(e.Data)) return;
+            _log.LogWarning("[ffmpeg {Id}] {Msg}", cameraId, RedactCredentials(e.Data));
         };
         proc.OutputDataReceived += (_, e) =>
         {
-            if (!string.IsNullOrEmpty(e.Data))
-            {
-                _log.LogInformation("[ffmpeg {Id}] {Msg}", cameraId, RedactCredentials(e.Data));
-            }
+            if (string.IsNullOrEmpty(e.Data) || IsBenignFfmpegNoise(e.Data)) return;
+            _log.LogInformation("[ffmpeg {Id}] {Msg}", cameraId, RedactCredentials(e.Data));
         };
 
         _log.LogInformation(
@@ -320,6 +329,14 @@ public sealed class StreamManager : BackgroundService, IAsyncDisposable
 
     private static string RedactCredentials(string line) =>
         UrlCredentials.Replace(line, "$1***@");
+
+    // Defense in depth: even with `-loglevel error`, drop the high-volume
+    // benign line families here so they can never re-flood the logger (and
+    // stall the web server) if verbosity is ever raised again. Cheap
+    // Ordinal checks run on the stderr callback thread before the regex/log.
+    private static bool IsBenignFfmpegNoise(string line) =>
+        line.Contains("VBV underflow", StringComparison.Ordinal)     // per-frame rate-control noise
+        || line.Contains("CSeq", StringComparison.Ordinal);          // benign RTSP sequence hiccups
 
     private static string BuildRtspUrl(CameraOptions cam)
     {

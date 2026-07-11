@@ -16,6 +16,12 @@ public sealed class DashboardOptions
     [JsonPropertyName("low_latency_transcode")]
     public bool LowLatencyTranscode { get; set; } = true;
 
+    // Optional frame-rate cap applied during low-latency transcode. 0 leaves
+    // the camera's own rate untouched (default). Lowering it (e.g. 12) trades
+    // motion smoothness for noticeably less encode CPU on weak hardware.
+    [JsonPropertyName("stream_max_fps")]
+    public int StreamMaxFps { get; set; }
+
     [JsonPropertyName("idle_shutdown_seconds")]
     public int IdleShutdownSeconds { get; set; } = 30;
 
