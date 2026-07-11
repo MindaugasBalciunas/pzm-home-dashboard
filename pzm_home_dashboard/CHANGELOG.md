@@ -21,6 +21,15 @@ and version headers match the `version:` field in `config.yaml`.
     pre-0.2.34 pipeline — until the add-on restarts, logging the reason.
   - Each transcode is also capped at 2 encoder threads so several streams
     cold-starting together don't starve the box.
+- **Layout self-repair.** Stored layouts (server copy, SSE snapshots,
+  uploaded backups) are healed on load: mojibake units from an old
+  Latin-1 mis-decode ('Â°C' → '°C') and tiles still pointing at the
+  renamed `light.garage_rgbic_led` (now `light.garage_led_strip`).
+  Template number tiles no longer bake in a unit — they follow the live
+  HA unit each poll.
+- **"Not in HA" tile state.** A tile whose entity id no longer exists in
+  Home Assistant now says so (instead of a permanent dash) and disables
+  its controls — edit the tile and repick the entity to fix it.
 
 ## 0.2.34
 
