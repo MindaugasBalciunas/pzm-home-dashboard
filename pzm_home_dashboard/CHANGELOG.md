@@ -4,6 +4,19 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.33
+
+- **Light scenes tiles — RGBIC patterns as one-tap buttons.** New
+  "Light scenes" tile kind: it lists a strip's whole pattern/scene list
+  (the light's `effect_list` from Home Assistant) as tappable chips —
+  tap one and the strip switches to it, no modal needed. The active
+  pattern is highlighted and named in the tile header, a power button
+  toggles the strip, and the tile border plays the shared rainbow ring
+  while a pattern runs. Long lists scroll inside the tile.
+- Seeded "Living patterns" and "Garage patterns" tiles for both RGBIC
+  strips (template v5 upgrade drops them into free slots); more can be
+  added for any light via Add tile → Light scenes.
+
 ## 0.2.32
 
 - **Layout backup & restore.** New Backup section in the side menu:

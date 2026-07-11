@@ -312,6 +312,90 @@ function SimpleTile({
     );
   }
 
+  // Light scenes tile: the strip's effect list (patterns/scenes) as quick
+  // chips straight on the dashboard — no modal needed to switch patterns.
+  // Tapping a chip turns the light on with that effect; the active one is
+  // highlighted and the tile border plays the shared rainbow pattern
+  // ring. The power button toggles the strip; long-press features aren't
+  // needed here since brightness/colour stay on the button tile's modal.
+  if (spec.kind === 'lightfx') {
+    const effects = Array.isArray(light?.effectList) ? light.effectList : [];
+    const applyEffect = async (name) => {
+      if (busy) return;
+      setBusy(true);
+      try {
+        const r = await fetch('api/ha/entity/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            entityId: spec.entityId,
+            domain: 'light',
+            service: 'turn_on',
+            data: { effect: name },
+          }),
+        });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        setActionError(null);
+        setTimeout(refreshEntities, 600);
+      } catch (e) {
+        setActionError(String(e));
+      } finally {
+        setTimeout(() => setBusy(false), 500);
+      }
+    };
+    return (
+      <div
+        className={`tile custom-tile${glassCls}${patternCls} ${editMode ? 'tile-editing' : ''}`}
+        style={{ ...style, ...tileBg }}
+        onPointerDown={editMode ? (e) => e.button === 0 && onStartMove(e) : undefined}
+        title={spec.entityId}
+      >
+        <div className="lfx-inner">
+          <div className="lfx-head">
+            <span className="lfx-name">{spec.name}</span>
+            <span className={`lfx-state ${on === true ? 'is-on' : ''}`}>
+              {offline ? 'Offline' : on === true ? (activeEffect || 'On') : on === false ? 'Off' : '—'}
+            </span>
+            <button
+              type="button"
+              className={`lfx-power ${on === true ? 'is-on' : ''}`}
+              disabled={editMode || busy || offline}
+              onClick={trigger}
+              title="Toggle light"
+              aria-label="Toggle light"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden>
+                <path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                      d="M12 3v8M6.2 6.5a8 8 0 1 0 11.6 0" />
+              </svg>
+            </button>
+          </div>
+          {effects.length === 0 && (
+            <div className="side-menu-note">
+              {offline ? 'Strip is offline.' : 'No patterns reported by this light yet.'}
+            </div>
+          )}
+          {effects.length > 0 && (
+            <div className="lfx-grid">
+              {effects.map((name) => (
+                <button
+                  key={name}
+                  type="button"
+                  className={`lfx-chip ${activeEffect === name ? 'is-active' : ''}`}
+                  disabled={editMode || busy || offline}
+                  onClick={() => applyEffect(name)}
+                  title={name}
+                >{name}</button>
+              ))}
+            </div>
+          )}
+          {error && <div className="side-menu-note" style={{ color: 'var(--danger)' }}>{error}</div>}
+        </div>
+        {editHeader}
+      </div>
+    );
+  }
+
   // Icon effects only animate while the entity is ON — a spinning fan that
   // never stops reads as "always running" and defeats the point.
   const fxCls = spec.iconFx && spec.iconFx !== 'none' && on === true

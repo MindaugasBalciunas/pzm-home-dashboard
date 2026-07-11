@@ -263,10 +263,16 @@ export default function SideMenu({
                 className="side-menu-btn-primary"
                 onClick={() => setPickerOpen('number')}
               >Number</button>
+              <button
+                type="button"
+                className="side-menu-btn-primary"
+                onClick={() => setPickerOpen('lightfx')}
+              >Light scenes</button>
             </div>
             <div className="side-menu-note">
               Buttons trigger an entity (switch, script, button, cover, light).
-              Numbers display a live sensor reading.
+              Numbers display a live sensor reading. Light scenes lists an
+              RGBIC strip’s patterns as one-tap chips.
             </div>
           </section>
 

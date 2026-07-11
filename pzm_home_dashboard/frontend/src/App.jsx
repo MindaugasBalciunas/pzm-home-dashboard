@@ -34,9 +34,10 @@ const DEFAULT_FIT = 'fit';
 // `overrides`, we never re-seed even if the user deletes template tiles.
 const TEMPLATE_MARKER = '_seededTemplate';
 // v2 added the Camera PTZ preset card, v3 the Weather card, v4 the garage
-// RGBIC strip tile. Older layouts get only the tiles their version
-// predates, each seeded into a free slot (see TEMPLATE_ADDITIONS).
-const TEMPLATE_VERSION = 'v4';
+// RGBIC strip tile, v5 the light scenes (pattern) tiles. Older layouts
+// get only the tiles their version predates, each seeded into a free
+// slot (see the additions list in the load effect).
+const TEMPLATE_VERSION = 'v5';
 
 // Dashboard-wide appearance settings ride along in the shared layout under
 // this key (like the template marker, it's not a tile). Currently: `bg`,
@@ -94,6 +95,16 @@ function seedTemplateLayout(startRow) {
   row += numbersH;
   out[PTZ_ID] = { col: 1, row, colSpan: PTZ_W, rowSpan: PTZ_H };
   out[WEATHER_ID] = { col: PTZ_W + 1, row, colSpan: WEATHER_W, rowSpan: WEATHER_H };
+  // RGBIC pattern (light scenes) tiles for both strips.
+  row += Math.max(PTZ_H, WEATHER_H);
+  out['tpl-living-fx'] = {
+    col: 1, row, colSpan: 12, rowSpan: 6,
+    spec: { kind: 'lightfx', entityId: 'light.living_room_rgbic_led', domain: 'light', name: 'Living patterns' },
+  };
+  out['tpl-garage-fx'] = {
+    col: 13, row, colSpan: 12, rowSpan: 6,
+    spec: { kind: 'lightfx', entityId: 'light.garage_rgbic_led', domain: 'light', name: 'Garage patterns' },
+  };
   return out;
 }
 
@@ -297,6 +308,10 @@ export default function App() {
             { id: WEATHER_ID, since: 3, w: WEATHER_W, h: WEATHER_H },
             { id: 'tpl-garage-rgb', since: 4, w: 6, h: 6,
               spec: { kind: 'button', entityId: 'light.garage_rgbic_led', domain: 'light', name: 'Garage LED' } },
+            { id: 'tpl-living-fx', since: 5, w: 12, h: 6,
+              spec: { kind: 'lightfx', entityId: 'light.living_room_rgbic_led', domain: 'light', name: 'Living patterns' } },
+            { id: 'tpl-garage-fx', since: 5, w: 12, h: 6,
+              spec: { kind: 'lightfx', entityId: 'light.garage_rgbic_led', domain: 'light', name: 'Garage patterns' } },
           ];
           const fromVersion = Number(String(marker).replace(/^v/, '')) || 1;
           const seeded = { ...initial };
@@ -435,9 +450,10 @@ export default function App() {
   };
 
   const addCustomTile = (spec) => {
-    // Default sizes tuned for the 48-col grid.
-    const w = spec.kind === 'number' ? 8 : 6;
-    const h = spec.kind === 'number' ? 5 : 6;
+    // Default sizes tuned for the 48-col grid. Scene tiles are wide —
+    // they hold a whole chip list.
+    const w = spec.kind === 'lightfx' ? 12 : spec.kind === 'number' ? 8 : 6;
+    const h = spec.kind === 'lightfx' ? 6 : spec.kind === 'number' ? 5 : 6;
     const { col, row } = findFreeSpot(overridesRef.current, w, h);
     const id = `custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
     const entry = { col, row, colSpan: w, rowSpan: h, spec };

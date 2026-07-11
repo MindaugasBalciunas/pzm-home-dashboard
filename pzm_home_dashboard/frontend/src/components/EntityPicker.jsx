@@ -6,6 +6,14 @@ import IconPicker from './IconPicker.jsx';
 const DOMAINS_FOR_KIND = {
   button: 'switch,input_boolean,light,fan,cover,button,input_button,script,scene,automation,lock',
   number: 'sensor,input_number,number,counter',
+  // Scene/pattern chips only make sense for lights with an effect list.
+  lightfx: 'light',
+};
+
+const KIND_LABELS = {
+  button: 'button',
+  number: 'number',
+  lightfx: 'light scenes',
 };
 
 export default function EntityPicker({ kind, onCancel, onConfirm }) {
@@ -99,7 +107,7 @@ export default function EntityPicker({ kind, onCancel, onConfirm }) {
       <div className="picker picker-wide" onClick={(e) => e.stopPropagation()}>
         <div className="picker-header">
           <span className="picker-title">
-            Add {kind === 'button' ? 'button' : 'number'} tile
+            Add {KIND_LABELS[kind] || kind} tile
           </span>
           <button
             type="button"

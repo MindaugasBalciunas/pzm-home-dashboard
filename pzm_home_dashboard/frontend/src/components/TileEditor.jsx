@@ -150,7 +150,7 @@ export default function TileEditor({ id, entry, onSave, onDelete, onCancel }) {
       <div className="picker picker-wide picker-scrolls" onClick={(e) => e.stopPropagation()}>
         <div className="picker-header">
           <span className="picker-title">
-            Edit {spec.kind === 'button' ? 'button' : 'number'} tile
+            Edit {spec.kind === 'button' ? 'button' : spec.kind === 'lightfx' ? 'light scenes' : 'number'} tile
           </span>
           <button
             type="button"

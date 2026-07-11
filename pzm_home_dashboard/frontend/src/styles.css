@@ -2829,6 +2829,105 @@ input[type="color"].bg-swatch::-webkit-color-swatch {
 .ptz-overlay.ptz-awake { opacity: 0.6; }
 .ptz-overlay.tile-editing { opacity: 1; }
 
+/* ---------- Light scenes (patterns) tile ----------
+   Quick chips for an RGBIC strip's effect list; the active pattern is
+   highlighted and the tile border plays the shared rainbow ring. */
+.lfx-inner {
+  position: absolute;
+  inset: 0;
+  padding: 0.3rem 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-height: 0;
+}
+.lfx-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+.lfx-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lfx-state {
+  flex: 0 1 auto;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lfx-state.is-on { color: var(--ok); }
+.lfx-power {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: rgba(139, 147, 161, 0.10);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.lfx-power.is-on {
+  color: var(--ok);
+  border-color: rgba(87, 211, 140, 0.5);
+  background: rgba(87, 211, 140, 0.12);
+}
+.lfx-power svg { width: 15px; height: 15px; }
+.lfx-power:disabled { opacity: 0.5; cursor: default; }
+.lfx-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-content: flex-start;
+  padding-right: 2px;
+  scrollbar-width: thin;
+}
+.lfx-chip {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(74, 163, 255, 0.07);
+  color: var(--text);
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 0.28rem 0.45rem;
+  cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.lfx-chip:disabled { opacity: 0.55; cursor: default; }
+.lfx-chip.is-active {
+  border-color: rgba(74, 163, 255, 0.75);
+  background: rgba(74, 163, 255, 0.20);
+  color: #fff;
+}
+
 /* ---------- Weather card ----------
    Wide hourly-forecast strip: one cell per hour (icon, temp, wind) with
    sunrise/sunset cells slotted in chronologically. The strip scrolls
