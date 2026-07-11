@@ -4,6 +4,20 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.31
+
+- **RGBIC strips wear their pattern on the tile border.** Light tiles
+  now show the strip's live state on their border: a running effect
+  renders as an animated rainbow ring (colours cycle slowly) with the
+  pattern's name on the tile label; a plain colour renders the border
+  and a soft glow in exactly that colour. Off/other tiles keep their
+  normal border. Long-press still opens the dim / colour / pattern
+  control as before.
+- **Garage LED strip tile.** Seeded next to the existing Living RGB tile
+  (`light.garage_rgbic_led` — delete and re-add via Add tile → Button if
+  your entity id differs). Template upgrades are now version-gated, so
+  tiles you delete are never resurrected by later upgrades.
+
 ## 0.2.30
 
 - **PTZ card is now a camera overlay.** Presets always render in a

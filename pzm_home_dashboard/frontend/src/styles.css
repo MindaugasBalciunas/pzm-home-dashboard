@@ -2212,6 +2212,34 @@ html, body {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
 .custom-tile-glass .custom-btn-inner { background: transparent; }
+/* --- Light pattern border ---
+   A light running an effect (RGBIC pattern) wears an animated rainbow
+   ring in place of its border; the colours cycle slowly so the tile
+   reads as "a pattern is playing". Solid colours use a plain border +
+   glow set inline from the light's live RGB instead. */
+.custom-tile-pattern { border-color: transparent; }
+.custom-tile-pattern::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: conic-gradient(from 0deg,
+    #ff004c, #ff9500, #ffe600, #37d67a, #00c8ff, #4a58ff, #c74aff, #ff004c);
+  /* Punch out the middle so only a 2px ring remains. */
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: light-pattern-cycle 5s linear infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+@keyframes light-pattern-cycle { to { filter: hue-rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .custom-tile-pattern::before { animation: none; }
+}
+
 .custom-btn-icon {
   /* Sized to the tile itself, not the viewport: the smaller of 34% width
      or 48% height keeps a big icon on square tiles and a proportional

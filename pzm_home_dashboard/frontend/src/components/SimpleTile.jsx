@@ -257,6 +257,25 @@ function SimpleTile({
   if (hasOp) tileBg.boxShadow = `0 6px 18px rgba(0, 0, 0, ${(0.25 * op).toFixed(3)})`;
   if (spec.borderColor) tileBg.borderColor = spec.borderColor;
 
+  // RGBIC / colour-light tiles wear their live state on the border: a
+  // running effect (pattern) renders as an animated rainbow ring, a plain
+  // colour as a border + glow in exactly that colour. Live light state
+  // wins over a user-set border colour while the strip is on.
+  const light = spec.domain === 'light' ? state?.light : null;
+  const activeEffect = on === true && light?.effect
+    && !/^(none|off|solid|no ?effect)$/i.test(String(light.effect).trim())
+    ? String(light.effect)
+    : null;
+  const patternCls = activeEffect ? ' custom-tile-pattern' : '';
+  if (activeEffect) {
+    // The animated ring replaces the plain border entirely.
+    delete tileBg.borderColor;
+  } else if (on === true && Array.isArray(light?.rgb) && light.rgb.length >= 3) {
+    const rgb = light.rgb.slice(0, 3).join(', ');
+    tileBg.borderColor = `rgb(${rgb})`;
+    tileBg.boxShadow = `0 0 12px rgba(${rgb}, 0.45), inset 0 0 10px rgba(${rgb}, 0.15)`;
+  }
+
   if (spec.kind === 'number') {
     // spec.unit is the explicit editor override; without one the live HA
     // unit applies. New tiles no longer bake the unit in at add time, so
@@ -347,7 +366,7 @@ function SimpleTile({
 
   return (
     <div
-      className={`tile custom-tile${glassCls} ${tileStateCls} ${editMode ? 'tile-editing' : ''}`}
+      className={`tile custom-tile${glassCls}${patternCls} ${tileStateCls} ${editMode ? 'tile-editing' : ''}`}
       style={{ ...style, ...tileBg }}
       onPointerDown={editMode ? (e) => e.button === 0 && onStartMove(e) : undefined}
       onContextMenu={editMode ? (e) => e.preventDefault() : undefined}
@@ -376,7 +395,7 @@ function SimpleTile({
         </div>
         <div className="custom-btn-name">{spec.name}</div>
         <div className={`custom-btn-state ${labelCls}`}>
-          {busy ? 'Triggering…' : stateText}
+          {busy ? 'Triggering…' : activeEffect || stateText}
         </div>
         {error && <div className="side-menu-note" style={{ color: 'var(--danger)' }}>{error}</div>}
       </button>

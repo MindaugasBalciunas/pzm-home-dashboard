@@ -33,9 +33,10 @@ const DEFAULT_FIT = 'fit';
 // Marker that the initial template has already been seeded. Once present in
 // `overrides`, we never re-seed even if the user deletes template tiles.
 const TEMPLATE_MARKER = '_seededTemplate';
-// v2 added the Camera PTZ preset card, v3 the Weather card. Older layouts
-// get only the tiles they're missing, each seeded into a free slot.
-const TEMPLATE_VERSION = 'v3';
+// v2 added the Camera PTZ preset card, v3 the Weather card, v4 the garage
+// RGBIC strip tile. Older layouts get only the tiles their version
+// predates, each seeded into a free slot (see TEMPLATE_ADDITIONS).
+const TEMPLATE_VERSION = 'v4';
 
 // Dashboard-wide appearance settings ride along in the shared layout under
 // this key (like the template marker, it's not a tile). Currently: `bg`,
@@ -52,6 +53,7 @@ const TEMPLATE_TILES = [
   { id: 'tpl-street-sign',       kind: 'button', entityId: 'switch.street_sign_switch_1',       domain: 'switch', name: 'Street sign' },
   { id: 'tpl-street-lamp',       kind: 'button', entityId: 'switch.street_lamp_switch_socket_1', domain: 'switch', name: 'Street lamp' },
   { id: 'tpl-living-rgb',        kind: 'button', entityId: 'light.living_room_rgbic_led',       domain: 'light',  name: 'Living RGB' },
+  { id: 'tpl-garage-rgb',        kind: 'button', entityId: 'light.garage_rgbic_led',            domain: 'light',  name: 'Garage LED' },
   // Environment sensors — number tiles.
   { id: 'tpl-outside-temp',      kind: 'number', entityId: 'sensor.outside_temperature_humidity_sensor_temperature',      domain: 'sensor', name: 'Outside temp',      unit: '°C' },
   { id: 'tpl-outside-hum',       kind: 'number', entityId: 'sensor.outside_temperature_humidity_sensor_humidity',         domain: 'sensor', name: 'Outside humidity',  unit: '%' },
@@ -285,17 +287,28 @@ export default function App() {
           setOverrides(seeded);
           saveLayout(seeded);
         } else if (marker !== TEMPLATE_VERSION) {
-          // Older template: seed only the built-in cards this layout is
-          // missing, each into the first free slot (sequentially, so the
-          // second one sees the first one's spot as taken).
+          // Older template: seed only the tiles this layout's version
+          // predates, each into the first free slot (sequentially, so
+          // later seeds see earlier ones' spots as taken). Version-gated
+          // so a tile the user deleted isn't resurrected by a later
+          // upgrade that didn't introduce it.
+          const additions = [
+            { id: PTZ_ID, since: 2, w: PTZ_W, h: PTZ_H },
+            { id: WEATHER_ID, since: 3, w: WEATHER_W, h: WEATHER_H },
+            { id: 'tpl-garage-rgb', since: 4, w: 6, h: 6,
+              spec: { kind: 'button', entityId: 'light.garage_rgbic_led', domain: 'light', name: 'Garage LED' } },
+          ];
+          const fromVersion = Number(String(marker).replace(/^v/, '')) || 1;
           const seeded = { ...initial };
-          for (const [id, w, h] of [
-            [PTZ_ID, PTZ_W, PTZ_H],
-            [WEATHER_ID, WEATHER_W, WEATHER_H],
-          ]) {
-            if (seeded[id]) continue;
-            const spot = findFreeSpot(seeded, w, h);
-            seeded[id] = { ...spot, colSpan: w, rowSpan: h };
+          for (const add of additions) {
+            if (add.since <= fromVersion || seeded[add.id]) continue;
+            const spot = findFreeSpot(seeded, add.w, add.h);
+            seeded[add.id] = {
+              ...spot,
+              colSpan: add.w,
+              rowSpan: add.h,
+              ...(add.spec ? { spec: add.spec } : {}),
+            };
           }
           seeded[TEMPLATE_MARKER] = TEMPLATE_VERSION;
           setOverrides(seeded);
