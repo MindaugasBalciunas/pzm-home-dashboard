@@ -4,6 +4,16 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.27
+
+- **Gate opener chip controls its switch.** Tapping the Security card's
+  Gate opener now always drives `switch.gate_opener_switch_1` — the
+  backend enforces that entity for the "Gate opener" gate even when an
+  install's saved options still carry an older one (same server-side
+  remap approach as the 0.2.25 contact fix). The tap is a toggle, so
+  the chip can both open and close the gate to match the Open/Closed
+  state it displays.
+
 ## 0.2.26
 
 - **Tile editor reworked.** The dialog grew from 520 px to 820 px with a

@@ -1,5 +1,5 @@
 name: PZM Home Dashboard
-version: "0.2.26"
+version: "0.2.27"
 slug: pzm_home_dashboard
 description: >-
   RTSP camera streams (transcoded on-demand to HLS via ffmpeg) plus a live
@@ -111,6 +111,9 @@ options:
           contact: ""
           icon: "mdi:gate"
         - name: "Gate opener"
+          # Tap controls (toggles) the opener's own switch; the backend
+          # enforces this entity for the "Gate opener" gate even on installs
+          # whose saved options still carry an older one.
           entity: "switch.gate_opener_switch_1"
           # Status follows the opener's own switch state (on = engaged);
           # the access-control lock sensor didn't track the gate.

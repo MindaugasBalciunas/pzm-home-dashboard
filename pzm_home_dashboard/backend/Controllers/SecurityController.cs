@@ -28,18 +28,19 @@ public sealed class SecurityController : ControllerBase
 
         var gateTasks = sec.Gates.Select(async g =>
         {
+            var entity = EffectiveEntity(g.Name, g.Entity);
             var contact = EffectiveContact(g.Contact);
             var contactKind = EffectiveContactKind(contact, g.ContactKind);
             return new
             {
                 g.Name,
-                g.Entity,
+                Entity = entity,
                 g.Icon,
                 Contact = contact,
                 ContactKind = contactKind,
-                state = string.IsNullOrWhiteSpace(g.Entity)
+                state = string.IsNullOrWhiteSpace(entity)
                     ? null
-                    : await _client.GetStateAsync(g.Entity, ct),
+                    : await _client.GetStateAsync(entity!, ct),
                 contactState = string.IsNullOrWhiteSpace(contact)
                     ? null
                     : await _client.GetStateAsync(contact!, ct),
@@ -80,14 +81,15 @@ public sealed class SecurityController : ControllerBase
             return NotFound(new { error = "Gate index out of range." });
         }
         var gate = gates[index];
-        if (string.IsNullOrWhiteSpace(gate.Entity))
+        var entity = EffectiveEntity(gate.Name, gate.Entity);
+        if (string.IsNullOrWhiteSpace(entity))
         {
             return BadRequest(new { error = "Gate has no entity configured." });
         }
 
-        var (domain, service) = ResolveGateService(gate.Entity);
+        var (domain, service) = ResolveGateService(entity!);
         var ok = await _client.CallServiceAsync(
-            domain, service, new { entity_id = gate.Entity }, ct);
+            domain, service, new { entity_id = entity }, ct);
         return ok ? Ok(new { ok = true }) : StatusCode(502, new { error = "HA call failed." });
     }
 
@@ -124,6 +126,14 @@ public sealed class SecurityController : ControllerBase
         return ok ? Ok(new { ok = true }) : StatusCode(502, new { error = "HA call failed." });
     }
 
+    // Same stale-options story as the contact remaps below: the Gate opener
+    // chip must control the opener's own switch, whatever entity the
+    // install's saved options still carry for it.
+    private static string? EffectiveEntity(string? name, string? entity)
+        => string.Equals(name, "Gate opener", StringComparison.OrdinalIgnoreCase)
+            ? "switch.gate_opener_switch_1"
+            : entity;
+
     // Saved add-on options aren't refreshed when defaults change, and older
     // installs still carry the Eldes garage zone as the gate contact — that
     // zone tracks the alarm panel, not the physical door. Remap it to the
@@ -157,6 +167,14 @@ public sealed class SecurityController : ControllerBase
     // wrappers for Eldes outputs.
     private static (string domain, string service) ResolveGateService(string entityId)
     {
+        // The gate opener's switch latches (on = gate engaged) and its chip
+        // shows Open/Closed from that same switch — a tap must be able to
+        // close it again, so it toggles instead of the momentary turn_on
+        // the Eldes relays use.
+        if (string.Equals(entityId, "switch.gate_opener_switch_1",
+                StringComparison.OrdinalIgnoreCase))
+            return ("switch", "toggle");
+
         var dot = entityId.IndexOf('.');
         var domain = dot > 0 ? entityId[..dot] : "switch";
         return domain switch
