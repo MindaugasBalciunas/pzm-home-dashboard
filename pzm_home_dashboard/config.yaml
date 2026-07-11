@@ -1,5 +1,5 @@
 name: PZM Home Dashboard
-version: "0.2.24"
+version: "0.2.25"
 slug: pzm_home_dashboard
 description: >-
   RTSP camera streams (transcoded on-demand to HLS via ffmpeg) plus a live
@@ -116,8 +116,10 @@ options:
           icon: "mdi:gate"
         - name: "Gate opener"
           entity: "switch.gate_opener_switch_1"
-          contact: "binary_sensor.access_control_lock"
-          contact_kind: "lock"
+          # Status follows the opener's own switch state (on = engaged);
+          # the access-control lock sensor didn't track the gate.
+          contact: "switch.gate_opener_switch_1"
+          contact_kind: "gate"
           icon: "mdi:door"
       # Extra zones surfaced under the alarm panel — door/window contacts,
       # gas / fire / glass-break sensors. `kind` drives the localised status

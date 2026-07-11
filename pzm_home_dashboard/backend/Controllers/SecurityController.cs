@@ -29,13 +29,14 @@ public sealed class SecurityController : ControllerBase
         var gateTasks = sec.Gates.Select(async g =>
         {
             var contact = EffectiveContact(g.Contact);
+            var contactKind = EffectiveContactKind(contact, g.ContactKind);
             return new
             {
                 g.Name,
                 g.Entity,
                 g.Icon,
                 Contact = contact,
-                g.ContactKind,
+                ContactKind = contactKind,
                 state = string.IsNullOrWhiteSpace(g.Entity)
                     ? null
                     : await _client.GetStateAsync(g.Entity, ct),
@@ -129,10 +130,26 @@ public sealed class SecurityController : ControllerBase
     // dedicated door contact so the gate chip shows the actual door state
     // (config.yaml defaults carry the same entity for fresh installs).
     private static string? EffectiveContact(string? contact)
-        => string.Equals(contact, "binary_sensor.esim364_garazo_vartai",
+    {
+        if (string.Equals(contact, "binary_sensor.esim364_garazo_vartai",
+                StringComparison.OrdinalIgnoreCase))
+            return "binary_sensor.garage_gates_contact_sensor_door";
+        // The access-control lock sensor turned out not to track the gate
+        // opener; the opener's own switch state does. Remap installs whose
+        // saved options still carry the old contact.
+        if (string.Equals(contact, "binary_sensor.access_control_lock",
+                StringComparison.OrdinalIgnoreCase))
+            return "switch.gate_opener_switch_1";
+        return contact;
+    }
+
+    // Keep the status wording in sync when a contact gets remapped: the
+    // opener switch reports on/off (engaged/idle), not locked/unlocked.
+    private static string? EffectiveContactKind(string? contact, string? kind)
+        => string.Equals(contact, "switch.gate_opener_switch_1",
                 StringComparison.OrdinalIgnoreCase)
-            ? "binary_sensor.garage_gates_contact_sensor_door"
-            : contact;
+            ? "gate"
+            : kind;
 
     // Map an entity's domain to the right press/toggle service. Momentary
     // relays are best represented in HA as `switch` or `button`; pulse-style

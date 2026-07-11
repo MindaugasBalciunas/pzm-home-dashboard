@@ -1,5 +1,6 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { startPolling } from '../lib/poll.js';
+import { tilePlacementStyle } from '../lib/placement.js';
 
 const POLL_MS = 4000;
 
@@ -117,10 +118,7 @@ function SecurityCard({
     }
   };
 
-  const style = {
-    gridColumn: `${col} / span ${colSpan}`,
-    gridRow: `${row} / span ${rowSpan}`,
-  };
+  const style = tilePlacementStyle(col, row, colSpan, rowSpan);
 
   const gates = snapshot?.gates ?? [];
   const zones = snapshot?.zones ?? [];

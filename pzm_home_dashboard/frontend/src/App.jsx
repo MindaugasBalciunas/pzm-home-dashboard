@@ -7,6 +7,7 @@ import SimpleTile from './components/SimpleTile.jsx';
 import TileEditor from './components/TileEditor.jsx';
 import SecurityOptions from './components/SecurityOptions.jsx';
 import PullToRefresh from './components/PullToRefresh.jsx';
+import { isFreePlacement } from './lib/placement.js';
 
 // Touch move-drags arm after this hold; taps and mouse drags stay instant.
 const HOLD_TO_DRAG_MS = 350;
@@ -153,11 +154,13 @@ function useDebouncedPersist(saveFn) {
 // Find a free spot for a new tile, size wxh, scanning the grid top-to-bottom.
 function findFreeSpot(overrides, w, h) {
   const occupied = new Map(); // row -> Set<col>
+  // Floor/ceil so free-placed (fractional) tiles still block every grid
+  // cell they touch — the integer scan below only probes whole cells.
   const mark = (col, row, colSpan, rowSpan) => {
-    for (let r = row; r < row + rowSpan; r++) {
+    for (let r = Math.floor(row); r < Math.ceil(row + rowSpan); r++) {
       let set = occupied.get(r);
       if (!set) { set = new Set(); occupied.set(r, set); }
-      for (let c = col; c < col + colSpan; c++) set.add(c);
+      for (let c = Math.floor(col); c < Math.ceil(col + colSpan); c++) set.add(c);
     }
   };
   for (const v of Object.values(overrides)) {
@@ -186,6 +189,12 @@ export default function App() {
   const [camerasError, setCamerasError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
+  // Edit-mode drag quantisation. On = classic grid snap; off = free
+  // placement at 1/20-cell precision, letting tiles overlap other cards
+  // (they persist as fractional col/row and render absolutely).
+  const [snapToGrid, setSnapToGrid] = useState(true);
+  const snapRef = useRef(snapToGrid);
+  useEffect(() => { snapRef.current = snapToGrid; }, [snapToGrid]);
   // Experiments: loop the Electricity house photo through all variants.
   const [bgDemo, setBgDemo] = useState(false);
   // `overrides` is the full layout object stored server-side. Keys are tile
@@ -304,6 +313,28 @@ export default function App() {
     }
     return out;
   }, [cameras, overrides, defaults]);
+
+  // Keep --cell exact: the stylesheet fallback derives it from 100vw,
+  // which includes a classic scrollbar's width — the grid's 1fr tracks
+  // don't. Free-placed (absolute) tiles are positioned in --cell units,
+  // so they'd drift up to ~15px against the grid. Measure the grid's
+  // real client width and pin --cell in pixels; ResizeObserver keeps it
+  // fresh across rotations / scrollbar appearance.
+  useEffect(() => {
+    const el = gridRef.current;
+    if (!el) return undefined;
+    const apply = () => {
+      const cs = getComputedStyle(el);
+      const gap = parseFloat(cs.rowGap || cs.gap || '0') || 0;
+      const cell = (el.clientWidth - (GRID_COLS + 1) * gap) / GRID_COLS;
+      if (cell > 0) el.style.setProperty('--cell', `${cell}px`);
+    };
+    apply();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   // Latest effective layout for stable callbacks (event handlers run after
   // render, so the ref is always in sync by the time they fire).
@@ -445,15 +476,22 @@ export default function App() {
       if (!armed || !moved) return;
       const stepX = metrics.cellW + metrics.gap;
       const stepY = metrics.cellH + metrics.gap;
-      const dCol = Math.round((ev.clientX - startX) / stepX);
-      const dRow = Math.round((ev.clientY - startY) / stepY);
+      // Snap on: whole-cell quantisation (a value that lands on an integer
+      // returns the tile to normal grid flow). Snap off: 1/20-cell steps —
+      // fine enough to feel free, coarse enough to keep saved layouts tidy.
+      const snap = snapRef.current;
+      const q = snap
+        ? Math.round
+        : (n) => Math.round(n * 20) / 20;
+      const dCol = (ev.clientX - startX) / stepX;
+      const dRow = (ev.clientY - startY) / stepY;
       if (kind === 'move') {
-        const col = clamp(startCol + dCol, 1, GRID_COLS - startColSpan + 1);
-        const row = Math.max(1, startRow + dRow);
+        const col = clamp(q(startCol + dCol), 1, GRID_COLS - startColSpan + 1);
+        const row = Math.max(1, q(startRow + dRow));
         if (col !== eff.col || row !== eff.row) updateTile(id, { col, row }, true);
       } else {
-        const colSpan = clamp(startColSpan + dCol, 1, GRID_COLS - startCol + 1);
-        const rowSpan = Math.max(1, startRowSpan + dRow);
+        const colSpan = clamp(q(startColSpan + dCol), 1, GRID_COLS - startCol + 1);
+        const rowSpan = Math.max(1, q(startRowSpan + dRow));
         if (colSpan !== eff.colSpan || rowSpan !== eff.rowSpan) updateTile(id, { colSpan, rowSpan }, true);
       }
     };
@@ -520,6 +558,22 @@ export default function App() {
     ([id, v]) => (id.startsWith('custom-') || id.startsWith('tpl-')) && v && v.spec
   ), [overrides]);
 
+  // Free-placed tiles are absolutely positioned, so they don't stretch the
+  // grid. Give the grid an explicit min-height covering the lowest tile so
+  // one parked below the in-flow content stays scrollable-to.
+  const gridMinHeight = useMemo(() => {
+    let maxRowEnd = 0;
+    let anyFree = false;
+    for (const l of Object.values(layout)) {
+      if (!l || !Number.isFinite(l.row) || !Number.isFinite(l.rowSpan)) continue;
+      if (isFreePlacement(l.col, l.row, l.colSpan, l.rowSpan)) anyFree = true;
+      maxRowEnd = Math.max(maxRowEnd, l.row + l.rowSpan);
+    }
+    if (!anyFree || maxRowEnd <= 1) return undefined;
+    const rows = maxRowEnd - 1;
+    return { minHeight: `calc(${rows} * var(--cell) + ${rows + 1} * var(--gap))` };
+  }, [layout]);
+
   // Dashboard background colour (shared appearance setting). Overrides the
   // theme's --bg variable at the root, so the grid, gaps and the page edge
   // all follow; clearing it restores the stylesheet default (incl. the
@@ -552,6 +606,8 @@ export default function App() {
         editMode={editMode}
         onToggleEdit={() => setEditMode((v) => !v)}
         onResetLayout={resetLayout}
+        snapToGrid={snapToGrid}
+        onToggleSnap={() => setSnapToGrid((v) => !v)}
         onAddTile={addCustomTile}
         bgDemo={bgDemo}
         onToggleBgDemo={() => setBgDemo((v) => !v)}
@@ -562,6 +618,7 @@ export default function App() {
       <main
         ref={gridRef}
         className={`grid ${editMode ? 'grid-edit' : ''}`}
+        style={gridMinHeight}
       >
         {loading && <div className="notice" style={{ gridColumn: `1 / -1` }}>Loading dashboard…</div>}
         {error && (

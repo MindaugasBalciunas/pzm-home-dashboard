@@ -84,6 +84,9 @@ html, body {
   /* Square cells: (viewport - 2 gap padding - (cols-1) gutter gaps) / cols. */
   --cell: calc((100vw - (var(--grid-cols) + 1) * var(--gap)) / var(--grid-cols));
   grid-auto-rows: var(--cell);
+  /* Positioning context for free-placed tiles (fractional col/row render
+     as absolute children measured in the same --cell units). */
+  position: relative;
 }
 
 .grid-edit {
@@ -126,7 +129,10 @@ html, body {
 /* Pop effect while a tile is held / dragged in edit mode: lifts above
    its neighbours with a scale + shadow so the grab is unmistakable. */
 .tile-lifted {
-  z-index: 30;
+  /* !important: free-placed tiles carry an inline z-index (to sit above
+     the cards they overlap), which would otherwise beat this class while
+     the tile is held. */
+  z-index: 30 !important;
   transform: scale(1.035);
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55), 0 0 0 2px var(--accent);
   opacity: 0.96;
@@ -461,7 +467,9 @@ html, body {
   position: absolute;
   min-width: 82px;
   padding: 0.32rem 0.6rem;
-  border-radius: 0;
+  /* Same rounding as button / number tiles so overlaid tiles and the
+     electricity callouts read as one family. */
+  border-radius: var(--radius-md);
   /* Translucent glass over the photo — the backdrop blur keeps the text
      readable while the house/scene shows through. */
   background: rgba(10, 14, 20, 0.35);
@@ -485,6 +493,21 @@ html, body {
     text-shadow: 0 1px 1px rgba(255, 255, 255, 0.6);
   }
 }
+.hv-callout-resize {
+  position: absolute;
+  right: -7px;
+  bottom: -7px;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: var(--accent);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  cursor: nwse-resize;
+  touch-action: none;
+  z-index: 2;
+}
+
 .hv-callout-value {
   display: flex;
   align-items: baseline;
@@ -1961,6 +1984,13 @@ html, body {
 }
 .side-menu-btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
 .side-menu-btn-ghost.is-danger:hover { border-color: var(--danger); color: var(--danger); }
+/* Toggled state (e.g. "Snap to grid: off") — accent so the non-default
+   mode is unmistakable at a glance. */
+.side-menu-btn-ghost.is-active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(74, 163, 255, 0.10);
+}
 
 .side-menu-note {
   font-size: 0.72rem;
@@ -2000,6 +2030,17 @@ html, body {
 .picker-title { font-weight: 800; font-size: 0.9rem; letter-spacing: 0.05em; text-transform: uppercase; }
 .picker-form { padding: 0.7rem 1rem; display: flex; flex-direction: column; gap: 0.55rem; }
 .picker-form label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
+.picker-form .field-value { color: var(--text); font-weight: 800; margin-left: 0.35rem; }
+.picker-form input[type="range"] {
+  padding: 0;
+  border: none;
+  background: transparent;
+  accent-color: var(--accent);
+  height: 1.6rem;
+  /* Beat the generic input min-height (40px), which would win over
+     height and leave a lopsided gap around the slider. */
+  min-height: 0;
+}
 .picker-form input, .picker-form select {
   background: rgba(255, 255, 255, 0.04);
   color: var(--text);
@@ -2344,6 +2385,30 @@ html, body {
 .custom-tile-off .custom-btn-inner { background: rgba(139, 147, 161, 0.06); }
 .custom-tile-on  { border-color: rgba(87, 211, 140, 0.45); }
 .custom-tile-off { border-color: rgba(139, 147, 161, 0.35); }
+/* Glass tiles mirror the Electricity callout cards exactly (same tint,
+   blur and border), so a button / number laid over the house photo looks
+   native to it. Declared after the on/off tints so glass wins the
+   background on specificity ties; state still shows via icon + text. */
+.custom-tile-glass,
+.custom-tile-glass .custom-btn-inner {
+  background: rgba(10, 14, 20, 0.35);
+}
+.custom-tile-glass {
+  border-color: rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(10px) saturate(150%);
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+.custom-tile-glass .custom-btn-inner { background: transparent; }
+@media (prefers-color-scheme: light) {
+  .custom-tile-glass {
+    background: rgba(255, 255, 255, 0.45);
+    border-color: rgba(0, 0, 0, 0.08);
+    color: #1c1f24;
+    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.6);
+  }
+}
 .custom-btn-icon {
   /* Sized to the tile itself, not the viewport: the smaller of 34% width
      or 48% height keeps a big icon on square tiles and a proportional
@@ -2646,6 +2711,19 @@ html, body {
       transparent calc(50% - 1px), var(--danger) calc(50% - 1px),
       var(--danger) calc(50% + 1px), transparent calc(50% + 1px)),
     var(--panel);
+}
+/* "None" border preset: checkerboard so it reads as transparent rather
+   than broken. */
+.bg-swatch-transparent {
+  background:
+    linear-gradient(45deg, rgba(139,147,161,0.4) 25%, transparent 25%, transparent 75%, rgba(139,147,161,0.4) 75%),
+    linear-gradient(45deg, rgba(139,147,161,0.4) 25%, transparent 25%, transparent 75%, rgba(139,147,161,0.4) 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 4px 4px;
+}
+.bg-swatch-glass {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(10, 14, 20, 0.55) 60%);
+  border-color: rgba(255, 255, 255, 0.45);
 }
 .bg-swatch-custom {
   border-style: dashed;

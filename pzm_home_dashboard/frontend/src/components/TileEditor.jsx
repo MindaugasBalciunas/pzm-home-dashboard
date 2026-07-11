@@ -15,6 +15,9 @@ const ICON_FX = [
 // null = default panel background.
 const TILE_BG_PRESETS = [
   { key: null,                          label: 'Default' },
+  // Same translucent glass as the Electricity callout cards, so tiles
+  // overlaid on the house photo read as part of the same family.
+  { key: 'glass',                       label: 'Glass' },
   { key: 'rgba(74, 163, 255, 0.10)',    label: 'Blue' },
   { key: 'rgba(87, 211, 140, 0.10)',    label: 'Green' },
   { key: 'rgba(255, 193, 7, 0.10)',     label: 'Amber' },
@@ -22,6 +25,18 @@ const TILE_BG_PRESETS = [
   { key: 'rgba(186, 104, 200, 0.12)',   label: 'Purple' },
   { key: 'rgba(0, 188, 212, 0.10)',     label: 'Teal' },
   { key: '#000000',                     label: 'Black' },
+];
+
+// Preset border colours. null = default (theme border + on/off state
+// tinting); 'transparent' = borderless, for tiles laid over cards/video.
+const TILE_BORDER_PRESETS = [
+  { key: null,                        label: 'Default' },
+  { key: 'transparent',               label: 'None' },
+  { key: 'rgba(255, 255, 255, 0.35)', label: 'White' },
+  { key: '#4aa3ff',                   label: 'Blue' },
+  { key: '#57d38c',                   label: 'Green' },
+  { key: '#f5a623',                   label: 'Amber' },
+  { key: '#ff6b6b',                   label: 'Red' },
 ];
 
 const DISPLAY_MODES = [
@@ -39,6 +54,10 @@ export default function TileEditor({ id, entry, onSave, onDelete, onCancel }) {
   const [icon, setIcon] = useState(spec.icon || 'auto');
   const [iconFx, setIconFx] = useState(spec.iconFx || 'none');
   const [bg, setBg] = useState(spec.bg || null);
+  const [borderColor, setBorderColor] = useState(spec.borderColor || null);
+  const [opacity, setOpacity] = useState(
+    Number.isFinite(Number(spec.opacity)) && spec.opacity != null ? Number(spec.opacity) : 1
+  );
   const [display, setDisplay] = useState(spec.display || 'value');
   const [min, setMin] = useState(spec.min ?? '');
   const [max, setMax] = useState(spec.max ?? '');
@@ -53,6 +72,8 @@ export default function TileEditor({ id, entry, onSave, onDelete, onCancel }) {
     setIcon(spec.icon || 'auto');
     setIconFx(spec.iconFx || 'none');
     setBg(spec.bg || null);
+    setBorderColor(spec.borderColor || null);
+    setOpacity(Number.isFinite(Number(spec.opacity)) && spec.opacity != null ? Number(spec.opacity) : 1);
     setDisplay(spec.display || 'value');
     setMin(spec.min ?? '');
     setMax(spec.max ?? '');
@@ -87,6 +108,9 @@ export default function TileEditor({ id, entry, onSave, onDelete, onCancel }) {
     };
     assign('iconFx', iconFx);
     assign('bg', bg);
+    assign('borderColor', borderColor);
+    // Full opacity is the default — keep saved layouts minimal.
+    assign('opacity', opacity >= 0.995 ? undefined : Math.round(opacity * 100) / 100);
     if (isNumber) {
       assign('display', display === 'value' ? undefined : display);
       assign('min', numOrOmit(min));
@@ -215,8 +239,8 @@ export default function TileEditor({ id, entry, onSave, onDelete, onCancel }) {
               <button
                 key={p.label}
                 type="button"
-                className={`bg-swatch ${bg === p.key ? 'is-active' : ''} ${p.key == null ? 'bg-swatch-none' : ''}`}
-                style={p.key ? { background: p.key } : undefined}
+                className={`bg-swatch ${bg === p.key ? 'is-active' : ''} ${p.key == null ? 'bg-swatch-none' : ''} ${p.key === 'glass' ? 'bg-swatch-glass' : ''}`}
+                style={p.key && p.key !== 'glass' ? { background: p.key } : undefined}
                 title={p.label}
                 aria-label={`Background: ${p.label}`}
                 onClick={() => setBg(p.key)}
@@ -230,6 +254,46 @@ export default function TileEditor({ id, entry, onSave, onDelete, onCancel }) {
               value={typeof bg === 'string' && bg.startsWith('#') ? bg : '#1a2230'}
               onChange={(e) => setBg(e.target.value)}
             />
+          </div>
+
+          <label>Border colour</label>
+          <div className="swatch-row">
+            {TILE_BORDER_PRESETS.map((p) => (
+              <button
+                key={p.label}
+                type="button"
+                className={`bg-swatch ${borderColor === p.key ? 'is-active' : ''} ${p.key == null ? 'bg-swatch-none' : ''} ${p.key === 'transparent' ? 'bg-swatch-transparent' : ''}`}
+                style={p.key && p.key !== 'transparent' ? { background: p.key } : undefined}
+                title={p.label}
+                aria-label={`Border: ${p.label}`}
+                onClick={() => setBorderColor(p.key)}
+              />
+            ))}
+            <input
+              type="color"
+              className="bg-swatch bg-swatch-custom"
+              title="Custom border colour"
+              aria-label="Custom border colour"
+              value={typeof borderColor === 'string' && borderColor.startsWith('#') ? borderColor : '#4aa3ff'}
+              onChange={(e) => setBorderColor(e.target.value)}
+            />
+          </div>
+
+          <label htmlFor="tileedit-opacity">
+            Opacity <span className="field-value">{Math.round(opacity * 100)}%</span>
+          </label>
+          <input
+            id="tileedit-opacity"
+            type="range"
+            min="0.15"
+            max="1"
+            step="0.05"
+            value={opacity}
+            onChange={(e) => setOpacity(Number(e.target.value))}
+          />
+          <div className="side-menu-note">
+            Semi-transparent tiles work well laid over the Electricity
+            card or a camera (drag with “Snap to grid” off).
           </div>
 
           <label>Icon</label>

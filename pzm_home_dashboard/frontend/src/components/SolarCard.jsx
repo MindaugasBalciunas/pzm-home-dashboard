@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { startPolling } from '../lib/poll.js';
+import { tilePlacementStyle } from '../lib/placement.js';
 
 const POLL_MS = 3000;
 
@@ -167,8 +168,19 @@ function HouseView({
   // stylesheet's default anchors apply.
   const posStyle = (key) => {
     const p = calloutPos?.[key];
-    if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return undefined;
-    return { left: `${p.x}%`, top: `${p.y}%`, right: 'auto', bottom: 'auto', transform: 'none' };
+    const st = {};
+    if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) {
+      st.left = `${p.x}%`;
+      st.top = `${p.y}%`;
+      st.right = 'auto';
+      st.bottom = 'auto';
+      st.transform = 'none';
+    }
+    // Card scale from the edit-mode corner handle. CSS zoom really lays
+    // the card out at the new size (unlike transform), so the flow-line
+    // anchor measurements and drag clamps see the true box.
+    if (p && Number.isFinite(p.s) && p.s > 0 && p.s !== 1) st.zoom = p.s;
+    return Object.keys(st).length > 0 ? st : undefined;
   };
   const beginCalloutDrag = (e, key) => {
     if (!editMode || !onCalloutPosChange) return;
@@ -188,6 +200,7 @@ function HouseView({
       const x = ((ev.clientX - grabDx - rect.left) / rect.width) * 100;
       const y = ((ev.clientY - grabDy - rect.top) / rect.height) * 100;
       onCalloutPosChange(key, {
+        ...(calloutPos?.[key] || {}),
         x: Math.round(clampN(x, 0, maxX) * 10) / 10,
         y: Math.round(clampN(y, 0, maxY) * 10) / 10,
       });
@@ -201,6 +214,38 @@ function HouseView({
     window.addEventListener('pointerup', up);
     window.addEventListener('pointercancel', up);
   };
+  // Corner-handle resize: diagonal drag rescales the card (120 px ≈ ±1×),
+  // persisted as `s` next to the card's custom position.
+  const beginCalloutResize = (e, key) => {
+    if (!editMode || !onCalloutPosChange) return;
+    e.stopPropagation();
+    e.preventDefault();
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const base = { ...(calloutPos?.[key] || {}) };
+    const s0 = Number(base.s) > 0 ? Number(base.s) : 1;
+    const move = (ev) => {
+      const d = ((ev.clientX - startX) + (ev.clientY - startY)) / 2;
+      const sNext = Math.round(clampN(s0 + d / 120, 0.6, 2.2) * 20) / 20;
+      onCalloutPosChange(key, { ...base, s: sNext });
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  };
+  const calloutHandle = (key) => (editMode && onCalloutPosChange ? (
+    <span
+      className="hv-callout-resize"
+      title="Drag to resize"
+      onPointerDown={(e) => beginCalloutResize(e, key)}
+    />
+  ) : null);
   const calloutProps = (key) => ({
     ref: (el) => { calloutRefs.current[key] = el; },
     style: posStyle(key),
@@ -230,6 +275,8 @@ function HouseView({
         cx: ((r.left + r.width / 2 - rect.left) / rect.width) * 100,
         cy: ((r.top + r.height / 2 - rect.top) / rect.height) * 100,
         left: ((r.left - rect.left) / rect.width) * 100,
+        right: ((r.right - rect.left) / rect.width) * 100,
+        top: ((r.top - rect.top) / rect.height) * 100,
         bottom: ((r.bottom - rect.top) / rect.height) * 100,
       };
     }
@@ -239,6 +286,7 @@ function HouseView({
           && keys.every((k) => prev[k]
             && Math.abs(prev[k].cx - next[k].cx) < 0.3
             && Math.abs(prev[k].cy - next[k].cy) < 0.3
+            && Math.abs(prev[k].right - next[k].right) < 0.3
             && Math.abs(prev[k].bottom - next[k].bottom) < 0.3)) {
         return prev;
       }
@@ -339,37 +387,48 @@ function HouseView({
       */}
       <svg className="house-view-flow" viewBox="0 0 100 100" preserveAspectRatio="none">
         {(() => {
-          const solA = anchor('pvTotal', { cx: 12, cy: 10, left: 2, bottom: 20 });
-          const pv2A = anchor('pv2', { cx: 36, cy: 6, left: 30, bottom: 12 });
-          const pv1A = anchor('pv1', { cx: 58, cy: 6, left: 52, bottom: 12 });
-          const homA = anchor('home', { cx: 88, cy: 8, left: 78, bottom: 16 });
-          const grdA = anchor('grid', { cx: 88, cy: 80, left: 78, bottom: 90 });
-          // Solar cards drop a short leg from their bottom edge onto a
-          // shared horizontal bus, which feeds the junction — so the first
-          // turn stays close to each card and the legs merge into one run.
-          // Home / Grid legs attach at their card's LEFT edge, approached
-          // horizontally; direction of travel follows the energy.
+          const solA = anchor('pvTotal', { cx: 12, cy: 10, left: 2, right: 22, top: 2, bottom: 20 });
+          const pv2A = anchor('pv2', { cx: 36, cy: 6, left: 30, right: 42, top: 2, bottom: 12 });
+          const pv1A = anchor('pv1', { cx: 58, cy: 6, left: 52, right: 64, top: 2, bottom: 12 });
+          const homA = anchor('home', { cx: 88, cy: 8, left: 78, right: 98, top: 2, bottom: 16 });
+          const grdA = anchor('grid', { cx: 88, cy: 80, left: 78, right: 98, top: 70, bottom: 90 });
+          // Solar cards drop a short leg onto a shared horizontal bus that
+          // feeds the junction. Every leg picks the card edge nearest its
+          // target: solar legs leave from the bottom edge when the card
+          // sits above the bus and from the top edge when dragged below
+          // it; Home / Grid legs approach horizontally and attach to
+          // whichever vertical edge faces the junction. Cards dragged
+          // below the junction stop pushing the bus down — only cards
+          // above it set the bus height.
+          const aboveBottoms = [solA, pv2A, pv1A]
+            .filter((a) => a.bottom + 2.5 <= jy)
+            .map((a) => a.bottom);
           const busY = clampN(
-            Math.max(solA.bottom, pv1A.bottom, pv2A.bottom) + 2.5, 4, jy - 2);
+            (aboveBottoms.length > 0 ? Math.max(...aboveBottoms) : jy - 12) + 2.5,
+            4, jy - 2);
+          const legY = (a) => (a.bottom <= busY ? a.bottom : a.top);
+          const sideX = (a) => (a.cx >= jx ? a.left : a.right);
           const busX1 = Math.min(solA.cx, pv1A.cx, pv2A.cx, jx);
           const busX2 = Math.max(solA.cx, pv1A.cx, pv2A.cx, jx);
+          const homX = sideX(homA);
+          const grdX = sideX(grdA);
           return (
             <>
-              <path d={`M ${pv2A.cx} ${pv2A.bottom} V ${busY}`}
+              <path d={`M ${pv2A.cx} ${legY(pv2A)} V ${busY}`}
                     className={`hv-line ${active(pv2) ? 'hv-line-active' : ''}`}
                     style={pv2Line} />
-              <path d={`M ${pv1A.cx} ${pv1A.bottom} V ${busY}`}
+              <path d={`M ${pv1A.cx} ${legY(pv1A)} V ${busY}`}
                     className={`hv-line ${active(pv1) ? 'hv-line-active' : ''}`}
                     style={pv1Line} />
-              <path d={`M ${solA.cx} ${solA.bottom} V ${busY} M ${busX1} ${busY} H ${busX2} M ${jx} ${busY} V ${jy}`}
+              <path d={`M ${solA.cx} ${legY(solA)} V ${busY} M ${busX1} ${busY} H ${busX2} M ${jx} ${busY} V ${jy}`}
                     className={`hv-line ${active(pv) ? 'hv-line-active' : ''}`}
                     style={solarBusLine} />
-              <path d={`M ${jx} ${jy} V ${homA.cy} H ${homA.left}`}
+              <path d={`M ${jx} ${jy} V ${homA.cy} H ${homX}`}
                     className={`hv-line ${active(house) ? 'hv-line-active' : ''}`}
                     style={houseLine} />
               <path d={isImporting
-                      ? `M ${grdA.left} ${grdA.cy} H ${jx} V ${jy}`
-                      : `M ${jx} ${jy} V ${grdA.cy} H ${grdA.left}`}
+                      ? `M ${grdX} ${grdA.cy} H ${jx} V ${jy}`
+                      : `M ${jx} ${jy} V ${grdA.cy} H ${grdX}`}
                     className={`hv-line ${(isExporting || isImporting) ? 'hv-line-active' : ''}`}
                     style={gridLine} />
             </>
@@ -395,6 +454,7 @@ function HouseView({
           "how much did we make today so far" question is answered
           without leaving the diagram. */}
       <div className="hv-callout hv-callout-pv-total" {...calloutProps('pvTotal')}>
+        {calloutHandle('pvTotal')}
         <div className="hv-callout-value">
           <span className="hv-callout-num">{pvFmt.text}</span>
           {pvFmt.unit && <span className="hv-callout-unit">{pvFmt.unit}</span>}
@@ -459,6 +519,7 @@ function HouseView({
 
       {/* PV 2 — top-left, near left panels. V/A rendered as compact sub-line. */}
       <div className="hv-callout hv-callout-pv2" {...calloutProps('pv2')}>
+        {calloutHandle('pv2')}
         <div className="hv-callout-value">
           <span className="hv-callout-num">{pv2Fmt.text}</span>
           {pv2Fmt.unit && <span className="hv-callout-unit">{pv2Fmt.unit}</span>}
@@ -477,6 +538,7 @@ function HouseView({
 
       {/* PV 1 — top-right, near right panels. V/A rendered as compact sub-line. */}
       <div className="hv-callout hv-callout-pv1" {...calloutProps('pv1')}>
+        {calloutHandle('pv1')}
         <div className="hv-callout-value">
           <span className="hv-callout-num">{pv1Fmt.text}</span>
           {pv1Fmt.unit && <span className="hv-callout-unit">{pv1Fmt.unit}</span>}
@@ -497,6 +559,7 @@ function HouseView({
           DSO actually bills on) group here beneath the live house load:
           today's import/export, then lifetime totals with tariff splits. */}
       <div className="hv-callout hv-callout-home" {...calloutProps('home')}>
+        {calloutHandle('home')}
         <div className="hv-callout-value">
           <span className="hv-callout-num">{houseFmt.text}</span>
           {houseFmt.unit && <span className="hv-callout-unit">{houseFmt.unit}</span>}
@@ -568,6 +631,7 @@ function HouseView({
         className={`hv-callout hv-callout-grid ${isExporting ? 'hv-good' : isImporting ? 'hv-bad' : ''}`}
         {...calloutProps('grid')}
       >
+        {calloutHandle('grid')}
         <div className="hv-callout-value">
           <span className="hv-callout-num">{gridFmt.text}</span>
           {gridFmt.unit && <span className="hv-callout-unit">{gridFmt.unit}</span>}
@@ -1010,10 +1074,7 @@ function SolarCard({
     onStartResize?.(e);
   };
 
-  const style = {
-    gridColumn: `${col} / span ${colSpan}`,
-    gridRow: `${row} / span ${rowSpan}`,
-  };
+  const style = tilePlacementStyle(col, row, colSpan, rowSpan);
 
   const configured = data ? data.configured !== false : true;
 

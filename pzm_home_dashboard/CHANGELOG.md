@@ -4,6 +4,37 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.25
+
+- **Free tile placement.** New "Snap to grid" toggle in the side menu
+  (edit mode). With snap off, drags and resizes move in 1/20-cell steps
+  and tiles can be dropped anywhere — including on top of the
+  Electricity card or a camera. Free positions persist as fractional
+  grid coordinates and render pixel-exact against the grid (the cell
+  unit is measured from the real grid width, so classic scrollbars
+  can't skew overlays).
+- **Per-tile opacity and border colour.** The tile editor gains an
+  opacity slider (15–100 %) and a border-colour picker (default / none /
+  presets / custom). Opacity is ignored while editing so a faint overlay
+  tile stays grabbable; the light dim/colour modal is unaffected by tile
+  opacity.
+- **Glass tile background.** New "Glass" preset renders a button/number
+  tile with exactly the Electricity callout cards' translucent blur, so
+  tiles overlaid on the house photo read as one family. Callout cards
+  now share the tiles' corner rounding.
+- **Electricity callout cards resize.** In edit mode every callout card
+  (Solar, PV 1/2, Home, Grid) gets a corner handle — drag to scale the
+  card from 0.6× to 2.2×, persisted with its position.
+- **Flow lines pick the best card edge.** Energy lines now attach to
+  whichever edge of a callout card faces the junction — drag the Grid
+  card to the left and its line approaches from the right side; solar
+  legs drop from the bottom or rise from the top depending on where the
+  card sits relative to the bus.
+- **Gate opener status follows its switch.** The Security card's Gate
+  opener chip now reads `switch.gate_opener_switch_1` (Open/Closed) —
+  the access-control lock sensor didn't track the gate. Existing
+  installs are remapped server-side; no options change needed.
+
 ## 0.2.24
 
 - **Kiosk performance overhaul.** The frontend was reworked for its real

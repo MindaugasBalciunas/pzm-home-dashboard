@@ -1,7 +1,9 @@
 import { memo, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import LightControl from './LightControl.jsx';
 import { useEntityState, refreshEntities } from '../lib/entityStates.js';
 import { startPolling } from '../lib/poll.js';
+import { tilePlacementStyle } from '../lib/placement.js';
 
 const LONG_PRESS_MS = 450;
 const LONG_PRESS_MOVE_PX = 8;
@@ -166,10 +168,7 @@ function SimpleTile({
     }
   };
 
-  const style = {
-    gridColumn: `${col} / span ${colSpan}`,
-    gridRow: `${row} / span ${rowSpan}`,
-  };
+  const style = tilePlacementStyle(col, row, colSpan, rowSpan);
 
   const on = isOnState(state?.state);
   // HA-level "unavailable"/"unknown" (device offline — Tuya devices drop
@@ -219,7 +218,17 @@ function SimpleTile({
   // stays consistent.
   const display = spec.kind === 'number' ? (spec.display || 'value') : 'value';
   const samples = useTodayHistory(spec.entityId, spec.kind === 'number' && display === 'graph');
-  const tileBg = spec.bg ? { background: spec.bg } : null;
+  // Per-tile look overrides from the editor. Opacity is skipped in edit
+  // mode so a near-transparent overlay tile stays visible while you grab
+  // and place it.
+  const isGlass = spec.bg === 'glass';
+  const glassCls = isGlass ? ' custom-tile-glass' : '';
+  const tileBg = {};
+  if (spec.bg && !isGlass) tileBg.background = spec.bg;
+  if (spec.borderColor) tileBg.borderColor = spec.borderColor;
+  if (!editMode && spec.opacity != null && Number(spec.opacity) < 1) {
+    tileBg.opacity = Number(spec.opacity);
+  }
 
   if (spec.kind === 'number') {
     const { n, u } = formatNumber(state?.state, spec.unit || state?.unit);
@@ -228,7 +237,7 @@ function SimpleTile({
     const fx = spec.iconFx && spec.iconFx !== 'none' ? `iconfx iconfx-${spec.iconFx}` : '';
     return (
       <div
-        className={`tile custom-tile ${editMode ? 'tile-editing' : ''}`}
+        className={`tile custom-tile${glassCls} ${editMode ? 'tile-editing' : ''}`}
         style={{ ...style, ...tileBg }}
         onPointerDown={editMode ? (e) => e.button === 0 && onStartMove(e) : undefined}
         title={spec.entityId}
@@ -308,7 +317,7 @@ function SimpleTile({
 
   return (
     <div
-      className={`tile custom-tile ${tileStateCls} ${editMode ? 'tile-editing' : ''}`}
+      className={`tile custom-tile${glassCls} ${tileStateCls} ${editMode ? 'tile-editing' : ''}`}
       style={{ ...style, ...tileBg }}
       onPointerDown={editMode ? (e) => e.button === 0 && onStartMove(e) : undefined}
       onContextMenu={editMode ? (e) => e.preventDefault() : undefined}
@@ -334,14 +343,17 @@ function SimpleTile({
         {error && <div className="side-menu-note" style={{ color: 'var(--danger)' }}>{error}</div>}
       </button>
       {editHeader}
-      {lightOpen && (
+      {/* Portaled to <body>: the tile root may carry a custom opacity,
+          and CSS group opacity would dim a child modal along with it. */}
+      {lightOpen && createPortal(
         <LightControl
           entityId={spec.entityId}
           name={spec.name}
           initial={state}
           onChanged={() => setTimeout(refreshEntities, 400)}
           onClose={() => setLightOpen(false)}
-        />
+        />,
+        document.body,
       )}
     </div>
   );

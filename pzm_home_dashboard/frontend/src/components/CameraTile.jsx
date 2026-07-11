@@ -1,5 +1,6 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
+import { tilePlacementStyle } from '../lib/placement.js';
 
 const FIT_TO_CSS = {
   fit: 'contain',
@@ -86,10 +87,7 @@ function CameraTile({
     };
   }, [camera.id]);
 
-  const tileStyle = {
-    gridColumn: `${col} / span ${colSpan}`,
-    gridRow: `${row} / span ${rowSpan}`,
-  };
+  const tileStyle = tilePlacementStyle(col, row, colSpan, rowSpan);
 
   const objectFit = FIT_TO_CSS[fit] || 'contain';
 

@@ -21,6 +21,8 @@ export default function SideMenu({
   onToggleEdit,
   onResetLayout,
   onAddTile,
+  snapToGrid = true,
+  onToggleSnap,
   bgDemo,
   onToggleBgDemo,
   themeBg,
@@ -175,11 +177,21 @@ export default function SideMenu({
                 }}
               >Reset</button>
             </div>
+            {editMode && (
+              <div className="side-menu-row">
+                <button
+                  type="button"
+                  className={`side-menu-btn-ghost ${!snapToGrid ? 'is-active' : ''}`}
+                  onClick={() => onToggleSnap?.()}
+                >{snapToGrid ? 'Snap to grid: on' : 'Snap to grid: off'}</button>
+              </div>
+            )}
             <div className="side-menu-note">
               Hold a tile to lift it, then drag to move; drag the corner
               handle to resize. Tap a custom or the Security tile to
-              configure it. Edits are shared with every browser viewing
-              this dashboard.
+              configure it. With snap off, tiles place freely — even on
+              top of the Electricity card or cameras. Edits are shared
+              with every browser viewing this dashboard.
             </div>
           </section>
 
