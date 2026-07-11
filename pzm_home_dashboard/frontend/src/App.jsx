@@ -115,31 +115,39 @@ function computeDefaults(cameras) {
 
 function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
 
-// Debounced PUT so a drag gesture doesn't spam the backend.
+// Debounced PUT so a drag gesture doesn't spam the backend. The returned
+// object (and its functions) are referentially stable so callbacks built on
+// top of it stay stable too — that's what lets the memoised tiles skip
+// re-renders.
 function useDebouncedPersist(saveFn) {
   const timerRef = useRef(null);
   const latestRef = useRef(null);
-  const cancel = () => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-  };
-  const schedule = (value, delayMs = 400) => {
-    latestRef.current = value;
-    cancel();
-    timerRef.current = setTimeout(() => {
-      timerRef.current = null;
-      saveFn(latestRef.current);
-    }, delayMs);
-  };
-  const flush = () => {
-    if (timerRef.current == null) return;
-    cancel();
-    saveFn(latestRef.current);
-  };
-  useEffect(() => cancel, []);
-  return { schedule, flush };
+  const saveFnRef = useRef(saveFn);
+  useEffect(() => { saveFnRef.current = saveFn; }, [saveFn]);
+  const api = useMemo(() => {
+    const cancel = () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+    const schedule = (value, delayMs = 400) => {
+      latestRef.current = value;
+      cancel();
+      timerRef.current = setTimeout(() => {
+        timerRef.current = null;
+        saveFnRef.current(latestRef.current);
+      }, delayMs);
+    };
+    const flush = () => {
+      if (timerRef.current == null) return;
+      cancel();
+      saveFnRef.current(latestRef.current);
+    };
+    return { schedule, flush, cancel };
+  }, []);
+  useEffect(() => api.cancel, [api]);
+  return api;
 }
 
 // Find a free spot for a new tile, size wxh, scanning the grid top-to-bottom.
@@ -175,6 +183,7 @@ function findFreeSpot(overrides, w, h) {
 export default function App() {
   const [cameras, setCameras] = useState([]);
   const [error, setError] = useState(null);
+  const [camerasError, setCamerasError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   // Experiments: loop the Electricity house photo through all variants.
@@ -210,14 +219,27 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([
+    Promise.allSettled([
       fetch('api/cameras').then((r) => { if (!r.ok) throw new Error(`cameras HTTP ${r.status}`); return r.json(); }),
       fetch('api/layout').then((r) => { if (!r.ok) throw new Error(`layout HTTP ${r.status}`); return r.json(); }),
     ])
-      .then(([camData, layoutData]) => {
+      .then(([camRes, layoutRes]) => {
         if (cancelled) return;
-        const cams = Array.isArray(camData) ? camData : [];
+        // The layout IS the dashboard — without it nothing can safely
+        // render (and seeding the starter template over an unknown server
+        // state could overwrite a real layout), so its failure stays
+        // fatal. Cameras are optional: if that endpoint hiccups (ffmpeg
+        // startup, camera subsystem down) the buttons, sensors, solar and
+        // security tiles must still come up on the kiosk.
+        if (layoutRes.status === 'rejected') {
+          setError(String(layoutRes.reason));
+          setLoading(false);
+          return;
+        }
+        if (camRes.status === 'rejected') setCamerasError(String(camRes.reason));
+        const cams = camRes.status === 'fulfilled' && Array.isArray(camRes.value) ? camRes.value : [];
         setCameras(cams);
+        const layoutData = layoutRes.value;
         const initial = layoutData?.layout && typeof layoutData.layout === 'object' ? layoutData.layout : {};
         setRevision(typeof layoutData?.revision === 'number' ? layoutData.revision : 0);
 
@@ -241,11 +263,6 @@ export default function App() {
         } else {
           setOverrides(initial);
         }
-        setLoading(false);
-      })
-      .catch((e) => {
-        if (cancelled) return;
-        setError(String(e));
         setLoading(false);
       });
     return () => { cancelled = true; };
@@ -288,28 +305,31 @@ export default function App() {
     return out;
   }, [cameras, overrides, defaults]);
 
+  // Latest effective layout for stable callbacks (event handlers run after
+  // render, so the ref is always in sync by the time they fire).
+  const layoutRef = useRef(layout);
+  useEffect(() => { layoutRef.current = layout; }, [layout]);
+
   // Merge a patch into overrides for one tile and (optionally) persist.
-  const updateTile = (id, patch, persistNow) => {
+  const updateTile = useCallback((id, patch, persistNow) => {
     setOverrides((prev) => {
       const existing = prev[id] || {};
-      const merged = { ...(layout[id] || {}), ...existing, ...patch };
+      const merged = { ...(layoutRef.current[id] || {}), ...existing, ...patch };
       const next = { ...prev, [id]: merged };
       if (persistNow) persist.schedule(next, 400);
       return next;
     });
-  };
+  }, [persist]);
 
-  const commitLayoutSnapshot = () => persist.flush();
-
-  const setFit = (id, fit) => {
+  const setFit = useCallback((id, fit) => {
     if (!FIT_MODES.includes(fit)) return;
     setOverrides((prev) => {
-      const merged = { ...(layout[id] || {}), ...(prev[id] || {}), fit };
+      const merged = { ...(layoutRef.current[id] || {}), ...(prev[id] || {}), fit };
       const next = { ...prev, [id]: merged };
       persist.schedule(next, 200);
       return next;
     });
-  };
+  }, [persist]);
 
   const resetLayout = () => {
     // Rebuild the starter template so an empty layout never actually reaches
@@ -340,7 +360,7 @@ export default function App() {
     setEditMode(true);
   };
 
-  const removeCustomTile = (id) => {
+  const removeCustomTile = useCallback((id) => {
     setOverrides((prev) => {
       if (!(id in prev)) return prev;
       const next = { ...prev };
@@ -348,7 +368,7 @@ export default function App() {
       persist.schedule(next, 0);
       return next;
     });
-  };
+  }, [persist]);
 
   const updateTileSpec = (id, nextSpec) => {
     setOverrides((prev) => {
@@ -361,23 +381,17 @@ export default function App() {
     setEditingTileId(null);
   };
 
-  const getCellMetrics = () => {
-    const el = gridRef.current;
-    if (!el) return null;
-    const rect = el.getBoundingClientRect();
-    const cs = getComputedStyle(el);
-    const gap = parseFloat(cs.rowGap || cs.gap || '0') || 0;
-    const cellW = (rect.width - (GRID_COLS - 1) * gap) / GRID_COLS;
-    const cellH = cellW;
-    return { rect, gap, cellW, cellH };
-  };
-
-  const startDrag = (id, e, kind) => {
+  const startDrag = useCallback((id, e, kind) => {
     e.preventDefault();
     e.stopPropagation();
-    const metrics = getCellMetrics();
-    if (!metrics) return;
-    const eff = layout[id];
+    const gridEl = gridRef.current;
+    if (!gridEl) return;
+    const gridRect = gridEl.getBoundingClientRect();
+    const cs = getComputedStyle(gridEl);
+    const gap = parseFloat(cs.rowGap || cs.gap || '0') || 0;
+    const cellW = (gridRect.width - (GRID_COLS - 1) * gap) / GRID_COLS;
+    const metrics = { gap, cellW, cellH: cellW };
+    const eff = layoutRef.current[id];
     if (!eff) return;
     const startX = e.clientX;
     const startY = e.clientY;
@@ -446,7 +460,7 @@ export default function App() {
     const onUp = () => {
       const wasTap = !moved && !lifted;
       teardown();
-      if (moved) { commitLayoutSnapshot(); return; }
+      if (moved) { persist.flush(); return; }
       if (wasTap && canOpenEditor) setEditingTileId(id);
     };
 
@@ -461,11 +475,50 @@ export default function App() {
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
     window.addEventListener('pointercancel', onUp);
+  }, [updateTile, persist]);
+
+  // Per-tile event handlers with stable identities. Tiles are memoised;
+  // handing each one fresh arrow functions per render would defeat that,
+  // so handlers are minted once per tile id and dispatch through refs.
+  const startDragRef = useRef(startDrag);
+  useEffect(() => { startDragRef.current = startDrag; }, [startDrag]);
+  const setFitRef = useRef(setFit);
+  useEffect(() => { setFitRef.current = setFit; }, [setFit]);
+  const tileHandlersRef = useRef(new Map());
+  const tileHandlers = (id) => {
+    let h = tileHandlersRef.current.get(id);
+    if (!h) {
+      h = {
+        onStartMove: (e) => startDragRef.current(id, e, 'move'),
+        onStartResize: (e) => startDragRef.current(id, e, 'resize'),
+        onSetFit: (mode) => setFitRef.current(id, mode),
+      };
+      tileHandlersRef.current.set(id, h);
+    }
+    return h;
   };
 
-  const customEntries = Object.entries(overrides).filter(
-    ([id, v]) => (id.startsWith('custom-') || id.startsWith('tpl-')) && v && v.spec
+  const onFlowPointChange = useCallback(
+    (pt) => updateTile(SOLAR_ID, { flowX: pt.x, flowY: pt.y }, true),
+    [updateTile],
   );
+  const onCalloutPosChange = useCallback((key, pos) => {
+    setOverrides((prev) => {
+      const existing = prev[SOLAR_ID] || {};
+      const callouts = {
+        ...(existing.callouts || layoutRef.current[SOLAR_ID]?.callouts || {}),
+        [key]: pos,
+      };
+      const merged = { ...(layoutRef.current[SOLAR_ID] || {}), ...existing, callouts };
+      const next = { ...prev, [SOLAR_ID]: merged };
+      persist.schedule(next, 400);
+      return next;
+    });
+  }, [persist]);
+
+  const customEntries = useMemo(() => Object.entries(overrides).filter(
+    ([id, v]) => (id.startsWith('custom-') || id.startsWith('tpl-')) && v && v.spec
+  ), [overrides]);
 
   // Dashboard background colour (shared appearance setting). Overrides the
   // theme's --bg variable at the root, so the grid, gaps and the page edge
@@ -516,6 +569,11 @@ export default function App() {
             Failed to load: {error}
           </div>
         )}
+        {!error && camerasError && (
+          <div className="notice" style={{ gridColumn: `1 / -1` }}>
+            Cameras unavailable ({camerasError}) — rest of the dashboard is live.
+          </div>
+        )}
         {!loading && !error && cameras.length === 0 && customEntries.length === 0 && (
           <div className="notice" style={{ gridColumn: `1 / -1` }}>No cameras or tiles configured.</div>
         )}
@@ -523,6 +581,7 @@ export default function App() {
           const l = layout[cam.id];
           if (!l) return null;
           const wide = l.colSpan >= Math.ceil(GRID_COLS / 2);
+          const h = tileHandlers(cam.id);
           return (
             <CameraTile
               key={cam.id}
@@ -534,9 +593,9 @@ export default function App() {
               wide={wide}
               fit={l.fit || DEFAULT_FIT}
               editMode={editMode}
-              onStartMove={(e) => startDrag(cam.id, e, 'move')}
-              onStartResize={(e) => startDrag(cam.id, e, 'resize')}
-              onSetFit={(mode) => setFit(cam.id, mode)}
+              onStartMove={h.onStartMove}
+              onStartResize={h.onStartResize}
+              onSetFit={h.onSetFit}
             />
           );
         })}
@@ -548,20 +607,14 @@ export default function App() {
             colSpan={layout[SOLAR_ID].colSpan}
             rowSpan={layout[SOLAR_ID].rowSpan}
             editMode={editMode}
-            onStartMove={(e) => startDrag(SOLAR_ID, e, 'move')}
-            onStartResize={(e) => startDrag(SOLAR_ID, e, 'resize')}
+            onStartMove={tileHandlers(SOLAR_ID).onStartMove}
+            onStartResize={tileHandlers(SOLAR_ID).onStartResize}
             bgDemo={bgDemo}
-            flowPoint={{
-              x: layout[SOLAR_ID].flowX ?? 78,
-              y: layout[SOLAR_ID].flowY ?? 50,
-            }}
-            onFlowPointChange={(pt) => updateTile(SOLAR_ID, { flowX: pt.x, flowY: pt.y }, true)}
+            flowX={layout[SOLAR_ID].flowX ?? 78}
+            flowY={layout[SOLAR_ID].flowY ?? 50}
+            onFlowPointChange={onFlowPointChange}
             calloutPos={layout[SOLAR_ID].callouts || null}
-            onCalloutPosChange={(key, pos) => updateTile(
-              SOLAR_ID,
-              { callouts: { ...(layout[SOLAR_ID].callouts || {}), [key]: pos } },
-              true,
-            )}
+            onCalloutPosChange={onCalloutPosChange}
           />
         )}
         {layout[SECURITY_ID] && (
@@ -572,8 +625,8 @@ export default function App() {
             colSpan={layout[SECURITY_ID].colSpan}
             rowSpan={layout[SECURITY_ID].rowSpan}
             editMode={editMode}
-            onStartMove={(e) => startDrag(SECURITY_ID, e, 'move')}
-            onStartResize={(e) => startDrag(SECURITY_ID, e, 'resize')}
+            onStartMove={tileHandlers(SECURITY_ID).onStartMove}
+            onStartResize={tileHandlers(SECURITY_ID).onStartResize}
             showZones={layout[SECURITY_ID].showZones !== false}
             showPir={layout[SECURITY_ID].showPir !== false}
           />
@@ -581,6 +634,7 @@ export default function App() {
         {customEntries.map(([id, entry]) => {
           const l = layout[id];
           if (!l) return null;
+          const h = tileHandlers(id);
           return (
             <SimpleTile
               key={id}
@@ -591,10 +645,10 @@ export default function App() {
               colSpan={l.colSpan}
               rowSpan={l.rowSpan}
               editMode={editMode}
-              onStartMove={(e) => startDrag(id, e, 'move')}
-              onStartResize={(e) => startDrag(id, e, 'resize')}
+              onStartMove={h.onStartMove}
+              onStartResize={h.onStartResize}
               onRemove={removeCustomTile}
-              onEdit={(tid) => setEditingTileId(tid)}
+              onEdit={setEditingTileId}
             />
           );
         })}

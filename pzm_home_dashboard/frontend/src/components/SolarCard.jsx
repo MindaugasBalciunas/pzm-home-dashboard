@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { startPolling } from '../lib/poll.js';
 
-const HISTORY_LEN = 80;
 const POLL_MS = 3000;
 
 // House photo variants: public/ ships one render per season × day-phase
@@ -36,15 +36,6 @@ const DEMO_BACKGROUNDS = SEASONS.flatMap((season) =>
     label: `${season} · ${phase}`,
   })));
 const DEMO_STEP_MS = 2000;
-
-const POWER_METRICS = [
-  { key: 'pvTotal',  label: 'PV Total', accent: 'good' },
-  { key: 'houseUse', label: 'House',    accent: 'neutral' },
-  { key: 'import',   label: 'Import',   accent: 'bad' },
-  { key: 'export',   label: 'Export',   accent: 'good' },
-  { key: 'pv1',      label: 'PV 1',     accent: 'neutral' },
-  { key: 'pv2',      label: 'PV 2',     accent: 'neutral' },
-];
 
 // Today Import / Export moved into the Grid callout and Total Solar into
 // the Solar callout (top section), so the strip is down to three chips.
@@ -91,302 +82,9 @@ function formatPvSubBits(voltageState, currentState) {
   };
 }
 
-function Sparkline({ values, accent, metricKey }) {
-  if (!values || values.length < 2) return null;
-  const w = 100, h = 40;
-  let min = Infinity, max = -Infinity;
-  for (const v of values) {
-    if (v < min) min = v;
-    if (v > max) max = v;
-  }
-  if (min > 0) min = min * 0.95;
-  if (max <= min) max = min + 1;
-  const range = max - min;
-  const step = w / (values.length - 1);
-  
-  let linePoints = [];
-  for (let i = 0; i < values.length; i++) {
-    const x = i * step;
-    const y = h - ((values[i] - min) / range) * h;
-    linePoints.push(`${x.toFixed(1)},${y.toFixed(1)}`);
-  }
-  
-  const strokePath = `M ${linePoints.join(' L ')}`;
-  const fillPath = `${strokePath} L ${w},${h} L 0,${h} Z`;
-
-  const gradientId = `spark-grad-${metricKey}`;
-  
-  let strokeColor = 'var(--accent)';
-  if (accent === 'good') strokeColor = 'var(--ok)';
-  if (accent === 'bad') strokeColor = 'var(--danger)';
-
-  return (
-    <svg className="sparkline-bg" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none">
-      <defs>
-        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={strokeColor} stopOpacity="0.20" />
-          <stop offset="100%" stopColor={strokeColor} stopOpacity="0.0" />
-        </linearGradient>
-      </defs>
-      <path d={fillPath} fill={`url(#${gradientId})`} />
-      <path d={strokePath} fill="none" stroke={strokeColor} strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
-    </svg>
-  );
-}
-
 function flowDur(v) {
   const w = Math.max(50, Math.min(6000, Math.abs(v || 0)));
   return `${Math.max(0.4, 2.6 - Math.log10(w) * 0.4).toFixed(2)}s`;
-}
-
-function FlowDiagram({
-  pvState,
-  importState,
-  exportState,
-  houseState,
-  batteryPowerState,
-  batterySocState,
-  pv1State,
-  pv2State,
-  runModeText,
-}) {
-  const pv = toNumber(pvState) ?? 0;
-  const imp = toNumber(importState) ?? 0;
-  const exp = toNumber(exportState) ?? 0;
-  const house = toNumber(houseState) ?? 0;
-  const batPower = toNumber(batteryPowerState) ?? 0;
-  const batSoc = toNumber(batterySocState);
-  const pv1 = toNumber(pv1State);
-  const pv2 = toNumber(pv2State);
-  const active = (v) => (v || 0) > 5;
-
-  const solarVal = formatValue(pv, pvState?.unit || 'W');
-  const houseVal = formatValue(house, houseState?.unit || 'W');
-  
-  let gridVal = { text: '0', unit: 'W' };
-  let isImporting = false;
-  let isExporting = false;
-  if (exp > 5) {
-    gridVal = formatValue(exp, exportState?.unit || 'W');
-    isExporting = true;
-  } else if (imp > 5) {
-    gridVal = formatValue(imp, importState?.unit || 'W');
-    isImporting = true;
-  }
-
-  let gridValColor = 'var(--text)';
-  if (isExporting) gridValColor = 'var(--ok)';
-  if (isImporting) gridValColor = 'var(--danger)';
-
-  const batteryConfigured = batterySocState && batterySocState.state != null;
-  const isCharging = batPower < -5;
-  const isDischarging = batPower > 5;
-  const batPowerVal = formatValue(Math.abs(batPower), batteryPowerState?.unit || 'W');
-
-  let pvTotalVal = pv;
-  let pv1Val = pv1;
-  let pv2Val = pv2;
-  let pv1Pct = 0;
-  let pv2Pct = 0;
-  if (pvTotalVal > 0 && pv1Val != null && pv2Val != null) {
-    pv1Pct = Math.round((pv1Val / pvTotalVal) * 100);
-    pv2Pct = Math.round((pv2Val / pvTotalVal) * 100);
-  }
-
-  return (
-    <svg className="flow-svg" viewBox="0 0 320 280" preserveAspectRatio="xMidYMid meet">
-      <defs>
-        <filter id="glow-solar" x="-30%" y="-30%" width="160%" height="160%">
-          <feDropShadow dx="0" dy="0" stdDeviation="3" floodColor="#f59f00" floodOpacity="0.4" />
-        </filter>
-        <filter id="glow-grid" x="-30%" y="-30%" width="160%" height="160%">
-          <feDropShadow dx="0" dy="0" stdDeviation="3" floodColor="#339af0" floodOpacity="0.4" />
-        </filter>
-        <filter id="glow-house" x="-30%" y="-30%" width="160%" height="160%">
-          <feDropShadow dx="0" dy="0" stdDeviation="3" floodColor="#845ef7" floodOpacity="0.4" />
-        </filter>
-
-        <linearGradient id="interior-glow" x1="0" y1="1" x2="0" y2="0">
-          <stop offset="0%" stopColor="#ffd8a8" stopOpacity="0.35" />
-          <stop offset="100%" stopColor="#fff" stopOpacity="0.0" />
-        </linearGradient>
-        <linearGradient id="solar-panel-grad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#1c2533" />
-          <stop offset="100%" stopColor="#0a0f18" />
-        </linearGradient>
-      </defs>
-
-      {/* Sky/Ambient rain lines */}
-      <g stroke="rgba(74, 163, 255, 0.08)" strokeWidth="0.8" strokeDasharray="3 15" strokeLinecap="round">
-        <line x1="30" y1="10" x2="15" y2="40" />
-        <line x1="90" y1="15" x2="75" y2="45" />
-        <line x1="160" y1="8" x2="145" y2="38" />
-        <line x1="220" y1="18" x2="205" y2="48" />
-        <line x1="280" y1="10" x2="265" y2="40" />
-        <line x1="60" y1="50" x2="45" y2="80" />
-        <line x1="120" y1="65" x2="105" y2="95" />
-        <line x1="180" y1="58" x2="165" y2="88" />
-        <line x1="240" y1="68" x2="225" y2="98" />
-      </g>
-
-      {/* ISOMETRIC HOUSE DRAWING */}
-      {/* 3D Walls */}
-      {/* Left Wall */}
-      <polygon points="95,250 160,220 160,145 127,105 95,175" fill="var(--house-wall)" stroke="var(--house-border)" strokeWidth="0.5" />
-      {/* Right Wall */}
-      <polygon points="160,220 225,250 225,175 160,145" fill="var(--house-shadow)" stroke="var(--house-border)" strokeWidth="0.5" />
-
-      {/* Roof Left Slope */}
-      <polygon points="127,105 192,142 160,212 95,175" fill="var(--roof-color)" stroke="var(--roof-border)" strokeWidth="0.5" />
-      {/* Roof Right Slope */}
-      <polygon points="127,105 192,142 225,182 160,145" fill="var(--roof-shadow)" stroke="var(--roof-border)" strokeWidth="0.5" />
-
-      {/* Solar Panels on Right Roof Slope */}
-      <g>
-        {/* Panel 1 */}
-        <polygon points="135,115 160,129 178,152 153,138" fill="url(#solar-panel-grad)" stroke="#4aa3ff" strokeWidth="0.8" />
-        {/* Panel 2 */}
-        <polygon points="163,130 188,144 206,167 181,153" fill="url(#solar-panel-grad)" stroke="#4aa3ff" strokeWidth="0.8" />
-        {/* Panel details / lines */}
-        <line x1="147" y1="122" x2="165" y2="145" stroke="rgba(74, 163, 255, 0.25)" strokeWidth="0.5" />
-        <line x1="175" y1="137" x2="193" y2="160" stroke="rgba(74, 163, 255, 0.25)" strokeWidth="0.5" />
-      </g>
-
-      {/* Living Room Glass Window with Interior warm glow */}
-      <polygon points="105,190 150,170 150,148 127,128 105,158" fill="url(#interior-glow)" stroke="rgba(255, 255, 255, 0.1)" strokeWidth="0.5" />
-
-      {/* Garage / Carport cavity */}
-      <polygon points="105,245 150,225 150,195 105,215" fill="#0b0f14" stroke="var(--house-border)" strokeWidth="0.5" />
-      {/* Sleek Electric Car inside garage */}
-      <g transform="translate(126, 218) scale(0.68)">
-        <path d="M-12,5 Q-12,-4 -7,-6 Q0,-8 7,-6 Q12,-4 12,5 Z" fill="#ffffff" opacity="0.85" />
-        {/* Windshield */}
-        <path d="M-8,-2 L8,-2 L5,-5 L-5,-5 Z" fill="#1e293b" opacity="0.8" />
-        {/* Headlights */}
-        <circle cx="-7" cy="2" r="1.5" fill="#fffbeb" />
-        <circle cx="7" cy="2" r="1.5" fill="#fffbeb" />
-      </g>
-
-      {/* Heat Pump / AC unit on the left ground */}
-      <g transform="translate(70, 240)">
-        <rect x="-8" y="-12" width="16" height="14" rx="2" fill="var(--house-shadow)" stroke="var(--house-border)" strokeWidth="0.5" />
-        <circle cx="0" cy="-5" r="4" fill="none" stroke="var(--muted)" strokeWidth="1" />
-        <line x1="-2" y1="-5" x2="2" y2="-5" stroke="var(--muted)" strokeWidth="0.8" />
-        <line x1="0" y1="-7" x2="0" y2="-3" stroke="var(--muted)" strokeWidth="0.8" />
-      </g>
-
-      {/* Inverter Box on right wall */}
-      <rect x="202" y="195" width="12" height="12" rx="2" fill="var(--house-wall)" stroke="var(--house-border)" strokeWidth="0.5" />
-      <line x1="205" y1="201" x2="211" y2="201" stroke="var(--muted)" strokeWidth="1" />
-
-      {/* Solax Battery Box on right wall (if configured) */}
-      {batteryConfigured && (
-        <g transform="translate(208, 235)">
-          <rect x="-8" y="-16" width="16" height="32" rx="2" fill="#0c1722" stroke="#00d8b4" strokeWidth="1.2" />
-          <line x1="-5" y1="-10" x2="5" y2="-10" stroke="#00d8b4" strokeWidth="2" />
-          <line x1="-5" y1="-4" x2="5" y2="-4" stroke="#00d8b4" strokeWidth="2" />
-          <line x1="-5" y1="2" x2="5" y2="2" stroke="#00d8b4" strokeWidth="2" />
-          <line x1="-5" y1="8" x2="5" y2="8" stroke="#00d8b4" strokeWidth="2" opacity={batSoc > 40 ? 1 : 0.2} />
-        </g>
-      )}
-
-      {/* CONNECTING POWER FLOW LINES */}
-      {/* Background/Inactive Paths */}
-      <path d="M 175 145 L 208 162 L 208 195" className="flow-line-bg" />
-      <path d="M 208 201 L 175 184 L 140 184" className="flow-line-bg" />
-      <path d="M 208 201 L 208 245 L 195 252" className="flow-line-bg" />
-      {batteryConfigured && <path d="M 208 205 L 208 219" className="flow-line-bg" />}
-
-      {/* Active Flows */}
-      {/* Solar to Inverter */}
-      <path d="M 175 145 L 208 162 L 208 195"
-            className={`flow-line ${active(pv) ? 'flow-forward' : ''}`}
-            stroke="#f59f00"
-            style={active(pv) ? { animationDuration: flowDur(pv), opacity: 1 } : { opacity: 0 }} />
-
-      {/* Inverter to Home */}
-      <path d="M 208 201 L 175 184 L 140 184"
-            className={`flow-line ${active(house) ? 'flow-forward' : ''}`}
-            stroke="var(--accent)"
-            style={active(house) ? { animationDuration: flowDur(house), opacity: 1 } : { opacity: 0 }} />
-
-      {/* Inverter to Grid (Export) vs Grid to Inverter (Import) */}
-      {isExporting && (
-        <path d="M 208 201 L 208 245 L 195 252"
-              className="flow-line flow-forward"
-              stroke="var(--ok)"
-              style={{ animationDuration: flowDur(exp) }} />
-      )}
-      {isImporting && (
-        <path d="M 195 252 L 208 245 L 208 201"
-              className="flow-line flow-forward"
-              stroke="var(--danger)"
-              style={{ animationDuration: flowDur(imp) }} />
-      )}
-
-      {/* Inverter to Battery (Charge) vs Battery to Inverter (Discharge) */}
-      {batteryConfigured && isCharging && (
-        <path d="M 208 205 L 208 219"
-              className="flow-line flow-forward"
-              stroke="#00d8b4"
-              style={{ animationDuration: flowDur(Math.abs(batPower)) }} />
-      )}
-      {batteryConfigured && isDischarging && (
-        <path d="M 208 219 L 208 205"
-              className="flow-line flow-forward"
-              stroke="#00d8b4"
-              style={{ animationDuration: flowDur(Math.abs(batPower)) }} />
-      )}
-
-      {/* Status Pill (Normal / Inverter Status) */}
-      <g transform="translate(15, 20)">
-        {runModeText && runModeText !== '—' && (
-          <g>
-            <rect x="0" y="0" width="54" height="16" rx="8" fill="rgba(87, 211, 140, 0.12)" />
-            <text x="27" y="11" textAnchor="middle" fill="var(--ok)" fontSize="8" fontWeight="700">
-              {runModeText}
-            </text>
-          </g>
-        )}
-      </g>
-
-      {/* GLASSMORPHIC FLOATING STATS CARDS */}
-      {/* Solar Card */}
-      <g className="svg-card" transform="translate(195, 20)">
-        <rect x="0" y="0" width="105" height="48" rx="6" fill="var(--card-bg)" stroke="var(--card-border)" strokeWidth="1" />
-        <text x="8" y="15" className="card-val" fill="var(--text)">{solarVal.text}<tspan className="card-unit"> {solarVal.unit}</tspan></text>
-        <text x="8" y="27" className="card-lbl" fill="var(--muted)">Solar</text>
-      </g>
-
-      {/* Home Card */}
-      <g className="svg-card" transform="translate(15, 115)">
-        <rect x="0" y="0" width="75" height="36" rx="6" fill="var(--card-bg)" stroke="var(--card-border)" strokeWidth="1" />
-        <text x="8" y="16" className="card-val" fill="var(--text)">{houseVal.text}<tspan className="card-unit"> {houseVal.unit}</tspan></text>
-        <text x="8" y="28" className="card-lbl" fill="var(--muted)">Home</text>
-      </g>
-
-      {/* Grid Card */}
-      <g className="svg-card" transform="translate(195, 222)">
-        <rect x="0" y="0" width="80" height="36" rx="6" fill="var(--card-bg)" stroke="var(--card-border)" strokeWidth="1" />
-        <text x="8" y="16" className="card-val" fill={gridValColor}>{gridVal.text}<tspan className="card-unit"> {gridVal.unit}</tspan></text>
-        <text x="8" y="28" className="card-lbl" fill="var(--muted)">
-          {isExporting ? 'Grid (Export)' : isImporting ? 'Grid (Import)' : 'Grid'}
-        </text>
-      </g>
-
-      {/* Battery Card (if configured) */}
-      {batteryConfigured && (
-        <g className="svg-card" transform="translate(230, 160)">
-          <rect x="0" y="0" width="78" height="48" rx="6" fill="var(--card-bg)" stroke="var(--card-border)" strokeWidth="1" />
-          <text x="8" y="15" className="card-val" fill="var(--text)">{batPowerVal.text}<tspan className="card-unit"> {batPowerVal.unit}</tspan></text>
-          <text x="8" y="27" className="card-lbl" fill="var(--muted)">
-            {isCharging ? 'Battery (Chg)' : isDischarging ? 'Battery (Dischg)' : 'Battery'}
-          </text>
-          <text x="8" y="39" className="card-sub-lbl-bat" fill="#00d8b4">{batSoc}%</text>
-        </g>
-      )}
-    </svg>
-  );
 }
 
 function HouseView({
@@ -513,11 +211,15 @@ function HouseView({
 
   // Each flow line runs from its callout card to the junction dot as an
   // "L" (vertical + horizontal legs), so lines follow the cards wherever
-  // they're dragged. Card anchors (centres, in the 0–100 flow space) are
-  // measured after every render with a change-guard so the effect settles.
+  // they're dragged. Card anchors (centres, in the 0–100 flow space) were
+  // previously measured after EVERY render — a forced reflow on each 3 s
+  // poll. Now a ResizeObserver watches the view and the callout cards, so
+  // measurement only happens when a size actually changes (data making a
+  // card grow, tile resize, font load); position-only changes are covered
+  // by the calloutPos effect below.
   const calloutRefs = useRef({});
   const [anchors, setAnchors] = useState({});
-  useEffect(() => {
+  const measureAnchors = useCallback(() => {
     const rect = rootRef.current?.getBoundingClientRect();
     if (!rect || rect.width < 1 || rect.height < 1) return;
     const next = {};
@@ -542,7 +244,20 @@ function HouseView({
       }
       return next;
     });
-  });
+  }, []);
+  useEffect(() => {
+    measureAnchors();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(measureAnchors);
+    if (rootRef.current) ro.observe(rootRef.current);
+    for (const el of Object.values(calloutRefs.current)) {
+      if (el) ro.observe(el);
+    }
+    return () => ro.disconnect();
+  }, [measureAnchors]);
+  // Dragging a callout changes its position without changing its size, so
+  // the observer stays quiet — re-measure explicitly.
+  useEffect(() => { measureAnchors(); }, [calloutPos, measureAnchors]);
   const anchor = (key, fallback) => {
     const p = anchors[key];
     return p && Number.isFinite(p.cx) && Number.isFinite(p.cy) ? p : fallback;
@@ -921,20 +636,6 @@ function HouseView({
   );
 }
 
-function EnergyCell({ metric, state }) {
-  const v = toNumber(state);
-  const { text, unit } = formatValue(v, state?.unit);
-  return (
-    <div className={`energy-cell energy-accent-${metric.accent}`}>
-      <div className="energy-label">{metric.label}</div>
-      <div className="energy-value">
-        <span className="energy-num">{text}</span>
-        {unit && <span className="energy-unit">{unit}</span>}
-      </div>
-    </div>
-  );
-}
-
 function EnergyChip({ metric, state, samples, hourlyPv }) {
   const v = toNumber(state);
   const { text, unit } = formatValue(v, state?.unit);
@@ -1184,24 +885,25 @@ function TodayGraph({ samples, accent }) {
   );
 }
 
-export default function SolarCard({
+function SolarCard({
   col, row, colSpan, rowSpan, editMode,
   onStartMove, onStartResize,
   bgDemo = false,
-  flowPoint = null,
+  flowX = null,
+  flowY = null,
   onFlowPointChange = null,
   calloutPos = null,
   onCalloutPosChange = null,
 }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
-  const [history, setHistory] = useState({});
   const [history24h, setHistory24h] = useState({});
   const [monthly, setMonthly] = useState([]);
   const [demoIdx, setDemoIdx] = useState(0);
-  const timerRef = useRef(null);
-  const historyTimerRef = useRef(null);
-  const monthlyTimerRef = useRef(null);
+  // Raw payload of the last snapshot poll. Comparing response text before
+  // parsing lets a quiet system (overnight: PV 0, nothing moving) skip the
+  // setData entirely — no re-render of the whole card every 3 s.
+  const lastPayloadRef = useRef('');
 
   // Experiments → BG demo loop: cycle every season × day-phase variant.
   useEffect(() => {
@@ -1211,91 +913,89 @@ export default function SolarCard({
     return () => clearInterval(id);
   }, [bgDemo]);
 
+  // Wall-clock background. Checked once a minute; the state only changes
+  // when the photo actually swaps (hour/season boundary), so the check
+  // itself never causes a re-render. Needed because data polls no longer
+  // re-render the card when the payload is unchanged (quiet nights).
+  const [bgNow, setBgNow] = useState(backgroundForNow);
+  useEffect(() => {
+    const id = setInterval(() => {
+      setBgNow((prev) => {
+        const next = backgroundForNow();
+        return next.file === prev.file ? prev : next;
+      });
+    }, 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   const bg = bgDemo
     ? DEMO_BACKGROUNDS[demoIdx % DEMO_BACKGROUNDS.length]
-    : backgroundForNow();
+    : bgNow;
 
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const r = await fetch('api/ha/solar');
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        const j = await r.json();
-        if (cancelled) return;
-        setData(j);
-        setError(null);
-        setHistory((prev) => {
-          const next = { ...prev };
-          for (const m of POWER_METRICS) {
-            const n = toNumber(j[m.key]);
-            if (n == null) continue;
-            const arr = next[m.key] ? next[m.key].slice() : [];
-            arr.push(n);
-            if (arr.length > HISTORY_LEN) arr.shift();
-            next[m.key] = arr;
-          }
-          return next;
-        });
-      } catch (e) {
-        if (!cancelled) setError(String(e));
+  useEffect(() => startPolling(async () => {
+    try {
+      const r = await fetch('api/ha/solar');
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const text = await r.text();
+      setError(null);
+      if (text === lastPayloadRef.current) return;
+      lastPayloadRef.current = text;
+      setData(JSON.parse(text));
+    } catch (e) {
+      setError(String(e));
+    }
+  }, POLL_MS), []);
+
+  useEffect(() => startPolling(async () => {
+    try {
+      // Fetch enough hours to definitely span midnight-to-now in local time.
+      const now = new Date();
+      const midnight = new Date(now);
+      midnight.setHours(0, 0, 0, 0);
+      const hoursSinceMidnight = Math.max(
+        1,
+        Math.ceil((now.getTime() - midnight.getTime()) / 3_600_000),
+      );
+      const r = await fetch(`api/ha/solar/history?hours=${hoursSinceMidnight + 1}`);
+      if (!r.ok) return;
+      const j = await r.json();
+      // Trim any samples from before midnight (they can slip in because
+      // HA history returns the last state before the window as an anchor).
+      const midnightMs = midnight.getTime();
+      const trimmed = {};
+      for (const [k, v] of Object.entries(j || {})) {
+        if (!Array.isArray(v)) { trimmed[k] = v; continue; }
+        trimmed[k] = v.filter((s) => (s && typeof s.t === 'number' ? s.t >= midnightMs : true));
       }
-    };
-    load();
-    timerRef.current = setInterval(load, POLL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(timerRef.current);
-    };
-  }, []);
+      setHistory24h(trimmed);
+    } catch { /* transient — retry on the next tick */ }
+  }, 5 * 60 * 1000), []);
 
-  useEffect(() => {
-    let cancelled = false;
-    const loadHistory = async () => {
-      try {
-        // Fetch enough hours to definitely span midnight-to-now in local time.
-        const now = new Date();
-        const midnight = new Date(now);
-        midnight.setHours(0, 0, 0, 0);
-        const hoursSinceMidnight = Math.max(
-          1,
-          Math.ceil((now.getTime() - midnight.getTime()) / 3_600_000),
-        );
-        const r = await fetch(`api/ha/solar/history?hours=${hoursSinceMidnight + 1}`);
-        if (!r.ok) return;
-        const j = await r.json();
-        if (cancelled) return;
-        // Trim any samples from before midnight (they can slip in because
-        // HA history returns the last state before the window as an anchor).
-        const midnightMs = midnight.getTime();
-        const trimmed = {};
-        for (const [k, v] of Object.entries(j || {})) {
-          if (!Array.isArray(v)) { trimmed[k] = v; continue; }
-          trimmed[k] = v.filter((s) => (s && typeof s.t === 'number' ? s.t >= midnightMs : true));
-        }
-        setHistory24h(trimmed);
-      } catch { /* transient — retry on the next tick */ }
-    };
-    loadHistory();
-    historyTimerRef.current = setInterval(loadHistory, 5 * 60 * 1000);
-    return () => { cancelled = true; clearInterval(historyTimerRef.current); };
-  }, []);
+  useEffect(() => startPolling(async () => {
+    try {
+      const r = await fetch('api/ha/solar/daily?days=7');
+      if (!r.ok) return;
+      const j = await r.json();
+      setMonthly(Array.isArray(j?.days) ? j.days : []);
+    } catch { /* transient */ }
+  }, 30 * 60 * 1000), []);
 
-  useEffect(() => {
-    let cancelled = false;
-    const loadDaily = async () => {
-      try {
-        const r = await fetch('api/ha/solar/daily?days=7');
-        if (!r.ok) return;
-        const j = await r.json();
-        if (cancelled) return;
-        setMonthly(Array.isArray(j?.days) ? j.days : []);
-      } catch { /* transient */ }
-    };
-    loadDaily();
-    monthlyTimerRef.current = setInterval(loadDaily, 30 * 60 * 1000);
-    return () => { cancelled = true; clearInterval(monthlyTimerRef.current); };
-  }, []);
+  // Bucketing walks every history sample; key it to the 5-minutely history
+  // payload instead of redoing the work on each 3 s snapshot render.
+  const hourlyGrid = useMemo(
+    () => bucketPairByHour(history24h?.import, history24h?.export),
+    [history24h],
+  );
+  const hourlyPv = useMemo(() => bucketByHour(history24h?.pvTotal), [history24h]);
+  const daily = useMemo(() => bucketByDay(monthly), [monthly]);
+  const pvPeakW = useMemo(() => peakOf(history24h?.pvTotal), [history24h]);
+  const impPeakW = useMemo(() => peakOf(history24h?.import), [history24h]);
+  const expPeakW = useMemo(() => peakOf(history24h?.export), [history24h]);
+
+  const flowPoint = useMemo(
+    () => (flowX != null || flowY != null ? { x: flowX, y: flowY } : null),
+    [flowX, flowY],
+  );
 
   const handleTileDown = (e) => {
     if (!editMode) return;
@@ -1316,43 +1016,6 @@ export default function SolarCard({
   };
 
   const configured = data ? data.configured !== false : true;
-  const pv = toNumber(data?.pvTotal) ?? 0;
-  const imp = toNumber(data?.import) ?? 0;
-  const exp = toNumber(data?.export) ?? 0;
-  const house = toNumber(data?.houseUse) ?? 0;
-  const batPower = toNumber(data?.batteryPower) ?? 0;
-  const batSoc = toNumber(data?.batterySoc);
-  const pv1 = toNumber(data?.pv1);
-  const pv2 = toNumber(data?.pv2);
-
-  const solarVal = formatValue(pv, data?.pvTotal?.unit || 'W');
-  const houseVal = formatValue(house, data?.houseUse?.unit || 'W');
-
-  let gridVal = { text: '0', unit: 'W' };
-  let isImporting = false;
-  let isExporting = false;
-  if (exp > 5) {
-    gridVal = formatValue(exp, data?.export?.unit || 'W');
-    isExporting = true;
-  } else if (imp > 5) {
-    gridVal = formatValue(imp, data?.import?.unit || 'W');
-    isImporting = true;
-  }
-
-  const batteryConfigured = data?.batterySoc && data.batterySoc.state != null;
-  const isCharging = batPower < -5;
-  const isDischarging = batPower > 5;
-  const batPowerVal = formatValue(Math.abs(batPower), data?.batteryPower?.unit || 'W');
-
-  let pvTotalVal = pv;
-  let pv1Val = pv1;
-  let pv2Val = pv2;
-  let pv1Pct = 0;
-  let pv2Pct = 0;
-  if (pvTotalVal > 0 && pv1Val != null && pv2Val != null) {
-    pv1Pct = Math.round((pv1Val / pvTotalVal) * 100);
-    pv2Pct = Math.round((pv2Val / pvTotalVal) * 100);
-  }
 
   return (
     <div
@@ -1391,11 +1054,11 @@ export default function SolarCard({
             solaxTodayImportState={data?.solaxTodayImport}
             solaxTodayExportState={data?.solaxTodayExport}
             solaxTodayHouseState={data?.solaxTodayHouse}
-            hourlyGrid={bucketPairByHour(history24h?.import, history24h?.export)}
-            daily={bucketByDay(monthly)}
-            pvPeakW={peakOf(history24h?.pvTotal)}
-            impPeakW={peakOf(history24h?.import)}
-            expPeakW={peakOf(history24h?.export)}
+            hourlyGrid={hourlyGrid}
+            daily={daily}
+            pvPeakW={pvPeakW}
+            impPeakW={impPeakW}
+            expPeakW={expPeakW}
             bgImage={bg.file}
             bgLabel={bgDemo ? bg.label : null}
             editMode={editMode}
@@ -1414,7 +1077,7 @@ export default function SolarCard({
               metric={m}
               state={data?.[m.key]}
               samples={history24h?.[m.key]}
-              hourlyPv={m.key === 'todaySolar' ? bucketByHour(history24h?.pvTotal) : null}
+              hourlyPv={m.key === 'todaySolar' ? hourlyPv : null}
             />
           ))}
         </div>
@@ -1432,3 +1095,4 @@ export default function SolarCard({
   );
 }
 
+export default memo(SolarCard);

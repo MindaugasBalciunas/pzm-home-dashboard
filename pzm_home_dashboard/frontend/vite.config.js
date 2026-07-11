@@ -7,6 +7,17 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        // Vendor libs in their own hashed chunks: a dashboard release only
+        // changes the small app chunk, so the kiosk re-downloads ~80 kB
+        // instead of ~800 kB (hls.js/react hashes stay put → cache hits).
+        manualChunks: {
+          hls: ['hls.js'],
+          react: ['react', 'react-dom'],
+        },
+      },
+    },
   },
   server: {
     port: 5173,

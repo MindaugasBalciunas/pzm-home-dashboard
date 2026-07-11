@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
+import { startPolling } from '../lib/poll.js';
 
 const POLL_MS = 4000;
 
@@ -69,34 +70,33 @@ function zoneStateLabel(kind, isOn) {
   }
 }
 
-export default function SecurityCard({
+function SecurityCard({
   col, row, colSpan, rowSpan, editMode, onStartMove, onStartResize,
   showZones = true, showPir = true,
 }) {
   const [snapshot, setSnapshot] = useState(null);
   const [error, setError] = useState(null);
   const [pending, setPending] = useState({});     // gateIndex -> boolean
-  const abortRef = useRef(null);
+  // Compare raw payload text so an all-quiet poll (no zone changed) skips
+  // the setState — the card stops re-rendering every 4 s.
+  const lastPayloadRef = useRef('');
 
-  const load = useCallback(async () => {
+  const loadRef = useRef(null);
+  loadRef.current = async () => {
     try {
       const r = await fetch('api/ha/security', { cache: 'no-store' });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const data = await r.json();
-      setSnapshot(data);
+      const text = await r.text();
       setError(null);
+      if (text === lastPayloadRef.current) return;
+      lastPayloadRef.current = text;
+      setSnapshot(JSON.parse(text));
     } catch (e) {
       setError(String(e));
     }
-  }, []);
+  };
 
-  useEffect(() => {
-    load();
-    const t = setInterval(load, POLL_MS);
-    return () => clearInterval(t);
-  }, [load]);
-
-  useEffect(() => () => abortRef.current?.abort(), []);
+  useEffect(() => startPolling(() => loadRef.current(), POLL_MS), []);
 
   const triggerGate = async (index) => {
     setPending((p) => ({ ...p, [index]: true }));
@@ -105,7 +105,7 @@ export default function SecurityCard({
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       // Refresh a little later — most Eldes outputs pulse and don't
       // change any observable state, but a contact sensor might.
-      setTimeout(load, 1200);
+      setTimeout(() => loadRef.current(), 1200);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -210,6 +210,8 @@ export default function SecurityCard({
     </div>
   );
 }
+
+export default memo(SecurityCard);
 
 function ZoneSection({ title, zones, variant }) {
   return (

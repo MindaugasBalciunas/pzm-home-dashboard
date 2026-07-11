@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import LightControl from './LightControl.jsx';
+import { useEntityState, refreshEntities } from '../lib/entityStates.js';
+import { startPolling } from '../lib/poll.js';
 
-const POLL_MS = 5000;
 const LONG_PRESS_MS = 450;
 const LONG_PRESS_MOVE_PX = 8;
 
@@ -61,9 +62,8 @@ function useTodayHistory(entityId, enabled) {
         if (!stop) setSamples((prev) => prev || []);
       }
     };
-    load();
-    const t = setInterval(load, 60000);
-    return () => { stop = true; clearInterval(t); };
+    const stopPolling = startPolling(load, 60000);
+    return () => { stop = true; stopPolling(); };
   }, [entityId, enabled]);
   return samples;
 }
@@ -126,7 +126,7 @@ function ProgressBar({ num, min, max, level }) {
   );
 }
 
-export default function SimpleTile({
+function SimpleTile({
   id,
   spec,
   col,
@@ -139,36 +139,13 @@ export default function SimpleTile({
   onRemove,
   onEdit,
 }) {
-  const [state, setState] = useState(null);
+  // Entity state comes from the shared batched store — one request per
+  // tick covers every tile on the dashboard.
+  const { state, error: pollError } = useEntityState(spec.entityId);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
+  const [actionError, setActionError] = useState(null);
   const [lightOpen, setLightOpen] = useState(false);
-  const abortRef = useRef(null);
-
-  const load = useCallback(async () => {
-    try {
-      const r = await fetch('api/ha/entity/state', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: [spec.entityId] }),
-      });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const data = await r.json();
-      const first = Array.isArray(data) ? data[0] : null;
-      setState(first || null);
-      setError(null);
-    } catch (e) {
-      setError(String(e));
-    }
-  }, [spec.entityId]);
-
-  useEffect(() => {
-    load();
-    const t = setInterval(load, POLL_MS);
-    return () => clearInterval(t);
-  }, [load]);
-
-  useEffect(() => () => abortRef.current?.abort(), []);
+  const error = actionError || pollError;
 
   const trigger = async () => {
     if (busy) return;
@@ -180,9 +157,10 @@ export default function SimpleTile({
         body: JSON.stringify({ entityId: spec.entityId }),
       });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      setTimeout(load, 700);
+      setActionError(null);
+      setTimeout(refreshEntities, 700);
     } catch (e) {
-      setError(String(e));
+      setActionError(String(e));
     } finally {
       setTimeout(() => setBusy(false), 800);
     }
@@ -194,9 +172,13 @@ export default function SimpleTile({
   };
 
   const on = isOnState(state?.state);
-  const stateText = state?.state && state.state !== 'unknown' && state.state !== 'unavailable'
-    ? String(state.state)
-    : '—';
+  // HA-level "unavailable"/"unknown" (device offline — Tuya devices drop
+  // out like this when they lose WiFi/cloud) is rendered as an explicit
+  // Offline badge, NOT a mute dash: a dash reads as "dashboard broken",
+  // an amber Offline points at the device. `state === undefined` (first
+  // poll not landed yet) keeps the plain dash.
+  const offline = state?.state === 'unavailable' || state?.state === 'unknown';
+  const stateText = state?.state && !offline ? String(state.state) : offline ? 'Offline' : '—';
 
   const stopPropagation = (e) => { e.stopPropagation(); e.preventDefault?.(); };
   const editHeader = editMode && (
@@ -260,6 +242,7 @@ export default function SimpleTile({
             <span className="n">{n}</span>
             {u && <span className="u">{u}</span>}
           </div>
+          {offline && <div className="tile-offline-note">Offline</div>}
           {display === 'graph' && <Sparkline samples={samples} level={level} />}
           {display === 'bar' && (
             <ProgressBar num={num} min={spec.min} max={spec.max} level={level} />
@@ -278,8 +261,8 @@ export default function SimpleTile({
     : '';
   const iconCls = busy
     ? ''
-    : on === true ? 'is-on' : on === false ? 'is-off' : '';
-  const labelCls = on === true ? 'is-on' : on === false ? 'is-off' : '';
+    : offline ? 'is-offline' : on === true ? 'is-on' : on === false ? 'is-off' : '';
+  const labelCls = offline ? 'is-offline' : on === true ? 'is-on' : on === false ? 'is-off' : '';
   const tileStateCls = on === true ? 'custom-tile-on' : on === false ? 'custom-tile-off' : '';
 
   // For light entities that expose brightness or colour, a long-press on
@@ -338,7 +321,7 @@ export default function SimpleTile({
       <button
         type="button"
         className="custom-btn-inner"
-        disabled={editMode || busy}
+        disabled={editMode || busy || offline}
         {...btnHandlers}
       >
         <div className={`custom-btn-icon ${iconCls} ${fxCls}`}>
@@ -356,13 +339,17 @@ export default function SimpleTile({
           entityId={spec.entityId}
           name={spec.name}
           initial={state}
-          onChanged={() => setTimeout(load, 400)}
+          onChanged={() => setTimeout(refreshEntities, 400)}
           onClose={() => setLightOpen(false)}
         />
       )}
     </div>
   );
 }
+
+// Memoised so App-level renders (edit-mode drags of *other* tiles, layout
+// SSE updates) don't re-render every tile on the wall.
+export default memo(SimpleTile);
 
 // Curated icon catalog. The key ends up in `spec.icon` from the picker so
 // it survives layout persistence. `aliases` feeds the icon-picker search

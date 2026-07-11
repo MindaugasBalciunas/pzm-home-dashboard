@@ -17,6 +17,11 @@ export default function PullToRefresh() {
   const [refreshing, setRefreshing] = useState(false);
   const startYRef = useRef(0);
   const activeRef = useRef(false);
+  // Gesture progress mirrored into refs so the touch listeners subscribe
+  // once — previously they were torn down and re-added on every frame of a
+  // pull (the effect depended on `dy`).
+  const dyRef = useRef(0);
+  const refreshingRef = useRef(false);
 
   useEffect(() => {
     const onStart = (e) => {
@@ -27,22 +32,24 @@ export default function PullToRefresh() {
       if (!t) return;
       startYRef.current = t.clientY;
       activeRef.current = true;
+      dyRef.current = 0;
       setDy(0);
     };
     const onMove = (e) => {
-      if (!activeRef.current || refreshing) return;
+      if (!activeRef.current || refreshingRef.current) return;
       const t = e.touches?.[0];
       if (!t) return;
       const raw = t.clientY - startYRef.current;
       if (raw <= START_THRESHOLD_PX) {
-        if (dy !== 0) setDy(0);
+        if (dyRef.current !== 0) { dyRef.current = 0; setDy(0); }
         return;
       }
       // Rubber-band the pull past the trigger for a natural feel.
       const eased = raw < TRIGGER_PX
         ? raw
         : TRIGGER_PX + (raw - TRIGGER_PX) * 0.35;
-      setDy(Math.min(MAX_PULL_PX, eased));
+      dyRef.current = Math.min(MAX_PULL_PX, eased);
+      setDy(dyRef.current);
       // Only preventDefault once we're clearly in a pull, otherwise regular
       // scrolls at the top get eaten.
       if (raw > START_THRESHOLD_PX * 2 && e.cancelable) e.preventDefault();
@@ -50,15 +57,18 @@ export default function PullToRefresh() {
     const onEnd = () => {
       if (!activeRef.current) return;
       activeRef.current = false;
-      const passed = dy >= TRIGGER_PX;
-      if (passed && !refreshing) {
+      const passed = dyRef.current >= TRIGGER_PX;
+      if (passed && !refreshingRef.current) {
+        refreshingRef.current = true;
         setRefreshing(true);
+        dyRef.current = TRIGGER_PX;
         setDy(TRIGGER_PX);
         // Small delay so the user sees the spinner engage before the reload.
         setTimeout(() => {
           try { window.location.reload(); } catch { /* ignore */ }
         }, 150);
       } else {
+        dyRef.current = 0;
         setDy(0);
       }
     };
@@ -74,7 +84,7 @@ export default function PullToRefresh() {
       window.removeEventListener('touchend', onEnd);
       window.removeEventListener('touchcancel', onEnd);
     };
-  }, [dy, refreshing]);
+  }, []);
 
   const visible = dy > 0 || refreshing;
   const armed = refreshing || dy >= TRIGGER_PX;

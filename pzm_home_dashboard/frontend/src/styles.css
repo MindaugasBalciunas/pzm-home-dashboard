@@ -55,6 +55,25 @@ html, body, #root {
   background: var(--bg);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Kiosk-webview hardening: the dashboard ships its own pull-to-refresh, so
+   suppress the browser's native overscroll glow / rubber-band / PTR; kill
+   the grey tap-highlight flash on every touch. */
+html, body {
+  overscroll-behavior-y: contain;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* A wall panel is not a document: tile text/video should never get the
+   blue selection sweep or the iOS copy callout on stray long-presses.
+   Scoped to the grid so modals/editors (inputs live there) stay normal. */
+.grid {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .grid {
@@ -447,8 +466,11 @@ html, body, #root {
      readable while the house/scene shows through. */
   background: rgba(10, 14, 20, 0.35);
   border: 1px solid rgba(255, 255, 255, 0.22);
-  backdrop-filter: blur(14px) saturate(150%);
-  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  /* 10px reads the same as the old 14px but costs noticeably less: the
+     animated flow lines run beneath these cards, forcing a re-blur every
+     frame, and blur cost scales with radius — kiosk GPUs feel it. */
+  backdrop-filter: blur(10px) saturate(150%);
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
   color: #ffffff;
   line-height: 1.1;
@@ -2370,6 +2392,25 @@ html, body, #root {
 .custom-btn-state.is-on { color: var(--ok); }
 .custom-btn-state.is-off { color: var(--muted); }
 
+/* Entity reported unavailable/unknown by HA (device dropped off WiFi /
+   Tuya cloud). Amber label + ghosted icon so it can't be mistaken for
+   either "off" or "dashboard failed to load". */
+.custom-btn-icon.is-offline {
+  background: rgba(245, 166, 35, 0.12);
+  color: #f5a623;
+  opacity: 0.55;
+}
+.custom-btn-state.is-offline { color: #f5a623; }
+.tile-offline-note {
+  align-self: flex-start;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #f5a623;
+  opacity: 0.9;
+}
+
 .custom-num-inner {
   position: absolute;
   inset: 0;
@@ -2544,8 +2585,16 @@ html, body, #root {
   0%, 100% { transform: translateY(0); }
   50%      { transform: translateY(-12%); }
 }
+/* One switch to stop every continuous animation — respected by the OS
+   accessibility setting and by kiosk browsers that expose it. The energy
+   flow dashes, alarm pulse and icon effects all repaint per frame; on a
+   low-power wall panel turning them off cuts idle GPU load to ~zero. */
 @media (prefers-reduced-motion: reduce) {
-  .iconfx svg { animation: none !important; }
+  .iconfx svg,
+  .hv-line-active,
+  .flow-line.flow-forward,
+  .zone-chip-bad { animation: none !important; }
+  .hv-line-active { filter: none; }
 }
 
 /* --- Editor chips (display mode / icon effect) + colour swatches --- */

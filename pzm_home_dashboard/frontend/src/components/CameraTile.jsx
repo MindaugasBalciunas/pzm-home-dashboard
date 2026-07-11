@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
 
 const FIT_TO_CSS = {
@@ -7,7 +7,7 @@ const FIT_TO_CSS = {
   stretch: 'fill',
 };
 
-export default function CameraTile({
+function CameraTile({
   camera,
   col = 1,
   row = 1,
@@ -165,3 +165,6 @@ export default function CameraTile({
     </div>
   );
 }
+
+// Memoised: HLS tiles are the most expensive thing on the wall to re-render.
+export default memo(CameraTile);

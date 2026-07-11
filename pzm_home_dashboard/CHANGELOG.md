@@ -4,6 +4,50 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.24
+
+- **Kiosk performance overhaul.** The frontend was reworked for its real
+  life as an always-on HAOS kiosk web view:
+  - **One poll for all tiles.** Custom tiles now share a single batched
+    `entity/state` request per 5 s tick instead of one request per tile —
+    a dozen tiles went from ~150 requests/minute to ~12. A tile only
+    re-renders when *its* entity actually changed.
+  - **Quiet data means quiet UI.** The Electricity and Security cards
+    compare the raw poll payload and skip re-rendering entirely when
+    nothing changed (e.g. overnight), instead of rebuilding every 3–4 s.
+  - **Polling pauses with the screen.** All pollers skip ticks while the
+    page is hidden (kiosk screensaver / app in background) and refresh
+    immediately on wake.
+  - **No more layout thrash.** Callout flow-line anchors on the house
+    photo are measured by a ResizeObserver only when something actually
+    resizes, not on every poll render.
+  - **Memoised tiles + stable handlers.** Dragging one tile in edit mode
+    no longer re-renders every camera/HLS tile per pointer move.
+  - **~350 lines of dead code removed** from the Solar card (old SVG flow
+    diagram, unused sparkline/history buffers).
+  - **Split vendor chunks.** hls.js and React ship as separate hashed
+    files, so an add-on update re-downloads ~130 kB instead of ~800 kB.
+- **Dashboard boots even if cameras don't.** The initial load treated
+  cameras + layout as all-or-nothing: a failing `/api/cameras` (ffmpeg
+  still starting, camera subsystem down) left the whole dashboard empty —
+  no buttons, no sensors. Camera failure is now non-fatal: the grid comes
+  up with a one-line notice and everything else stays live. A layout
+  failure remains fatal on purpose (rendering without it could re-seed
+  the starter template over the real saved layout).
+- **Offline devices are labelled, not blank.** When HA reports an entity
+  `unavailable`/`unknown` (typical for Tuya devices that drop off WiFi or
+  the cloud), tiles now show an amber **Offline** badge with a ghosted
+  icon and a disabled button, instead of a mute "—" that looked like the
+  dashboard failed to load. The plain dash is reserved for the moment
+  before the first poll lands.
+- **Kiosk-webview polish.** Pinch-zoom disabled, native overscroll/rubber
+  band suppressed (the dashboard has its own pull-to-refresh), no grey
+  tap-highlight flashes, no accidental text selection or iOS long-press
+  callouts on tiles, edge-to-edge viewport, theme-coloured browser chrome.
+  `prefers-reduced-motion` now also stops the energy-flow dash animation
+  and alarm pulse for the lowest-power panels. Callout glass blur trimmed
+  (14→10 px) — visually identical, measurably cheaper over animated lines.
+
 ## 0.2.23
 
 - **Gates-only Security card grows to two rows.** When Zones and PIR are
