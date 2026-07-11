@@ -8,6 +8,14 @@ const FIT_TO_CSS = {
   stretch: 'fill',
 };
 
+// Live-edge policy: how far playback may drift behind the target live
+// position before the watchdog hard-seeks back, how often it checks, and
+// how long the picture may stay frozen before the player is torn down and
+// rebuilt from scratch.
+const MAX_BEHIND_LIVE_S = 3;
+const WATCHDOG_MS = 2000;
+const FROZEN_REBUILD_MS = 8000;
+
 function CameraTile({
   camera,
   col = 1,
@@ -24,21 +32,52 @@ function CameraTile({
   const videoRef = useRef(null);
   const [status, setStatus] = useState('connecting');
   const [errorMessage, setErrorMessage] = useState(null);
+  // Bumped by the watchdog to tear the whole player down and rebuild it —
+  // the only reliable escape from a wedged WebView decoder.
+  const [rebuildToken, setRebuildToken] = useState(0);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return undefined;
 
+    setStatus('connecting');
+    setErrorMessage(null);
+
     const src = `hls/${encodeURIComponent(camera.id)}/index.m3u8`;
     let hls = null;
     let destroyed = false;
     let cleanup = null;
+    let rebuildTimer = null;
+
+    // Target live position: hls.js exposes it directly; the native-HLS
+    // path approximates it as just shy of the seekable end.
+    const livePosition = () => {
+      if (hls && Number.isFinite(hls.liveSyncPosition)) return hls.liveSyncPosition;
+      try {
+        const s = video.seekable;
+        if (s && s.length > 0) return Math.max(0, s.end(s.length - 1) - 1);
+      } catch { /* seekable can throw mid-teardown */ }
+      return null;
+    };
+    const seekToLive = () => {
+      const pos = livePosition();
+      if (pos != null && pos - video.currentTime > MAX_BEHIND_LIVE_S) {
+        video.currentTime = pos;
+      }
+    };
 
     if (Hls.isSupported()) {
       hls = new Hls({
+        // Speed over quality: hug the live edge (one segment behind),
+        // play up to 1.5× to burn off accumulated drift, and keep the
+        // buffer tiny so a stall recovers onto fresh frames instead of
+        // replaying a backlog.
         lowLatencyMode: true,
-        liveSyncDurationCount: 2,
-        maxBufferLength: 10,
+        liveSyncDurationCount: 1,
+        liveMaxLatencyDurationCount: 4,
+        maxLiveSyncPlaybackRate: 1.5,
+        maxBufferLength: 6,
+        backBufferLength: 0,
         manifestLoadingRetryDelay: 1000,
         manifestLoadingMaxRetry: 6,
       });
@@ -55,7 +94,11 @@ function CameraTile({
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR: hls.startLoad(); break;
             case Hls.ErrorTypes.MEDIA_ERROR: hls.recoverMediaError(); break;
-            default: hls.destroy(); hls = null;
+            default:
+              // Unrecoverable: retry from scratch instead of leaving the
+              // tile dead until the next page reload.
+              hls.destroy(); hls = null;
+              rebuildTimer = setTimeout(() => setRebuildToken((t) => t + 1), 5000);
           }
         }
       });
@@ -80,12 +123,46 @@ function CameraTile({
       setErrorMessage('HLS not supported by this browser');
     }
 
+    // Force-refresh watchdog: keep playback pinned to the live edge, and
+    // rebuild the player outright if the picture freezes — Android WebView
+    // decoders stall under multi-stream load and leave <video> wedged
+    // without ever firing an error event.
+    let lastTime = -1;
+    let frozenMs = 0;
+    const watchdog = setInterval(() => {
+      if (destroyed || document.hidden) return;
+      seekToLive();
+      if (!video.paused && video.currentTime === lastTime) {
+        frozenMs += WATCHDOG_MS;
+        if (frozenMs >= FROZEN_REBUILD_MS) {
+          frozenMs = 0;
+          setRebuildToken((t) => t + 1);
+        }
+      } else {
+        frozenMs = 0;
+        lastTime = video.currentTime;
+      }
+    }, WATCHDOG_MS);
+
+    // Returning to the foreground: resume loading and jump straight to
+    // live instead of replaying whatever was buffered before the tab slept.
+    const onVisibility = () => {
+      if (destroyed || document.hidden) return;
+      try { hls?.startLoad(); } catch { /* already loading */ }
+      seekToLive();
+      video.play().catch(() => { /* autoplay may need a gesture */ });
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
     return () => {
       destroyed = true;
+      clearInterval(watchdog);
+      if (rebuildTimer) clearTimeout(rebuildTimer);
+      document.removeEventListener('visibilitychange', onVisibility);
       if (cleanup) cleanup();
       if (hls) { try { hls.destroy(); } catch { /* ignore */ } }
     };
-  }, [camera.id]);
+  }, [camera.id, rebuildToken]);
 
   const tileStyle = tilePlacementStyle(col, row, colSpan, rowSpan);
 

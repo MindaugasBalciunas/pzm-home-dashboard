@@ -4,6 +4,28 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.34
+
+- **Camera streams: latency over quality.** Multiple RTSP tiles on the
+  Android wall drifted seconds (and growing) behind live. Three fixes:
+  - **Low-latency transcode (new default).** ffmpeg now re-encodes each
+    stream (ultrafast x264, width capped at 1280, forced keyframe every
+    second) instead of stream-copying, so HLS segments are true 1s slices
+    instead of being bound to the camera's 2-4s keyframe interval. Set
+    `low_latency_transcode: false` in the add-on options to restore the
+    untouched original stream. Stream probing at startup was also cut
+    from ~5s to ~1s.
+  - **Player hugs the live edge.** hls.js now targets one segment behind
+    live, plays up to 1.5× to burn off accumulated drift, and keeps only
+    a tiny buffer — a stall recovers onto fresh frames instead of
+    replaying a backlog.
+  - **Force refresh.** A per-tile watchdog hard-seeks back to live
+    whenever playback falls more than ~3s behind, rebuilds the player if
+    the picture freezes for 8s (wedged WebView decoders never fire an
+    error event), retries fatal stream errors instead of leaving the tile
+    dead, and jumps straight to live when the dashboard returns to the
+    foreground.
+
 ## 0.2.33
 
 - **Light scenes tiles — RGBIC patterns as one-tap buttons.** New

@@ -5,10 +5,16 @@ namespace PzmHomeDashboard.Models;
 public sealed class DashboardOptions
 {
     [JsonPropertyName("hls_segment_seconds")]
-    public int HlsSegmentSeconds { get; set; } = 2;
+    public int HlsSegmentSeconds { get; set; } = 1;
 
     [JsonPropertyName("hls_list_size")]
     public int HlsListSize { get; set; } = 5;
+
+    // Re-encode instead of stream-copy: prioritises latency over image
+    // quality (forced 1s keyframes, capped width, ultrafast x264). Turn
+    // off to get the original untouched camera stream back.
+    [JsonPropertyName("low_latency_transcode")]
+    public bool LowLatencyTranscode { get; set; } = true;
 
     [JsonPropertyName("idle_shutdown_seconds")]
     public int IdleShutdownSeconds { get; set; } = 30;

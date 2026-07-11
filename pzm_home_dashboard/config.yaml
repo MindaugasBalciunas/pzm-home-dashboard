@@ -1,5 +1,5 @@
 name: PZM Home Dashboard
-version: "0.2.33"
+version: "0.2.34"
 slug: pzm_home_dashboard
 description: >-
   RTSP camera streams (transcoded on-demand to HLS via ffmpeg) plus a live
@@ -29,9 +29,13 @@ options:
       username: admin
       password: ""
       transport: tcp
-  hls_segment_seconds: 2
+  hls_segment_seconds: 1
   hls_list_size: 5
   idle_shutdown_seconds: 30
+  # Prioritise latency over image quality: re-encode each stream with 1s
+  # keyframes (ultrafast x264, width capped at 1280) instead of copying
+  # the camera stream. Set false to restore the untouched original.
+  low_latency_transcode: true
   home_assistant:
     use_supervisor: true
     base_url: ""
@@ -191,6 +195,7 @@ schema:
   hls_segment_seconds: int(1,10)
   hls_list_size: int(2,20)
   idle_shutdown_seconds: int(5,600)
+  low_latency_transcode: bool?
   home_assistant:
     use_supervisor: bool?
     base_url: str?

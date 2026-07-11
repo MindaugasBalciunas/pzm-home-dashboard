@@ -88,21 +88,42 @@ public sealed class StreamManager : BackgroundService, IAsyncDisposable
 
         var input = BuildRtspUrl(camera);
         var transport = string.IsNullOrWhiteSpace(camera.Transport) ? "tcp" : camera.Transport;
-        var segTime = Math.Max(1, _options.HlsSegmentSeconds);
+        // Low-latency mode pins segments at 1s — the whole point of the
+        // re-encode is a keyframe cadence shorter than the camera's GOP,
+        // and stored add-on options may still carry the old 2s default.
+        var segTime = _options.LowLatencyTranscode ? 1 : Math.Max(1, _options.HlsSegmentSeconds);
         var listSize = Math.Max(2, _options.HlsListSize);
 
         var args = new StringBuilder();
         args.Append("-nostdin -hide_banner -loglevel warning ");
         args.Append("-fflags nobuffer -flags low_delay ");
+        // Defaults are 5s / 5MB of probing before the first frame; RTSP's
+        // SDP already carries the codec parameters, so trim it hard.
+        args.Append("-probesize 1000000 -analyzeduration 1000000 ");
         args.Append($"-rtsp_transport {transport} ");
         args.Append("-timeout 5000000 ");
         args.Append($"-i \"{input}\" ");
         args.Append("-an ");
-        args.Append("-c:v copy ");
+        if (_options.LowLatencyTranscode)
+        {
+            // Speed over quality: cheapest x264 settings, no encoder
+            // lookahead, a keyframe forced every segment so HLS latency is
+            // bound by hls_time instead of the camera's (often 2-4s) GOP.
+            // Width is capped so an accidental main-stream URL doesn't
+            // melt the CPU; yuv420p keeps WebView/MSE decoders happy.
+            args.Append("-c:v libx264 -preset ultrafast -tune zerolatency ");
+            args.Append("-crf 28 -maxrate 1500k -bufsize 3000k -pix_fmt yuv420p ");
+            args.Append("-vf \"scale='min(1280,iw)':-2\" ");
+            args.Append($"-force_key_frames \"expr:gte(t,n_forced*{segTime})\" ");
+        }
+        else
+        {
+            args.Append("-c:v copy ");
+        }
         args.Append("-f hls ");
         args.Append($"-hls_time {segTime} ");
         args.Append($"-hls_list_size {listSize} ");
-        args.Append("-hls_flags delete_segments+append_list+omit_endlist ");
+        args.Append("-hls_flags delete_segments+append_list+omit_endlist+independent_segments ");
         args.Append($"-hls_segment_filename \"{Path.Combine(outDir, "seg_%05d.ts")}\" ");
         args.Append($"\"{Path.Combine(outDir, "index.m3u8")}\"");
 
