@@ -722,16 +722,16 @@ html, body {
 
 .hv-mode-pill {
   position: absolute;
-  bottom: 3%;
+  bottom: 2%;
   left: 2%;
-  padding: 0.1rem 0.55rem;
+  padding: 0.02rem 0.28rem;
   border-radius: 0;
   background: rgba(87, 211, 140, 0.22);
   color: var(--ok);
   border: 1px solid rgba(87, 211, 140, 0.5);
-  font-size: 0.6rem;
+  font-size: 0.48rem;
   font-weight: 800;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -1036,6 +1036,20 @@ html, body {
   white-space: nowrap;
   text-transform: none;
   letter-spacing: 0;
+}
+
+/* Current-month solar energy, shown on its own line above the Peak indicator
+   in the Solar callout. Amber to tie it to the solar accent. */
+.hv-month {
+  display: block;
+  margin-top: 1px;
+  font-size: 0.58rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #ffcf70;
+  white-space: nowrap;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .hv-mini-stats {
   display: flex;

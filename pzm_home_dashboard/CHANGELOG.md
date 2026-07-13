@@ -4,6 +4,16 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.39
+
+Electricity tile tweaks.
+
+- **Current-month solar energy** now shows in the Solar callout, on its own
+  line above the Peak indicator ("This month … kWh"). It's taken from Home
+  Assistant's long-term statistics (this calendar month's produced energy).
+- The **operation-mode pill** ("Self use", etc.) is smaller and tighter
+  (less padding, smaller text) so it takes up less of the photo.
+
 ## 0.2.38
 
 Hotfix: the web UI could stop loading while the add-on log filled with

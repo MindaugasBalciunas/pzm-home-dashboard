@@ -103,6 +103,7 @@ function HouseViewImpl({
   p1ExportTotal,
   todaySolarState,
   totalSolarState,
+  monthSolarKWh,
   todayImportState,
   todayExportState,
   solaxTodayImportState,
@@ -448,6 +449,15 @@ function HouseViewImpl({
           <span className="hv-callout-num">{pvFmt.text}</span>
           {pvFmt.unit && <span className="hv-callout-unit">{pvFmt.unit}</span>}
         </div>
+        {monthSolarKWh != null && (() => {
+          const m = formatValue(monthSolarKWh, 'kWh');
+          if (m.text === '—') return null;
+          return (
+            <div className="hv-month" title="Solar energy this month">
+              This month {m.text} {m.unit}
+            </div>
+          );
+        })()}
         <div className="hv-callout-label">
           <span>Solar</span>
           {pvPeakW != null && (() => {
@@ -942,6 +952,9 @@ function SolarCard({
   const [error, setError] = useState(null);
   const [history24h, setHistory24h] = useState({});
   const [monthly, setMonthly] = useState([]);
+  // Solar energy produced so far this calendar month (kWh), from HA's
+  // long-term statistics. null until it loads or if stats are unavailable.
+  const [monthSolar, setMonthSolar] = useState(null);
   const [demoIdx, setDemoIdx] = useState(0);
   // Raw payload of the last snapshot poll. Comparing response text before
   // parsing lets a quiet system (overnight: PV 0, nothing moving) skip the
@@ -1023,6 +1036,22 @@ function SolarCard({
     } catch { /* transient */ }
   }, 30 * 60 * 1000), []);
 
+  // Current calendar month's solar energy: pick this month's bucket from the
+  // monthly statistics (the backend returns per-month kWh deltas).
+  useEffect(() => startPolling(async () => {
+    try {
+      const r = await fetch('api/ha/solar/monthly?months=2');
+      if (!r.ok) return;
+      const j = await r.json();
+      const arr = Array.isArray(j?.months) ? j.months : [];
+      if (arr.length === 0) { setMonthSolar(null); return; }
+      const now = new Date();
+      const cur = arr.find((m) => m.year === now.getFullYear() && m.month === now.getMonth() + 1);
+      const pick = cur || arr[arr.length - 1];
+      setMonthSolar(pick && typeof pick.v === 'number' ? pick.v : null);
+    } catch { /* transient */ }
+  }, 30 * 60 * 1000), []);
+
   // Bucketing walks every history sample; key it to the 5-minutely history
   // payload instead of redoing the work on each 3 s snapshot render.
   const hourlyGrid = useMemo(
@@ -1085,6 +1114,7 @@ function SolarCard({
             p1ExportTotal={data?.p1ExportTotal}
             todaySolarState={data?.todaySolar}
             totalSolarState={data?.totalSolar}
+            monthSolarKWh={monthSolar}
             todayImportState={data?.todayImport}
             todayExportState={data?.todayExport}
             solaxTodayImportState={data?.solaxTodayImport}
