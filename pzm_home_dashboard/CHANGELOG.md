@@ -4,6 +4,19 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.40
+
+Edit-mode alignment + Electricity tweak.
+
+- **Alignment snap guides.** While moving or resizing a tile in edit mode, a
+  dashed line now appears when one of its edges or centre lines up with
+  another tile (or the grid edge), and the tile snaps into alignment.
+  Resizing also snaps a tile's width/height to match a neighbour's size.
+  Works in both snap-to-grid and free-placement modes.
+- **Month solar energy** moved to the top-right of the Solar callout, styled
+  like the Peak reading (no border) — it no longer adds a line or shifts the
+  "Solar" label.
+
 ## 0.2.39
 
 Electricity tile tweaks.

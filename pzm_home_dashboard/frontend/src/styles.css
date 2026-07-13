@@ -80,6 +80,17 @@ html, body {
   background-position: var(--gap) var(--gap);
 }
 
+/* Edit-mode alignment guides: shown while dragging/resizing a tile when one
+   of its edges/centre (or its size) lines up with another tile, so it snaps
+   into alignment. Full-height/width dashed accent lines over the grid. */
+.align-guide {
+  position: absolute;
+  z-index: 60;
+  pointer-events: none;
+}
+.align-guide-v { top: var(--gap); bottom: var(--gap); border-left: 1px dashed var(--accent); }
+.align-guide-h { left: var(--gap); right: var(--gap); border-top: 1px dashed var(--accent); }
+
 .notice {
   padding: 1rem 1.25rem;
   background: var(--panel);
@@ -1038,18 +1049,22 @@ html, body {
   letter-spacing: 0;
 }
 
-/* Current-month solar energy, shown on its own line above the Peak indicator
-   in the Solar callout. Amber to tie it to the solar accent. */
+/* Month-to-date solar energy — styled identically to the Peak indicator
+   (same muted white, size, weight). Absolutely positioned in the Solar
+   callout's top-right corner so it sits above the Peak on the right, adds no
+   height to the callout, and never moves the "Solar" label. */
 .hv-month {
-  display: block;
-  margin-top: 1px;
-  font-size: 0.58rem;
+  position: absolute;
+  top: 0.3rem;
+  right: 0.7rem;
+  font-size: 0.56rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
-  color: #ffcf70;
+  color: rgba(255, 255, 255, 0.75);
   white-space: nowrap;
   letter-spacing: 0;
   text-transform: none;
+  pointer-events: none;
 }
 .hv-mini-stats {
   display: flex;

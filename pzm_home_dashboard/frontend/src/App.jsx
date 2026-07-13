@@ -216,6 +216,37 @@ function findFreeSpot(overrides, w, h) {
   return { col: 1, row: 1 };
 }
 
+// ── Edit-mode alignment snapping ──────────────────────────────────────────
+// Snap a dragged edge/centre (or a resized span) to another tile's edge,
+// centre or size when within SNAP_PX, and report the grid-line coordinate so
+// a guide line can be drawn. Coordinates are 1-based grid lines: a tile at
+// col C with span N spans lines C … C+N.
+const SNAP_PX = 9;
+
+function bestSnap(candidates, targets, stepPx) {
+  let best = null;
+  for (const at of candidates) {
+    for (const t of targets) {
+      const distPx = Math.abs((t - at) * stepPx);
+      if (distPx <= SNAP_PX && (best === null || distPx < best.distPx)) {
+        best = { shift: t - at, coord: t, distPx };
+      }
+    }
+  }
+  return best;
+}
+
+function closestSpan(raw, spans, stepPx) {
+  let best = null;
+  for (const s of spans) {
+    const distPx = Math.abs((s - raw) * stepPx);
+    if (distPx <= SNAP_PX && (best === null || distPx < best.distPx)) {
+      best = { span: s, distPx };
+    }
+  }
+  return best;
+}
+
 export default function App() {
   const [cameras, setCameras] = useState([]);
   const [error, setError] = useState(null);
@@ -237,6 +268,9 @@ export default function App() {
   const [overrides, setOverrides] = useState({});
   const [revision, setRevision] = useState(0);
   const [editingTileId, setEditingTileId] = useState(null);
+  // Alignment guide lines shown while dragging/resizing in edit mode (1-based
+  // grid-line coords, or null). Transient: set during a gesture, cleared on end.
+  const [guides, setGuides] = useState({ x: null, y: null });
   const gridRef = useRef(null);
   const overridesRef = useRef(overrides);
   useEffect(() => { overridesRef.current = overrides; }, [overrides]);
@@ -526,6 +560,28 @@ export default function App() {
     const startRow = eff.row;
     const startColSpan = eff.colSpan;
     const startRowSpan = eff.rowSpan;
+    const stepX = metrics.cellW + metrics.gap;
+    const stepY = metrics.cellH + metrics.gap;
+    // Alignment targets from every OTHER tile: edge lines (plus, in free mode,
+    // centre lines) and the grid bounds, and their spans for size-matching.
+    const useCenters = !snapRef.current;
+    const xTargets = [1, GRID_COLS + 1];
+    const yTargets = [1];
+    const xSpans = [];
+    const ySpans = [];
+    for (const [tid, l] of Object.entries(layoutRef.current)) {
+      if (tid === id || !l || l.hidden) continue;
+      if (!Number.isFinite(l.col) || !Number.isFinite(l.row)
+          || !Number.isFinite(l.colSpan) || !Number.isFinite(l.rowSpan)) continue;
+      xTargets.push(l.col, l.col + l.colSpan);
+      yTargets.push(l.row, l.row + l.rowSpan);
+      if (useCenters) {
+        xTargets.push(l.col + l.colSpan / 2);
+        yTargets.push(l.row + l.rowSpan / 2);
+      }
+      xSpans.push(l.colSpan);
+      ySpans.push(l.rowSpan);
+    }
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
 
     // The pop effect targets the tile root even when the gesture starts
@@ -557,6 +613,7 @@ export default function App() {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onUp);
+      setGuides((g) => (g.x === null && g.y === null ? g : { x: null, y: null }));
     };
 
     const onMove = (ev) => {
@@ -570,24 +627,50 @@ export default function App() {
         lift();
       }
       if (!armed || !moved) return;
-      const stepX = metrics.cellW + metrics.gap;
-      const stepY = metrics.cellH + metrics.gap;
-      // Snap on: whole-cell quantisation (a value that lands on an integer
-      // returns the tile to normal grid flow). Snap off: 1/20-cell steps —
-      // fine enough to feel free, coarse enough to keep saved layouts tidy.
+      // Base quantisation: whole cells with snap on, 1/20-cell when off. On
+      // top of that, alignment snapping pulls an edge/centre/size onto a
+      // neighbour when it's within range (and draws a guide line).
       const snap = snapRef.current;
-      const q = snap
-        ? Math.round
-        : (n) => Math.round(n * 20) / 20;
+      const q = snap ? Math.round : (n) => Math.round(n * 20) / 20;
       const dCol = (ev.clientX - startX) / stepX;
       const dRow = (ev.clientY - startY) / stepY;
+      const setGuidesIfChanged = (nx, ny) =>
+        setGuides((g) => (g.x === nx && g.y === ny ? g : { x: nx, y: ny }));
       if (kind === 'move') {
-        const col = clamp(q(startCol + dCol), 1, GRID_COLS - startColSpan + 1);
-        const row = Math.max(1, q(startRow + dRow));
+        const rawCol = startCol + dCol;
+        const rawRow = startRow + dRow;
+        const xc = useCenters
+          ? [rawCol, rawCol + startColSpan, rawCol + startColSpan / 2]
+          : [rawCol, rawCol + startColSpan];
+        const yc = useCenters
+          ? [rawRow, rawRow + startRowSpan, rawRow + startRowSpan / 2]
+          : [rawRow, rawRow + startRowSpan];
+        const sx = bestSnap(xc, xTargets, stepX);
+        const sy = bestSnap(yc, yTargets, stepY);
+        let col = sx ? rawCol + sx.shift : q(rawCol);
+        let row = sy ? rawRow + sy.shift : q(rawRow);
+        if (snap) { col = Math.round(col); row = Math.round(row); }
+        col = clamp(col, 1, GRID_COLS - startColSpan + 1);
+        row = Math.max(1, row);
+        setGuidesIfChanged(sx ? sx.coord : null, sy ? sy.coord : null);
         if (col !== eff.col || row !== eff.row) updateTile(id, { col, row }, true);
       } else {
-        const colSpan = clamp(q(startColSpan + dCol), 1, GRID_COLS - startCol + 1);
-        const rowSpan = Math.max(1, q(startRowSpan + dRow));
+        // Resize from the top-left anchor: snap the moving right/bottom edge
+        // to a neighbour line (draws a guide); otherwise match a neighbour's
+        // size when one is close (no guide — a size match, not a line).
+        const rawColSpan = startColSpan + dCol;
+        const rawRowSpan = startRowSpan + dRow;
+        const sx = bestSnap([startCol + rawColSpan], xTargets, stepX);
+        const sy = bestSnap([startRow + rawRowSpan], yTargets, stepY);
+        let colSpan, rowSpan, gx = null, gy = null;
+        if (sx) { colSpan = sx.coord - startCol; gx = sx.coord; }
+        else { const sm = closestSpan(rawColSpan, xSpans, stepX); colSpan = sm ? sm.span : q(rawColSpan); }
+        if (sy) { rowSpan = sy.coord - startRow; gy = sy.coord; }
+        else { const sm = closestSpan(rawRowSpan, ySpans, stepY); rowSpan = sm ? sm.span : q(rawRowSpan); }
+        if (snap) { colSpan = Math.round(colSpan); rowSpan = Math.round(rowSpan); }
+        colSpan = clamp(colSpan, 1, GRID_COLS - startCol + 1);
+        rowSpan = Math.max(1, rowSpan);
+        setGuidesIfChanged(gx, gy);
         if (colSpan !== eff.colSpan || rowSpan !== eff.rowSpan) updateTile(id, { colSpan, rowSpan }, true);
       }
     };
@@ -727,6 +810,20 @@ export default function App() {
         className={`grid ${editMode ? 'grid-edit' : ''}`}
         style={gridMinHeight}
       >
+        {editMode && guides.x != null && (
+          <div
+            className="align-guide align-guide-v"
+            style={{ left: `calc(var(--gap) + (${guides.x} - 1) * (var(--cell) + var(--gap)))` }}
+            aria-hidden
+          />
+        )}
+        {editMode && guides.y != null && (
+          <div
+            className="align-guide align-guide-h"
+            style={{ top: `calc(var(--gap) + (${guides.y} - 1) * (var(--cell) + var(--gap)))` }}
+            aria-hidden
+          />
+        )}
         {loading && <div className="notice" style={{ gridColumn: `1 / -1` }}>Loading dashboard…</div>}
         {error && (
           <div className="notice notice-error" style={{ gridColumn: `1 / -1` }}>

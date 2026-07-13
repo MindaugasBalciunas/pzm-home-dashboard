@@ -453,9 +453,7 @@ function HouseViewImpl({
           const m = formatValue(monthSolarKWh, 'kWh');
           if (m.text === '—') return null;
           return (
-            <div className="hv-month" title="Solar energy this month">
-              This month {m.text} {m.unit}
-            </div>
+            <div className="hv-month" title="Solar energy this month">Month: {m.text} {m.unit}</div>
           );
         })()}
         <div className="hv-callout-label">
