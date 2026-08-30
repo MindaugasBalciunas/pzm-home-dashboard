@@ -624,8 +624,13 @@ public sealed class HomeAssistantClient
                 foreach (var item in arr.EnumerateArray())
                 {
                     if (item.ValueKind != JsonValueKind.Object) continue;
-                    // Prefer explicit 'change' when present (kWh delta over the bucket).
+                    // V prefers explicit 'change' (kWh delta over the bucket),
+                    // then 'sum', then 'state'. The raw 'state' (absolute meter
+                    // reading) is captured separately so the controller can
+                    // diff it when the entity is a cumulative total-energy
+                    // meter and HA's change/sum are unreliable.
                     double? value = null;
+                    double? state = null;
                     if (item.TryGetProperty("change", out var changeEl) && changeEl.ValueKind == JsonValueKind.Number)
                     {
                         value = changeEl.GetDouble();
@@ -638,6 +643,10 @@ public sealed class HomeAssistantClient
                     else if (item.TryGetProperty("state", out var stateEl) && stateEl.ValueKind == JsonValueKind.Number)
                     {
                         value = stateEl.GetDouble();
+                    }
+                    if (item.TryGetProperty("state", out var rawStateEl) && rawStateEl.ValueKind == JsonValueKind.Number)
+                    {
+                        state = rawStateEl.GetDouble();
                     }
                     if (value is null) continue;
 
@@ -656,7 +665,7 @@ public sealed class HomeAssistantClient
                             ts = startEl.GetInt64();
                         }
                     }
-                    samples.Add(new HaSample(ts, value.Value));
+                    samples.Add(new HaSample(ts, value.Value, state));
                 }
                 result[entityId] = samples;
             }

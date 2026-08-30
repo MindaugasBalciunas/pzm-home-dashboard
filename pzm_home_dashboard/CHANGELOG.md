@@ -9,18 +9,18 @@ and version headers match the `version:` field in `config.yaml`.
 Fix: Electricity tile "Month" solar energy showed the inverter's lifetime
 total instead of the current month's generation.
 
-- The Solar callout's "Month" reading could display the Solax inverter's
-  **lifetime** energy total (e.g. ~39527 kWh) as if it were this month's
-  production. When Home Assistant exposes the sensor only as an absolute
-  running counter (`state`) rather than a per-bucket delta (`change`), the
-  backend failed to detect the cumulative shape — its old check required
-  >20% growth across the sampled window, but a lifetime meter creeps only a
-  few % a month.
-- Replaced the growth-threshold heuristic with a shape detector that
-  recognises a cumulative/total-energy meter (large absolute reading, <50%
-  swing, never resets) and diffs it into per-bucket energy. Applied to both
-  the `solar/monthly` and `solar/daily` endpoints (the 7-day chart had the
-  same latent bug).
+- The Solar callout's "Month" reading could display a bogus number (~39527
+  kWh) as if it were this month's production. Root cause: for a cumulative
+  total-energy meter, Home Assistant's long-term statistics return a
+  corrupted `change`/`sum` (its `sum`, which `change` is derived from, resets
+  mid-window on a statistics re-registration), so the per-bucket delta came
+  out ≈ the whole lifetime total. The reliable signal is the raw `state`
+  field — the monotonic absolute counter.
+- The backend now captures `state` alongside the existing fields and, when
+  the series is meter-shaped (large absolute reading, <50% swing, never
+  resets), diffs `state` into per-bucket energy instead of trusting the
+  corrupted `change`. Also sanitises float noise and applies the same logic
+  to the 7-day chart, which had the same latent bug.
 
 ## 0.2.40
 

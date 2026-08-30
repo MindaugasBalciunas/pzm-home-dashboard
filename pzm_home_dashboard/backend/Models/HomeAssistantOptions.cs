@@ -230,7 +230,12 @@ public sealed record LightAttrs(
 
 public sealed record HaSample(
     [property: JsonPropertyName("t")] long T,
-    [property: JsonPropertyName("v")] double V);
+    [property: JsonPropertyName("v")] double V,
+    // The raw absolute sensor reading sampled by HA's long-term statistics
+    // ('state'), when available. For a cumulative/total-energy meter it is
+    // the reliable monotonic counter; HA's 'change'/'sum' can be corrupted
+    // by statistics re-registration, so diffing 'state' is the safe route.
+    [property: JsonPropertyName("state")] double? State = null);
 
 public sealed record HaEntitySummary(
     [property: JsonPropertyName("entityId")] string EntityId,
