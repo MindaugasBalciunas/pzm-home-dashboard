@@ -4,6 +4,24 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.41
+
+Fix: Electricity tile "Month" solar energy showed the inverter's lifetime
+total instead of the current month's generation.
+
+- The Solar callout's "Month" reading could display the Solax inverter's
+  **lifetime** energy total (e.g. ~39527 kWh) as if it were this month's
+  production. When Home Assistant exposes the sensor only as an absolute
+  running counter (`state`) rather than a per-bucket delta (`change`), the
+  backend failed to detect the cumulative shape — its old check required
+  >20% growth across the sampled window, but a lifetime meter creeps only a
+  few % a month.
+- Replaced the growth-threshold heuristic with a shape detector that
+  recognises a cumulative/total-energy meter (large absolute reading, <50%
+  swing, never resets) and diffs it into per-bucket energy. Applied to both
+  the `solar/monthly` and `solar/daily` endpoints (the 7-day chart had the
+  same latent bug).
+
 ## 0.2.40
 
 Edit-mode alignment + Electricity tweak.

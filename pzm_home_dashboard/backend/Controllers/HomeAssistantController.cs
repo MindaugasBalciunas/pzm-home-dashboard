@@ -178,6 +178,38 @@ public sealed class HomeAssistantController : ControllerBase
         return Ok(payload);
     }
 
+    // A total-energy meter read back through HA's long-term statistics as
+    // 'change' is already a per-bucket delta and is used as-is. But when HA
+    // only exposes the 'state' field (or 'sum') for an entity, that value is
+    // the absolute running counter — e.g. a Solax inverter's lifetime solar
+    // total (~39.5 MWh) — which must be diffed into per-bucket energy.
+    //
+    // Recognise such a meter by shape: a large, near-monotonic reading that
+    // creeps up only a few % per bucket and never resets. A genuine
+    // per-month/per-day delta series, by contrast, swings down toward zero
+    // and spans many × across the window, so it stays untouched.
+    private static bool LooksLikeCumulativeMeter(IReadOnlyList<double> values)
+    {
+        if (values.Count < 2) return false;
+        double mn = double.MaxValue, mx = double.MinValue;
+        foreach (var v in values)
+        {
+            if (v < mn) mn = v;
+            if (v > mx) mx = v;
+        }
+        // A meter's absolute reading sits comfortably above zero.
+        if (mn < 10 || mx < 10) return false;
+        // A lifetime total creeps <50% over the sampled window; a per-bucket
+        // energy series (seasonal solar, daily output) spans far more.
+        if (mx > mn * 1.5) return false;
+        // A meter never resets or drops sharply between buckets.
+        for (int i = 1; i < values.Count; i++)
+        {
+            if (values[i] < values[i - 1] - 1) return false;
+        }
+        return true;
+    }
+
     [HttpGet("solar/daily")]
     public async Task<IActionResult> SolarDaily(
         [FromQuery] int days = 7,
@@ -208,9 +240,10 @@ public sealed class HomeAssistantController : ControllerBase
         // cumulative sum we need to diff into deltas.
         var values = new List<double>(samples.Count);
         foreach (var s in samples) values.Add(s.V);
-        bool looksCumulative = values.Count >= 2 && values[^1] > values[0] * 1.05
-                               && values[values.Count - 1] > 10;
-        if (looksCumulative)
+        // Same shape-detection as the monthly endpoint: HA may give us
+        // per-bucket 'change' deltas already, or a running cumulative sum
+        // / absolute 'state' we must diff into deltas.
+        if (LooksLikeCumulativeMeter(values))
         {
             var deltas = new List<double>(values.Count);
             deltas.Add(0);
@@ -271,14 +304,11 @@ public sealed class HomeAssistantController : ControllerBase
 
         // Two shapes are possible from the WebSocket client:
         //   1) samples[i].V is the per-bucket 'change' (already a delta) — use as-is.
-        //   2) samples[i].V is the running cumulative 'sum' — compute deltas.
-        // Detect (2) by non-decreasing sequence with the last value significantly
-        // larger than the first.
+        //   2) samples[i].V is the running cumulative 'sum' or absolute 'state'
+        //      of a total-energy meter — compute deltas.
         var values = new List<double>(samples.Count);
         foreach (var s in samples) values.Add(s.V);
-        bool looksCumulative = values.Count >= 2 && values[^1] > values[0] * 1.2
-                               && values[values.Count - 1] > 10;
-        if (looksCumulative)
+        if (LooksLikeCumulativeMeter(values))
         {
             var deltas = new List<double>(values.Count);
             deltas.Add(0);
