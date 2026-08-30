@@ -4,6 +4,16 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.42
+
+Forced refresh to surface the 0.2.41 fix.
+
+- HAOS caches the last-known add-on version for hours and won't offer an
+  update to a version it has already seen. This build bumps the version only
+  — no code changes — so the 0.2.41 Solar "Month" fix (diff the Home
+  Assistant `state` accumulator instead of the corrupted `change`) shows up
+  as an installable update.
+
 ## 0.2.41
 
 Fix: Electricity tile "Month" solar energy showed the inverter's lifetime
