@@ -1,6 +1,11 @@
 # PZM Home Dashboard
 
-A Home Assistant OS add-on that drives a wall-panel / kiosk dashboard:
+A Home Assistant OS add-on that drives a wall-panel / kiosk dashboard.
+
+![The Electricity card: live solar, grid and house flow over an isometric
+render, with draggable callouts and today / month history.](docs/card-solar.jpg)
+
+## What it does
 
 - Multiple **RTSP camera streams** — the C# backend transcodes them on demand
   to low-latency HLS, and the browser plays them with hls.js. Streams are
@@ -30,6 +35,28 @@ them on the wall panel at the same time.
 > **Note on form factor:** this is built for a fixed landscape wall panel and
 > is best viewed at 16:9 (1920×1080 or similar). The grid scales rather than
 > reflows, so narrow phone viewports are not currently supported.
+
+### The full panel
+
+Eight camera tiles alongside the energy, weather and security cards. The
+camera feeds below are **deliberately blurred** — they are live views of a
+private home; everything else is exactly as it renders.
+
+![Full 1920×1080 dashboard: eight camera tiles with the energy, weather,
+security and one-tap entity tiles arranged around them.](docs/dashboard.jpg)
+
+### Weather
+
+Current conditions, then an hourly strip carrying temperature, wind,
+precipitation probability, and the sunset marker.
+
+![Hourly weather strip.](docs/card-weather.png)
+
+### Security
+
+One-tap gates with live contact state, next to alarm arm / disarm.
+
+![Gate chips showing garage, yard and opener state.](docs/card-security.png)
 
 ## Install as a HAOS add-on
 
