@@ -7,6 +7,13 @@
 **/appsettings.Development.json
 **/appsettings.Local.json
 
+# Local, un-genericised copies of this install's real entity IDs. The
+# shipped config.yaml carries generic placeholders; keep your own here.
+**/*.local.yaml
+
+# Agent / assistant scratch
+.claude/
+
 # Frontend
 **/node_modules/
 **/dist/

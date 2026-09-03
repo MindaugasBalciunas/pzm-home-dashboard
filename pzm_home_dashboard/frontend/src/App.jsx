@@ -49,24 +49,30 @@ const THEME_KEY = '_theme';
 
 // One-tap tiles seeded on the very first load (no existing user layout).
 // Stable IDs so the layout survives future template revisions without dupes.
+//
+// These entity IDs are illustrative placeholders, not a real install's — a
+// fresh dashboard seeds them so the grid isn't empty, and each tile is
+// repointed at a real entity through the tile editor's entity picker. A
+// tile whose entity doesn't resolve renders as unavailable rather than
+// breaking the layout.
 const TEMPLATE_TILES = [
   // Outdoor switches — one big row.
-  { id: 'tpl-garden-hose',       kind: 'button', entityId: 'switch.garden_hose_switch_1',       domain: 'switch', name: 'Garden hose' },
-  { id: 'tpl-terrace-torch',     kind: 'button', entityId: 'switch.teresa_torch_switch_1',      domain: 'switch', name: 'Terrace torch' },
-  { id: 'tpl-front-torch',       kind: 'button', entityId: 'switch.front_light_torch_switch_1', domain: 'switch', name: 'Front torch' },
-  { id: 'tpl-street-sign',       kind: 'button', entityId: 'switch.street_sign_switch_1',       domain: 'switch', name: 'Street sign' },
-  { id: 'tpl-street-lamp',       kind: 'button', entityId: 'switch.street_lamp_switch_socket_1', domain: 'switch', name: 'Street lamp' },
-  { id: 'tpl-living-rgb',        kind: 'button', entityId: 'light.living_room_rgbic_led',       domain: 'light',  name: 'Living RGB' },
-  { id: 'tpl-garage-rgb',        kind: 'button', entityId: 'light.garage_led_strip',            domain: 'light',  name: 'Garage LED' },
+  { id: 'tpl-garden-hose',       kind: 'button', entityId: 'switch.garden_hose',    domain: 'switch', name: 'Garden hose' },
+  { id: 'tpl-terrace-torch',     kind: 'button', entityId: 'switch.terrace_torch',  domain: 'switch', name: 'Terrace torch' },
+  { id: 'tpl-front-torch',       kind: 'button', entityId: 'switch.front_torch',    domain: 'switch', name: 'Front torch' },
+  { id: 'tpl-street-sign',       kind: 'button', entityId: 'switch.street_sign',    domain: 'switch', name: 'Street sign' },
+  { id: 'tpl-street-lamp',       kind: 'button', entityId: 'switch.street_lamp',    domain: 'switch', name: 'Street lamp' },
+  { id: 'tpl-living-rgb',        kind: 'button', entityId: 'light.living_room_rgb', domain: 'light',  name: 'Living RGB' },
+  { id: 'tpl-garage-rgb',        kind: 'button', entityId: 'light.garage_led_strip', domain: 'light', name: 'Garage LED' },
   // Environment sensors — number tiles. No baked-in units: tiles read the
   // live unit from HA each poll (a stored unit would shadow it forever —
   // see the same policy note in EntityPicker).
-  { id: 'tpl-outside-temp',      kind: 'number', entityId: 'sensor.outside_temperature_humidity_sensor_temperature',      domain: 'sensor', name: 'Outside temp' },
-  { id: 'tpl-outside-hum',       kind: 'number', entityId: 'sensor.outside_temperature_humidity_sensor_humidity',         domain: 'sensor', name: 'Outside humidity' },
-  { id: 'tpl-greenhouse-temp',   kind: 'number', entityId: 'sensor.greenhouse_temperature_humidity_sensor_2_temperature', domain: 'sensor', name: 'Greenhouse temp' },
-  { id: 'tpl-greenhouse-hum',    kind: 'number', entityId: 'sensor.greenhouse_temperature_humidity_sensor_2_humidity',    domain: 'sensor', name: 'Greenhouse hum.' },
-  { id: 'tpl-waste-tank',        kind: 'number', entityId: 'sensor.waste_tank_level_depth',                               domain: 'sensor', name: 'Waste tank' },
-  { id: 'tpl-garage-door',       kind: 'number', entityId: 'binary_sensor.garage_gates_contact_sensor_door',              domain: 'binary_sensor', name: 'Garage door' },
+  { id: 'tpl-outside-temp',      kind: 'number', entityId: 'sensor.outside_temperature',    domain: 'sensor', name: 'Outside temp' },
+  { id: 'tpl-outside-hum',       kind: 'number', entityId: 'sensor.outside_humidity',       domain: 'sensor', name: 'Outside humidity' },
+  { id: 'tpl-greenhouse-temp',   kind: 'number', entityId: 'sensor.greenhouse_temperature', domain: 'sensor', name: 'Greenhouse temp' },
+  { id: 'tpl-greenhouse-hum',    kind: 'number', entityId: 'sensor.greenhouse_humidity',    domain: 'sensor', name: 'Greenhouse hum.' },
+  { id: 'tpl-waste-tank',        kind: 'number', entityId: 'sensor.waste_tank_level',       domain: 'sensor', name: 'Waste tank' },
+  { id: 'tpl-garage-door',       kind: 'number', entityId: 'binary_sensor.garage_door_contact', domain: 'binary_sensor', name: 'Garage door' },
 ];
 
 // Lay out template tiles in a clean strip beneath the top row of cameras/
@@ -352,7 +358,7 @@ export default function App() {
             { id: 'tpl-garage-rgb', since: 4, w: 6, h: 6,
               spec: { kind: 'button', entityId: 'light.garage_led_strip', domain: 'light', name: 'Garage LED' } },
             { id: 'tpl-living-fx', since: 5, w: 12, h: 6,
-              spec: { kind: 'lightfx', entityId: 'light.living_room_rgbic_led', domain: 'light', name: 'Living patterns' } },
+              spec: { kind: 'lightfx', entityId: 'light.living_room_rgb', domain: 'light', name: 'Living patterns' } },
             { id: 'tpl-garage-fx', since: 5, w: 12, h: 6,
               spec: { kind: 'lightfx', entityId: 'light.garage_led_strip', domain: 'light', name: 'Garage patterns' } },
           ];
