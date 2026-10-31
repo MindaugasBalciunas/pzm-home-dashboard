@@ -24,6 +24,8 @@ export default function SideMenu({
   onAddTile,
   snapToGrid = true,
   onToggleSnap,
+  bgDemo,
+  onToggleBgDemo,
   themeBg,
   onSetThemeBg,
   onRestoreLayout,
@@ -33,8 +35,25 @@ export default function SideMenu({
   const [dragDx, setDragDx] = useState(0);
   const [pickerOpen, setPickerOpen] = useState(null); // null | 'button' | 'number'
   const [backupNote, setBackupNote] = useState(null);
+  // { enabled, ingress, user } — the Account section only shows for a
+  // signed-in direct (kiosk) session; ingress users sign out of HA itself.
+  const [auth, setAuth] = useState(null);
   const menuRef = useRef(null);
   const restoreInputRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    fetch('api/auth/status', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setAuth)
+      .catch(() => {});
+  }, [open]);
+
+  const signOut = async () => {
+    if (!window.confirm('Sign out of the dashboard on this device?')) return;
+    try { await fetch('logout', { method: 'POST' }); } catch { /* reload anyway */ }
+    window.location.reload();
+  };
 
   // Download the current shared layout as a JSON file — a local backup
   // the Restore button can load back later.
@@ -335,6 +354,38 @@ export default function SideMenu({
               back and replaces the layout for every client.
             </div>
             {backupNote && <div className="side-menu-note">{backupNote}</div>}
+          </section>
+
+          {auth?.enabled && !auth.ingress && (
+            <section className="side-menu-section">
+              <div className="side-menu-section-title">Account</div>
+              <div className="side-menu-row">
+                <button
+                  type="button"
+                  className="side-menu-btn-ghost"
+                  onClick={signOut}
+                >Sign out</button>
+              </div>
+              <div className="side-menu-note">
+                Signed in as {auth.user || 'dashboard user'}. This device stays
+                signed in for a year unless you sign out or the password changes.
+              </div>
+            </section>
+          )}
+
+          <section className="side-menu-section">
+            <div className="side-menu-section-title">Experiments</div>
+            <div className="side-menu-row">
+              <button
+                type="button"
+                className={`side-menu-btn-primary ${bgDemo ? 'is-active' : ''}`}
+                onClick={() => onToggleBgDemo?.()}
+              >{bgDemo ? 'Stop BG demo' : 'BG demo loop'}</button>
+            </div>
+            <div className="side-menu-note">
+              Cycles the Electricity house photo through every season and
+              time-of-day variant. Live mode picks one by the wall clock.
+            </div>
           </section>
         </div>
       </aside>

@@ -25,6 +25,15 @@ public sealed class DashboardOptions
     [JsonPropertyName("idle_shutdown_seconds")]
     public int IdleShutdownSeconds { get; set; } = 30;
 
+    // Optional sign-in for direct access on the add-on port (kiosk tablets).
+    // Empty password = no sign-in, as before. Ingress (HA sidebar) never
+    // asks: Home Assistant has already authenticated that user.
+    [JsonPropertyName("auth_username")]
+    public string? AuthUsername { get; set; }
+
+    [JsonPropertyName("auth_password")]
+    public string? AuthPassword { get; set; }
+
     [JsonPropertyName("cameras")]
     public List<CameraOptions> Cameras { get; set; } = new();
 

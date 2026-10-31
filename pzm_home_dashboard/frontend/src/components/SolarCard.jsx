@@ -4,10 +4,41 @@ import { tilePlacementStyle } from '../lib/placement.js';
 
 const POLL_MS = 3000;
 
-// Isometric house render behind the flow diagram. WebP (~90 kB) rather
-// than the 2 MB source PNG — it was the single largest download on a cold
-// kiosk load. The per-season/time-of-day variants were dropped in e5d8dab.
-const HOUSE_BG = 'house.webp';
+// House photo variants: public/ ships one render per season × day-phase
+// (16 total, `<season>-<phase>.webp`). The live card picks by wall clock;
+// the BG demo loop (Experiments menu) cycles through all of them. WebP at
+// ~40–110 kB each — the source PNGs were 2–6 MB apiece and were the single
+// biggest download on a kiosk load.
+const SEASONS = ['spring', 'summer', 'autumn', 'winter'];
+const DAY_PHASES = ['morning', 'day', 'evening', 'night'];
+
+function seasonForMonth(m) {
+  if (m === 11 || m <= 1) return 'winter';
+  if (m <= 4) return 'spring';
+  if (m <= 7) return 'summer';
+  return 'autumn';
+}
+
+function phaseForHour(h) {
+  if (h < 6) return 'night';
+  if (h < 11) return 'morning';
+  if (h < 17) return 'day';
+  if (h < 22) return 'evening';
+  return 'night';
+}
+
+function backgroundForNow(now = new Date()) {
+  const season = seasonForMonth(now.getMonth());
+  const phase = phaseForHour(now.getHours());
+  return { file: `${season}-${phase}.webp`, label: `${season} · ${phase}` };
+}
+
+const DEMO_BACKGROUNDS = SEASONS.flatMap((season) =>
+  DAY_PHASES.map((phase) => ({
+    file: `${season}-${phase}.webp`,
+    label: `${season} · ${phase}`,
+  })));
+const DEMO_STEP_MS = 2000;
 
 // Today Import / Export moved into the Grid callout and Total Solar into
 // the Solar callout (top section), so the strip is down to three chips.
@@ -86,7 +117,8 @@ function HouseViewImpl({
   impPeakW,
   expPeakW,
   runModeText,
-  bgImage = HOUSE_BG,
+  bgImage = 'house.webp',
+  bgLabel = null,
   editMode = false,
   flowPoint = null,
   onFlowPointChange = null,
@@ -337,6 +369,7 @@ function HouseViewImpl({
         className="house-view-bg house-view-bg-fade"
         style={{ backgroundImage: `url('${bgImage}')` }}
       />
+      {bgLabel && <div className="hv-bg-pill">{bgLabel}</div>}
 
       {/*
         Straight vertical/horizontal segments only. The junction where the
@@ -908,6 +941,7 @@ const TodayGraph = memo(TodayGraphImpl);
 function SolarCard({
   col, row, colSpan, rowSpan, editMode,
   onStartMove, onStartResize,
+  bgDemo = false,
   flowX = null,
   flowY = null,
   onFlowPointChange = null,
@@ -921,10 +955,38 @@ function SolarCard({
   // Solar energy produced so far this calendar month (kWh), from HA's
   // long-term statistics. null until it loads or if stats are unavailable.
   const [monthSolar, setMonthSolar] = useState(null);
+  const [demoIdx, setDemoIdx] = useState(0);
   // Raw payload of the last snapshot poll. Comparing response text before
   // parsing lets a quiet system (overnight: PV 0, nothing moving) skip the
   // setData entirely — no re-render of the whole card every 3 s.
   const lastPayloadRef = useRef('');
+
+  // Experiments → BG demo loop: cycle every season × day-phase variant.
+  useEffect(() => {
+    if (!bgDemo) return undefined;
+    setDemoIdx(0);
+    const id = setInterval(() => setDemoIdx((i) => i + 1), DEMO_STEP_MS);
+    return () => clearInterval(id);
+  }, [bgDemo]);
+
+  // Wall-clock background. Checked once a minute; the state only changes
+  // when the photo actually swaps (hour/season boundary), so the check
+  // itself never causes a re-render. Needed because data polls no longer
+  // re-render the card when the payload is unchanged (quiet nights).
+  const [bgNow, setBgNow] = useState(backgroundForNow);
+  useEffect(() => {
+    const id = setInterval(() => {
+      setBgNow((prev) => {
+        const next = backgroundForNow();
+        return next.file === prev.file ? prev : next;
+      });
+    }, 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const bg = bgDemo
+    ? DEMO_BACKGROUNDS[demoIdx % DEMO_BACKGROUNDS.length]
+    : bgNow;
 
   useEffect(() => startPolling(async () => {
     try {
@@ -1063,7 +1125,8 @@ function SolarCard({
             pvPeakW={pvPeakW}
             impPeakW={impPeakW}
             expPeakW={expPeakW}
-            bgImage={HOUSE_BG}
+            bgImage={bg.file}
+            bgLabel={bgDemo ? bg.label : null}
             editMode={editMode}
             flowPoint={flowPoint}
             onFlowPointChange={onFlowPointChange}

@@ -4,6 +4,24 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.44
+
+Optional sign-in for kiosk tablets, and the seasonal house photos are back.
+
+- **Sign-in for direct access.** Set `auth_password` (and optionally
+  `auth_username`, default `admin`) in the add-on configuration to require a
+  login on the add-on port — the way wall tablets usually load the
+  dashboard. Everything sits behind it: the page, API, live camera video
+  and snapshots. A device signs in once and stays signed in for a year
+  (renewed on use, kept across restarts and updates). Five attempts per
+  minute, then a short lockout. Changing the password signs every device
+  out; **Sign out** is in the side menu. Opening the dashboard from the HA
+  sidebar never asks — Home Assistant already signed you in. With no
+  password set nothing changes (the log warns about the open port).
+- **Seasonal house photos and BG demo loop restored.** 0.2.43 dropped them;
+  they're back as WebP — all 16 variants total 1.2 MB instead of 85 MB of
+  PNG, so the load-speed gain stays.
+
 ## 0.2.43
 
 Security, stability and load-speed pass.

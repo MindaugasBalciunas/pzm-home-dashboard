@@ -2,6 +2,8 @@ using System.IO.Compression;
 using System.Net;
 using System.Net.Sockets;
 using System.Text.Json;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.ResponseCompression;
 using PzmHomeDashboard.Models;
 using PzmHomeDashboard.Services;
@@ -32,7 +34,51 @@ builder.Services.AddHttpClient();
 builder.Services.AddSingleton<HomeAssistantClient>();
 builder.Services.AddSingleton<WeatherService>();
 builder.Services.AddSingleton<LayoutStore>();
+builder.Services.AddSingleton<DashboardAuth>();
 builder.Services.AddControllers();
+
+// Session cookies are encrypted with Data Protection keys. Persist them on
+// the add-on's /data volume: with the default in-memory keys every restart
+// or update would sign the kiosk tablet out.
+builder.Services.AddDataProtection()
+    .SetApplicationName("pzm-home-dashboard")
+    .PersistKeysToFileSystem(new DirectoryInfo(ResolveKeysDir()));
+builder.Services.AddAuthentication(DashboardAuth.Scheme)
+    .AddCookie(DashboardAuth.Scheme, o =>
+    {
+        o.Cookie.Name = DashboardAuth.CookieName;
+        o.Cookie.HttpOnly = true;
+        o.Cookie.SameSite = SameSiteMode.Lax;
+        o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        o.ExpireTimeSpan = DashboardAuth.SessionLifetime;
+        o.SlidingExpiration = true;
+        // A session minted under old credentials (password since changed)
+        // is dropped here; the gate below then sends the client to /login.
+        o.Events.OnValidatePrincipal = ctx =>
+        {
+            var auth = ctx.HttpContext.RequestServices.GetRequiredService<DashboardAuth>();
+            if (!auth.IsCurrent(ctx.Principal)) ctx.RejectPrincipal();
+            return Task.CompletedTask;
+        };
+    });
+
+// Brute-force brake on the sign-in form: 5 attempts per minute per client.
+builder.Services.AddRateLimiter(o =>
+{
+    o.AddPolicy("login", ctx => RateLimitPartition.GetFixedWindowLimiter(
+        ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+        }));
+    o.OnRejected = (ctx, _) =>
+    {
+        ctx.HttpContext.Response.Redirect("login?error=locked");
+        return ValueTask.CompletedTask;
+    };
+});
 
 // Layout PUTs (including backup restores) are the largest bodies this app
 // accepts, and those are tens of kB. Kestrel's 30 MB default would let any
@@ -105,6 +151,34 @@ app.Use(async (context, next) =>
 });
 
 app.UseResponseCompression();
+app.UseRateLimiter();
+app.UseAuthentication();
+
+// Sign-in gate. Runs before static files so the bundle, HLS video and camera
+// stills are covered too, not just the API. A browser opening the page is
+// sent to the login form; anything else gets a bare 401 (the frontend turns
+// that into a reload, which lands on the form).
+app.Use(async (context, next) =>
+{
+    var auth = context.RequestServices.GetRequiredService<DashboardAuth>();
+    var path = context.Request.Path;
+    if (auth.IsSignedIn(context)
+        || path.Equals("/login", StringComparison.OrdinalIgnoreCase)
+        || path.Equals("/logout", StringComparison.OrdinalIgnoreCase))
+    {
+        await next();
+        return;
+    }
+    if (HttpMethods.IsGet(context.Request.Method)
+        && (path == "/" || path.Equals("/index.html", StringComparison.OrdinalIgnoreCase)))
+    {
+        context.Response.Headers.CacheControl = "no-store";
+        context.Response.Redirect("login");
+        return;
+    }
+    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+});
+
 app.UseDefaultFiles();
 app.UseStaticFiles(new StaticFileOptions
 {
@@ -130,6 +204,12 @@ app.Lifetime.ApplicationStarted.Register(() =>
     logger.LogInformation(
         "PZM Home Dashboard started. {Count} camera(s) configured.",
         options.Cameras.Count);
+    if (app.Services.GetRequiredService<DashboardAuth>().Enabled)
+        logger.LogInformation("Sign-in required for direct access (ingress is exempt).");
+    else
+        logger.LogWarning(
+            "No auth_password set: anyone on the LAN who can reach the add-on port can view cameras "
+            + "and control devices. Set auth_password in the add-on options to require sign-in.");
 });
 
 app.Run();
@@ -152,6 +232,14 @@ static DashboardOptions LoadDashboardOptions(IConfiguration configuration)
     var fromConfig = new DashboardOptions();
     configuration.GetSection("Dashboard").Bind(fromConfig);
     return fromConfig;
+}
+
+static string ResolveKeysDir()
+{
+    var env = Environment.GetEnvironmentVariable("PZM_KEYS_PATH");
+    if (!string.IsNullOrWhiteSpace(env)) return env;
+    if (Directory.Exists("/data")) return "/data/keys";
+    return Path.Combine(AppContext.BaseDirectory, "keys");
 }
 
 static bool IsLocalSource(IPAddress ip)

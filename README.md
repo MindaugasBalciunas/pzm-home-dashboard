@@ -91,13 +91,43 @@ One-tap gates with live contact state, next to alarm arm / disarm.
    watch the wall panel update. Use **Backup layout** in the side menu to
    export or restore it as JSON.
 
+### Kiosk tablet sign-in
+
+Opening the dashboard from the Home Assistant sidebar (ingress) is covered by
+your HA login. A wall tablet usually loads the add-on port directly instead
+(enable it under **Configuration → Network**, e.g. `http://<ha-ip>:8088/`),
+and without a password anything on your LAN can then view the cameras and
+control devices.
+
+Set **`auth_password`** (and optionally `auth_username`, default `admin`) in
+the add-on configuration to require sign-in on that port:
+
+- The tablet signs in once and stays signed in for a year, renewed on use.
+  It survives reboots and add-on updates (session keys live in
+  `/data/keys`). Make sure the kiosk browser doesn't clear cookies on start
+  (Fully Kiosk: *Web Content Settings*).
+- The username is case-insensitive, so the tablet keyboard's auto-capital
+  doesn't matter.
+- Five attempts per minute per device, then a one-minute lockout.
+- Changing the password signs every device out. **Sign out** is in the
+  side menu.
+- Ingress is never asked: Home Assistant has already authenticated that
+  user.
+
+Leave `auth_password` empty to keep the previous open behaviour (the add-on
+log warns about it on start).
+
 ### Custom house image
 
 The Electricity card overlays live callouts (`Solar`, `PV 1`, `PV 2`, `Home`,
-`Grid`) on top of an image at `/house.webp` (served from
-`pzm_home_dashboard/frontend/public/`). Drop your own transparent-background
-isometric render there (convert with e.g. `cwebp -q 82 -resize 2048 0 in.png
--o house.webp` — a raw PNG render is ~2 MB, the WebP ~100 kB); if you keep the aspect ratio close to 2682 × 1600 the
+`Grid`) on top of a house render that follows the wall clock: one image per
+season × time of day, `<season>-<phase>.webp` (`spring|summer|autumn|winter`
+× `morning|day|evening|night`, served from
+`pzm_home_dashboard/frontend/public/`). The side menu's **BG demo loop**
+cycles through all 16. Drop your own transparent-background isometric renders
+there (convert with e.g. `cwebp -q 82 -resize 2048 0 in.png -o
+autumn-day.webp` — a raw PNG render is 2–6 MB, the WebP ~100 kB); if you keep
+the aspect ratio close to 2682 × 1600 the
 callout positions in `pzm_home_dashboard/frontend/src/components/SolarCard.jsx`
 map cleanly to the roof panels / garage / fence corner. Otherwise adjust the
 numbers inside `<HouseView>`.
@@ -145,7 +175,7 @@ pzm_home_dashboard/                The add-on itself
       lib/                           color, entityStates, layoutRepair,
                                      placement, poll
     public/
-      house.webp                     Isometric house image (drop your own here)
+      <season>-<phase>.webp          Seasonal house renders (drop your own here)
 ```
 
 ## Local development
