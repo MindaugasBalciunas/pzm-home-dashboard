@@ -23,6 +23,14 @@ public sealed class HomeAssistantClient
     private Dictionary<string, HaStateDto>? _snapshotById;
     private List<HaEntitySummary>? _snapshotSummaries;
     private DateTime _snapshotAtUtc = DateTime.MinValue;
+    // Last refresh attempt, successful or not. Freshness is judged from this
+    // rather than _snapshotAtUtc so a failing HA is retried at most once per
+    // TTL: one poll fans out ~25 concurrent entity lookups, and without it
+    // each waiter took the lock in turn and re-ran the (10 s timeout) fetch —
+    // an HA restart stalled /api/ha/solar for minutes.
+    // Ticks, read/written via Interlocked: a DateTime field can tear on the
+    // 32-bit arches (armv7/armhf/i386) this add-on also ships for.
+    private long _snapshotAttemptTicks;
 
     public HomeAssistantClient(IHttpClientFactory factory, HomeAssistantOptions opts, ILogger<HomeAssistantClient> log)
     {
@@ -67,12 +75,12 @@ public sealed class HomeAssistantClient
     // snapshot rather than blanking the dashboard.
     private async Task EnsureSnapshotAsync(CancellationToken ct)
     {
-        if (_snapshotById is not null && DateTime.UtcNow - _snapshotAtUtc < SnapshotTtl) return;
+        if (SnapshotAttemptIsFresh()) return;
 
         await _snapshotLock.WaitAsync(ct);
         try
         {
-            if (_snapshotById is not null && DateTime.UtcNow - _snapshotAtUtc < SnapshotTtl) return;
+            if (SnapshotAttemptIsFresh()) return;
 
             var (baseUrl, token) = ResolveCreds();
             if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(token))
@@ -141,9 +149,15 @@ public sealed class HomeAssistantClient
         }
         finally
         {
+            // Stamped on completion, so callers that queued on the lock while
+            // a slow fetch ran reuse its result instead of starting another.
+            Interlocked.Exchange(ref _snapshotAttemptTicks, DateTime.UtcNow.Ticks);
             _snapshotLock.Release();
         }
     }
+
+    private bool SnapshotAttemptIsFresh()
+        => DateTime.UtcNow.Ticks - Interlocked.Read(ref _snapshotAttemptTicks) < SnapshotTtl.Ticks;
 
     // Entity ids, domains and services get spliced into HA API URLs. They
     // come from the (unauthenticated) frontend as well as from options, so
@@ -458,7 +472,7 @@ public sealed class HomeAssistantClient
         var filter = string.Join(",", entityIds);
         var url = baseUrl + "history/period/" + sinceIso
             + "?filter_entity_id=" + Uri.EscapeDataString(filter)
-            + "&minimal_response";
+            + "&minimal_response&no_attributes";
 
         try
         {
@@ -560,6 +574,13 @@ public sealed class HomeAssistantClient
         }.Uri;
 
         using var ws = new ClientWebSocket();
+        // One deadline for the whole exchange: the receives below otherwise
+        // wait on nothing but the caller's token, so an HA that accepts the
+        // socket and then stalls (restart, recorder busy) hung the request
+        // until the browser gave up.
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        deadline.CancelAfter(TimeSpan.FromSeconds(20));
+        ct = deadline.Token;
         try
         {
             using var connectCts = CancellationTokenSource.CreateLinkedTokenSource(ct);

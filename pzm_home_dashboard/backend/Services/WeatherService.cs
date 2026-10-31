@@ -9,6 +9,10 @@ namespace PzmHomeDashboard.Services;
 public sealed class WeatherService
 {
     private static readonly TimeSpan CacheFor = TimeSpan.FromMinutes(15);
+    // After a failed fetch (no internet, Open-Meteo down, HA coords missing)
+    // serve whatever is cached until this passes, instead of making every
+    // weather poll wait out another 10 s upstream timeout.
+    private static readonly TimeSpan RetryAfterFailure = TimeSpan.FromMinutes(1);
 
     private readonly IHttpClientFactory _factory;
     private readonly HomeAssistantClient _ha;
@@ -17,6 +21,7 @@ public sealed class WeatherService
     private (double Lat, double Lon)? _coords;
     private JsonElement? _cachedRaw;
     private DateTimeOffset _cachedAt = DateTimeOffset.MinValue;
+    private DateTimeOffset _retryAt = DateTimeOffset.MinValue;
 
     public WeatherService(IHttpClientFactory factory, HomeAssistantClient ha, ILogger<WeatherService> log)
     {
@@ -102,16 +107,20 @@ public sealed class WeatherService
 
     private async Task<JsonElement?> GetRawAsync(CancellationToken ct)
     {
-        if (_cachedRaw is not null && DateTimeOffset.UtcNow - _cachedAt < CacheFor) return _cachedRaw;
+        if (IsFresh()) return _cachedRaw;
 
         await _lock.WaitAsync(ct);
         try
         {
-            if (_cachedRaw is not null && DateTimeOffset.UtcNow - _cachedAt < CacheFor) return _cachedRaw;
+            if (IsFresh()) return _cachedRaw;
 
             // Home doesn't move — resolve the coordinates once and keep them.
             _coords ??= await _ha.GetHomeCoordinatesAsync(ct);
-            if (_coords is null) return null;
+            if (_coords is null)
+            {
+                _retryAt = DateTimeOffset.UtcNow + RetryAfterFailure;
+                return null;
+            }
 
             var (lat, lon) = _coords.Value;
             var url = "https://api.open-meteo.com/v1/forecast"
@@ -127,6 +136,7 @@ public sealed class WeatherService
             if (!resp.IsSuccessStatusCode)
             {
                 _log.LogWarning("Open-Meteo -> HTTP {Code}", (int)resp.StatusCode);
+                _retryAt = DateTimeOffset.UtcNow + RetryAfterFailure;
                 return _cachedRaw; // stale beats nothing
             }
             await using var stream = await resp.Content.ReadAsStreamAsync(ct);
@@ -138,11 +148,18 @@ public sealed class WeatherService
         catch (Exception ex)
         {
             _log.LogWarning(ex, "Open-Meteo fetch failed");
+            if (!ct.IsCancellationRequested) _retryAt = DateTimeOffset.UtcNow + RetryAfterFailure;
             return _cachedRaw;
         }
         finally
         {
             _lock.Release();
         }
+    }
+
+    private bool IsFresh()
+    {
+        var now = DateTimeOffset.UtcNow;
+        return (_cachedRaw is not null && now - _cachedAt < CacheFor) || now < _retryAt;
     }
 }

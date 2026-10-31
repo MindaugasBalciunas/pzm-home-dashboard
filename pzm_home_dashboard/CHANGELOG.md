@@ -4,6 +4,37 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.43
+
+Security, stability and load-speed pass.
+
+- **Security — service calls locked down.** The generic tile action endpoint
+  could call any Home Assistant service with the add-on's admin token
+  (`hassio.*`, `shell_command.*`, `homeassistant.stop`, …). It now only calls
+  the entity's own domain, and only domains a tile can control (switch,
+  light, cover, script, scene, lock, fan, …).
+- **Security — cross-site requests blocked.** A web page opened in any
+  browser on the LAN could fire a plain form POST at the gate endpoint and
+  open a gate. State-changing requests initiated by another site are now
+  refused (403). The kiosk, the HA ingress panel and scripts are unaffected.
+- **Security — hardening.** Request bodies capped at 4 MB, non-object
+  layouts rejected instead of blanking every open dashboard, `nosniff` and
+  `no-referrer` headers added.
+- **Stability.** When Home Assistant is restarting, the state snapshot is
+  now retried at most once every 2 s instead of once per entity in a row
+  (which could stall the Electricity and Security cards for minutes). The
+  long-term statistics WebSocket gets a 20 s overall deadline instead of
+  waiting forever. The weather card backs off for a minute after a failed
+  forecast fetch instead of waiting out a 10 s timeout on every poll.
+- **Faster loading.** JS/CSS/JSON responses are compressed (Brotli/gzip) and
+  the hashed bundle files are cached permanently, so a reload only
+  revalidates `index.html`. The Electricity card background is now a 90 kB
+  WebP (was a 2–6 MB PNG per season/time of day — the single biggest
+  download). The today-history request asks Home Assistant only for the six
+  series the card draws, dropping the slowest unused one (~2 s faster).
+- Removed the "BG demo loop" experiment along with the seasonal photos it
+  cycled through.
+
 ## 0.2.42
 
 Forced refresh to surface the 0.2.41 fix.

@@ -31,6 +31,10 @@ public sealed class LayoutController : ControllerBase
     [HttpPut]
     public async Task<IActionResult> Put([FromBody] LayoutBody body, CancellationToken ct)
     {
+        // A missing/non-object layout would otherwise be stored and pushed
+        // to every SSE client, blanking every open dashboard at once.
+        if (body.Layout.ValueKind != JsonValueKind.Object)
+            return BadRequest(new { error = "layout must be a JSON object." });
         var snap = await _store.SetAsync(body.Layout, ct);
         Response.Headers["Cache-Control"] = "no-store";
         return Ok(new { revision = snap.Revision, layout = snap.Layout });

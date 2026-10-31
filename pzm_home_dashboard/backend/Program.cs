@@ -1,6 +1,8 @@
+using System.IO.Compression;
 using System.Net;
 using System.Net.Sockets;
 using System.Text.Json;
+using Microsoft.AspNetCore.ResponseCompression;
 using PzmHomeDashboard.Models;
 using PzmHomeDashboard.Services;
 
@@ -32,6 +34,26 @@ builder.Services.AddSingleton<WeatherService>();
 builder.Services.AddSingleton<LayoutStore>();
 builder.Services.AddControllers();
 
+// Layout PUTs (including backup restores) are the largest bodies this app
+// accepts, and those are tens of kB. Kestrel's 30 MB default would let any
+// LAN client push a huge layout into memory, every SSE subscriber and
+// /data/layout.json.
+builder.WebHost.ConfigureKestrel(k => k.Limits.MaxRequestBodySize = 4 * 1024 * 1024);
+
+// The JS bundle is ~650 kB raw / ~200 kB compressed — on a weak kiosk
+// tablet or through HA ingress that's the bulk of a cold load. Fastest
+// levels keep the CPU cost negligible on ARM; hashed assets are then cached
+// immutably (below), so each client pays it once per release. SSE
+// (text/event-stream) and HLS types aren't in the default MIME list, so
+// streaming responses are never buffered by the compressor.
+builder.Services.AddResponseCompression(o =>
+{
+    o.Providers.Add<BrotliCompressionProvider>();
+    o.Providers.Add<GzipCompressionProvider>();
+});
+builder.Services.Configure<BrotliCompressionProviderOptions>(o => o.Level = CompressionLevel.Fastest);
+builder.Services.Configure<GzipCompressionProviderOptions>(o => o.Level = CompressionLevel.Fastest);
+
 var app = builder.Build();
 
 // LAN-only guard: the add-on has no authentication of its own (HA ingress
@@ -56,8 +78,50 @@ app.Use(async (context, next) =>
     await next();
 });
 
+// Cross-site request guard. The LAN check above trusts anything on the
+// network, but a page the kiosk owner (or a guest on the wifi) opens in a
+// browser is also "on the network": a plain cross-origin <form> POST needs
+// no CORS preflight and could fire /api/ha/security/gate/0 — opening a gate
+// — with no JSON body at all. Browsers stamp every request with
+// Sec-Fetch-Site, so refuse state-changing requests a different site
+// initiated. Same-origin (kiosk, ingress iframe) and non-browser clients
+// (no header) are unaffected.
+app.Use(async (context, next) =>
+{
+    var method = context.Request.Method;
+    if (!HttpMethods.IsGet(method) && !HttpMethods.IsHead(method) && !HttpMethods.IsOptions(method)
+        && string.Equals(context.Request.Headers["Sec-Fetch-Site"], "cross-site", StringComparison.OrdinalIgnoreCase))
+    {
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+        logger.LogWarning(
+            "Rejected cross-site {Method} to {Path} (Origin: {Origin}).",
+            method, context.Request.Path, context.Request.Headers.Origin.ToString());
+        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        return;
+    }
+    context.Response.Headers.XContentTypeOptions = "nosniff";
+    context.Response.Headers["Referrer-Policy"] = "no-referrer";
+    await next();
+});
+
+app.UseResponseCompression();
 app.UseDefaultFiles();
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    // Vite content-hashes everything under assets/, so those can be cached
+    // forever — a kiosk reload then costs one index.html revalidation
+    // instead of a conditional request per chunk (each a full round trip
+    // through HA ingress). index.html and unhashed files must revalidate so
+    // a new release is picked up immediately.
+    OnPrepareResponse = ctx =>
+    {
+        var path = ctx.Context.Request.Path.Value ?? "";
+        ctx.Context.Response.Headers.CacheControl =
+            path.StartsWith("/assets/", StringComparison.OrdinalIgnoreCase)
+                ? "public, max-age=31536000, immutable"
+                : "no-cache";
+    },
+});
 app.MapControllers();
 
 app.Lifetime.ApplicationStarted.Register(() =>

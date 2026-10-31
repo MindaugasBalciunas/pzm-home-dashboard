@@ -110,7 +110,17 @@ public sealed class EntitiesController : ControllerBase
 
         var dot = body.EntityId.IndexOf('.');
         if (dot <= 0) return BadRequest(new { error = "Invalid entityId" });
-        var domain = string.IsNullOrWhiteSpace(body.Domain) ? body.EntityId[..dot] : body.Domain;
+        var domain = body.EntityId[..dot];
+        // The backend holds an admin-level HA token and this endpoint has no
+        // auth of its own, so it must not become a generic service proxy
+        // (hassio.*, shell_command.*, homeassistant.stop, recorder.purge…).
+        // Only the entity's own domain may be called, and only for domains a
+        // dashboard tile can actually control.
+        if (!string.IsNullOrWhiteSpace(body.Domain)
+            && !string.Equals(body.Domain, domain, StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { error = "Domain must match the entity's domain." });
+        if (!ControllableDomains.Contains(domain))
+            return BadRequest(new { error = $"Domain '{domain}' is not controllable from the dashboard." });
         var service = string.IsNullOrWhiteSpace(body.Service) ? DefaultService(domain) : body.Service;
 
         var data = new Dictionary<string, object?> { ["entity_id"] = body.EntityId };
@@ -126,6 +136,16 @@ public sealed class EntitiesController : ControllerBase
         var ok = await _client.CallServiceAsync(domain, service, data, ct);
         return ok ? Ok(new { ok = true }) : StatusCode(502, new { error = "HA call failed." });
     }
+
+    // Superset of what the tile picker offers (EntityPicker DOMAINS_FOR_KIND)
+    // plus a few harmless control domains a hand-edited layout might use.
+    private static readonly HashSet<string> ControllableDomains = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "switch", "input_boolean", "light", "fan", "cover", "button", "input_button",
+        "script", "scene", "automation", "lock", "input_number", "number", "counter",
+        "input_select", "select", "climate", "media_player", "siren", "valve",
+        "vacuum", "humidifier", "water_heater",
+    };
 
     private static string DefaultService(string domain) => domain switch
     {

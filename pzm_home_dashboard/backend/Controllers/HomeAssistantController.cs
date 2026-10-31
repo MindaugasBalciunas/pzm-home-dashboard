@@ -140,18 +140,18 @@ public sealed class HomeAssistantController : ControllerBase
     {
         hours = Math.Clamp(hours, 1, 168);
         var s = _opts.Solar;
+        // Only the series SolarCard actually charts. HA's history cost scales
+        // with state changes, and fast-moving power sensors are expensive:
+        // on the production box houseUse alone took 1.4–2.3 s of a ~4–6 s
+        // response while nothing rendered it.
         var mapping = new (string Key, string? EntityId)[]
         {
             ("pvTotal",     s.PvTotal),
             ("import",      s.Import),
             ("export",      s.Export),
-            ("houseUse",    s.HouseUse),
             ("pv1",         s.Pv1),
             ("pv2",         s.Pv2),
             ("todaySolar",  s.TodaySolar),
-            ("todayExport", s.TodayExport),
-            ("todayImport", s.TodayImport),
-            ("totalSolar",  s.TotalSolar),
         };
         var entityIds = mapping
             .Where(m => !string.IsNullOrWhiteSpace(m.EntityId))

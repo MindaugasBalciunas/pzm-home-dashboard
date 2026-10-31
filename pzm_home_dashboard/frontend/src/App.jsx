@@ -265,8 +265,6 @@ export default function App() {
   const [snapToGrid, setSnapToGrid] = useState(true);
   const snapRef = useRef(snapToGrid);
   useEffect(() => { snapRef.current = snapToGrid; }, [snapToGrid]);
-  // Experiments: loop the Electricity house photo through all variants.
-  const [bgDemo, setBgDemo] = useState(false);
   // `overrides` is the full layout object stored server-side. Keys are tile
   // ids: camera ids, "solar", "security", or user-added "custom-*" ids.
   // Values include position/size plus per-type extras (fit for cameras,
@@ -804,8 +802,6 @@ export default function App() {
         snapToGrid={snapToGrid}
         onToggleSnap={() => setSnapToGrid((v) => !v)}
         onAddTile={addCustomTile}
-        bgDemo={bgDemo}
-        onToggleBgDemo={() => setBgDemo((v) => !v)}
         themeBg={themeBg}
         onSetThemeBg={setThemeBg}
         onRestoreLayout={restoreLayout}
@@ -876,7 +872,6 @@ export default function App() {
             editMode={editMode}
             onStartMove={tileHandlers(SOLAR_ID).onStartMove}
             onStartResize={tileHandlers(SOLAR_ID).onStartResize}
-            bgDemo={bgDemo}
             flowX={layout[SOLAR_ID].flowX ?? 78}
             flowY={layout[SOLAR_ID].flowY ?? 50}
             onFlowPointChange={onFlowPointChange}

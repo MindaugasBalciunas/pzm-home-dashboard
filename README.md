@@ -94,9 +94,10 @@ One-tap gates with live contact state, next to alarm arm / disarm.
 ### Custom house image
 
 The Electricity card overlays live callouts (`Solar`, `PV 1`, `PV 2`, `Home`,
-`Grid`) on top of an image at `/house.png` (served from
+`Grid`) on top of an image at `/house.webp` (served from
 `pzm_home_dashboard/frontend/public/`). Drop your own transparent-background
-isometric render there; if you keep the aspect ratio close to 2682 × 1600 the
+isometric render there (convert with e.g. `cwebp -q 82 -resize 2048 0 in.png
+-o house.webp` — a raw PNG render is ~2 MB, the WebP ~100 kB); if you keep the aspect ratio close to 2682 × 1600 the
 callout positions in `pzm_home_dashboard/frontend/src/components/SolarCard.jsx`
 map cleanly to the roof panels / garage / fence corner. Otherwise adjust the
 numbers inside `<HouseView>`.
@@ -144,7 +145,7 @@ pzm_home_dashboard/                The add-on itself
       lib/                           color, entityStates, layoutRepair,
                                      placement, poll
     public/
-      house.png                      Isometric house image (drop your own here)
+      house.webp                     Isometric house image (drop your own here)
 ```
 
 ## Local development
