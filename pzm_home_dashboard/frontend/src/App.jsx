@@ -11,7 +11,7 @@ import PullToRefresh from './components/PullToRefresh.jsx';
 // enters edit mode, so keep them out of the initial bundle and load on demand.
 const TileEditor = lazy(() => import('./components/TileEditor.jsx'));
 const SecurityOptions = lazy(() => import('./components/SecurityOptions.jsx'));
-import { isFreePlacement } from './lib/placement.js';
+import { isFreePlacement, findFreeSpot } from './lib/placement.js';
 import { repairLayout } from './lib/layoutRepair.js';
 import { textVarsFor } from './lib/color.js';
 
@@ -190,38 +190,6 @@ function useDebouncedPersist(saveFn) {
   return api;
 }
 
-// Find a free spot for a new tile, size wxh, scanning the grid top-to-bottom.
-function findFreeSpot(overrides, w, h) {
-  const occupied = new Map(); // row -> Set<col>
-  // Floor/ceil so free-placed (fractional) tiles still block every grid
-  // cell they touch — the integer scan below only probes whole cells.
-  const mark = (col, row, colSpan, rowSpan) => {
-    for (let r = Math.floor(row); r < Math.ceil(row + rowSpan); r++) {
-      let set = occupied.get(r);
-      if (!set) { set = new Set(); occupied.set(r, set); }
-      for (let c = Math.floor(col); c < Math.ceil(col + colSpan); c++) set.add(c);
-    }
-  };
-  for (const v of Object.values(overrides)) {
-    if (!v || v.hidden) continue;
-    if (v.col && v.row && v.colSpan && v.rowSpan) mark(v.col, v.row, v.colSpan, v.rowSpan);
-  }
-  for (let row = 1; row < 200; row++) {
-    for (let col = 1; col <= GRID_COLS - w + 1; col++) {
-      let free = true;
-      outer: for (let r = row; r < row + h; r++) {
-        const set = occupied.get(r);
-        if (!set) continue;
-        for (let c = col; c < col + w; c++) {
-          if (set.has(c)) { free = false; break outer; }
-        }
-      }
-      if (free) return { col, row };
-    }
-  }
-  return { col: 1, row: 1 };
-}
-
 // ── Edit-mode alignment snapping ──────────────────────────────────────────
 // Snap a dragged edge/centre (or a resized span) to another tile's edge,
 // centre or size when within SNAP_PX, and report the grid-line coordinate so
@@ -257,6 +225,9 @@ export default function App() {
   const [cameras, setCameras] = useState([]);
   const [error, setError] = useState(null);
   const [camerasError, setCamerasError] = useState(null);
+  // Set while the most recent layout save was rejected — the edit is only
+  // in this browser's memory and would vanish on reload.
+  const [saveError, setSaveError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   // Edit-mode drag quantisation. On = classic grid snap; off = free
@@ -291,9 +262,14 @@ export default function App() {
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const data = await r.json();
       if (typeof data.revision === 'number') setRevision(data.revision);
+      setSaveError(null);
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn('layout PUT failed', e);
+      // Not retried automatically: re-sending a stale payload later could
+      // overwrite a newer layout saved from another device. The next edit
+      // sends the full current layout anyway.
+      setSaveError(e instanceof Error ? e.message : String(e));
     }
   }, []);
 
@@ -358,7 +334,7 @@ export default function App() {
             { id: 'tpl-garage-rgb', since: 4, w: 6, h: 6,
               spec: { kind: 'button', entityId: 'light.garage_led_strip', domain: 'light', name: 'Garage LED' } },
             { id: 'tpl-living-fx', since: 5, w: 12, h: 6,
-              spec: { kind: 'lightfx', entityId: 'light.living_room_rgb', domain: 'light', name: 'Living patterns' } },
+              spec: { kind: 'lightfx', entityId: 'light.living_room_rgbic_led', domain: 'light', name: 'Living patterns' } },
             { id: 'tpl-garage-fx', since: 5, w: 12, h: 6,
               spec: { kind: 'lightfx', entityId: 'light.garage_led_strip', domain: 'light', name: 'Garage patterns' } },
           ];
@@ -366,7 +342,7 @@ export default function App() {
           const seeded = { ...initial };
           for (const add of additions) {
             if (add.since <= fromVersion || seeded[add.id]) continue;
-            const spot = findFreeSpot(seeded, add.w, add.h);
+            const spot = findFreeSpot(seeded, add.w, add.h, GRID_COLS);
             seeded[add.id] = {
               ...spot,
               colSpan: add.w,
@@ -512,7 +488,7 @@ export default function App() {
     // they hold a whole chip list.
     const w = spec.kind === 'lightfx' ? 12 : spec.kind === 'number' ? 8 : 6;
     const h = spec.kind === 'lightfx' ? 6 : spec.kind === 'number' ? 5 : 6;
-    const { col, row } = findFreeSpot(overridesRef.current, w, h);
+    const { col, row } = findFreeSpot(overridesRef.current, w, h, GRID_COLS);
     const id = `custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
     const entry = { col, row, colSpan: w, rowSpan: h, spec };
     setOverrides((prev) => {
@@ -839,6 +815,11 @@ export default function App() {
         {!error && camerasError && (
           <div className="notice" style={{ gridColumn: `1 / -1` }}>
             Cameras unavailable ({camerasError}) — rest of the dashboard is live.
+          </div>
+        )}
+        {saveError && (
+          <div className="notice notice-error" style={{ gridColumn: `1 / -1` }} role="alert">
+            Layout change not saved ({saveError}) — it will be lost on reload. Make the change again to retry.
           </div>
         )}
         {!loading && !error && cameras.length === 0 && customEntries.length === 0 && (

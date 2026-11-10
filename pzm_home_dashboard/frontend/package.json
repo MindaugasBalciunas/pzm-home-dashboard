@@ -1,13 +1,14 @@
 {
   "name": "pzm-home-dashboard-frontend",
   "private": true,
-  "version": "0.2.44",
+  "version": "0.2.45",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "prerender": "node -e \"console.log('prerender: noop')\"",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test"
   },
   "dependencies": {
     "hls.js": "^1.5.15",

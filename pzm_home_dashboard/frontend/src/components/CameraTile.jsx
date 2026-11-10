@@ -28,6 +28,10 @@ const CONNECT_REBUILD_MS = 45000;
 // window, so a tile that recovers resets to fast rebuilds.
 const REBUILD_BACKOFF_CAP = 4;
 const STEADY_RESET_MS = 30000;
+// Hidden longer than this and the backend has (or is about to have) shut the
+// camera's ffmpeg down for idleness, so on wake the player is rebuilt against
+// the fresh stream instead of resuming a playlist whose segments are gone.
+const HIDDEN_REBUILD_MS = 20000;
 
 // Global rebuild rate-limiter shared by every camera tile. Rebuilding an
 // hls.js player (destroy + new MediaSource) is heavy; when the shared Android
@@ -216,6 +220,7 @@ function CameraTile({
     // small random delay staggers the wake across tiles so N cameras don't
     // all re-request segments (and trigger ffmpeg cold-starts) at t=0.
     let wakeTimer = null;
+    let hiddenAt = document.hidden ? Date.now() : null;
     const nudgeToLive = () => {
       if (destroyed || document.hidden) return;
       wakeTimer = setTimeout(() => {
@@ -225,16 +230,41 @@ function CameraTile({
         video.play().catch(() => { /* autoplay may need a gesture */ });
       }, Math.random() * 500);
     };
-    document.addEventListener('visibilitychange', nudgeToLive);
+    // Screen blanked / tab backgrounded: stop pulling segments. Left running,
+    // every tile kept requesting them for hours with nobody watching, which
+    // held each camera's ffmpeg (an x264 transcode apiece) alive past the
+    // backend's idle shutdown.
+    const onVisibility = () => {
+      if (destroyed) return;
+      if (document.hidden) {
+        if (wakeTimer) { clearTimeout(wakeTimer); wakeTimer = null; }
+        hiddenAt = Date.now();
+        try { hls?.stopLoad(); } catch { /* already stopped */ }
+        if (!hls) { try { video.pause(); } catch { /* ignore */ } }
+        return;
+      }
+      const hiddenFor = hiddenAt == null ? 0 : Date.now() - hiddenAt;
+      hiddenAt = null;
+      if (hiddenFor < HIDDEN_REBUILD_MS) { nudgeToLive(); return; }
+      // A deliberate wake, not a failure: staggered across tiles, and it
+      // doesn't count towards the rebuild backoff.
+      wakeTimer = setTimeout(() => {
+        if (destroyed || document.hidden) return;
+        setRebuildToken((t) => t + 1);
+      }, Math.random() * 1500);
+    };
+    document.addEventListener('visibilitychange', onVisibility);
     // Pull-to-refresh: jump the stream back to live in place (no reload).
     window.addEventListener('pzm:refresh', nudgeToLive);
+    // Mounted (or rebuilt) while already hidden: don't start streaming.
+    if (document.hidden) { try { hls?.stopLoad(); } catch { /* ignore */ } }
 
     return () => {
       destroyed = true;
       clearInterval(watchdog);
       if (rebuildTimer) clearTimeout(rebuildTimer);
       if (wakeTimer) clearTimeout(wakeTimer);
-      document.removeEventListener('visibilitychange', nudgeToLive);
+      document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('pzm:refresh', nudgeToLive);
       if (cleanup) cleanup();
       if (hls) { try { hls.destroy(); } catch { /* ignore */ } }

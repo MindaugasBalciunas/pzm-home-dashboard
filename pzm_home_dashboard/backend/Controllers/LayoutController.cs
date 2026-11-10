@@ -56,10 +56,17 @@ public sealed class LayoutController : ControllerBase
         var ch = _store.Subscribe();
         try
         {
+            // One pending wait, reused across keep-alive pings. Starting a
+            // fresh WaitToReadAsync on every ping left the previous waiter
+            // queued inside the channel until the next layout change — on a
+            // kiosk that idles for weeks that was thousands of dead waiters
+            // per day, per open dashboard.
+            Task<bool>? read = null;
             while (!ct.IsCancellationRequested)
             {
-                var read = ch.Reader.WaitToReadAsync(ct).AsTask();
-                var ping = Task.Delay(TimeSpan.FromSeconds(15), ct);
+                read ??= ch.Reader.WaitToReadAsync(ct).AsTask();
+                using var pingCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                var ping = Task.Delay(TimeSpan.FromSeconds(15), pingCts.Token);
                 var done = await Task.WhenAny(read, ping);
                 if (done == ping)
                 {
@@ -68,7 +75,9 @@ public sealed class LayoutController : ControllerBase
                     await Response.Body.FlushAsync(ct);
                     continue;
                 }
+                pingCts.Cancel(); // release the unused keep-alive timer
                 if (!await read) break;
+                read = null;
                 while (ch.Reader.TryRead(out var snap))
                 {
                     await SendSnap(snap, ct);

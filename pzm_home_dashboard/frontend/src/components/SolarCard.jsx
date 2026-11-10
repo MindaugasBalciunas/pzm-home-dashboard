@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { startPolling } from '../lib/poll.js';
 import { tilePlacementStyle } from '../lib/placement.js';
+import { bucketByDay, pickCurrentMonth } from '../lib/statBuckets.js';
 
 const POLL_MS = 3000;
 
@@ -793,20 +794,6 @@ function bucketByHour(samples) {
   return items.slice(0, cut);
 }
 
-// Bucket the /solar/daily payload into last-N-days chart items, keyed
-// by YYYY-MM-DD so React can match bars stably across polls. Carries the
-// date parts so the Solar callout can print weekday initials under bars.
-function bucketByDay(days) {
-  if (!days || days.length === 0) return [];
-  return days.map((d) => ({
-    key: `${d.year}-${d.month}-${d.day}`,
-    v: Math.max(0, Number(d.v) || 0),
-    year: d.year,
-    month: d.month,
-    day: d.day,
-  }));
-}
-
 function dayInitial(item) {
   return new Date(item.year, item.month - 1, item.day)
     .toLocaleDateString(undefined, { weekday: 'narrow' });
@@ -1045,9 +1032,7 @@ function SolarCard({
       const j = await r.json();
       const arr = Array.isArray(j?.months) ? j.months : [];
       if (arr.length === 0) { setMonthSolar(null); return; }
-      const now = new Date();
-      const cur = arr.find((m) => m.year === now.getFullYear() && m.month === now.getMonth() + 1);
-      const pick = cur || arr[arr.length - 1];
+      const pick = pickCurrentMonth(arr);
       setMonthSolar(pick && typeof pick.v === 'number' ? pick.v : null);
     } catch { /* transient */ }
   }, 30 * 60 * 1000), []);

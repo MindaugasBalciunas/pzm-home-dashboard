@@ -16,21 +16,28 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
           cache-dependency-path: pzm_home_dashboard/frontend/package-lock.json
       - run: npm ci
+      - run: npm test
       - run: npm run build
 
   backend:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: pzm_home_dashboard/backend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
-      - run: dotnet restore
-      - run: dotnet build --no-restore --configuration Release
+          dotnet-version: '10.0.x'
+      - run: dotnet build pzm_home_dashboard/backend --configuration Release
+      - run: dotnet test tests/PzmHomeDashboard.Tests --configuration Release
+
+  # The add-on is built on the user's HA box from this Dockerfile, so a broken
+  # base image or apt package only shows up at install time unless CI builds
+  # it too.
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build --tag pzm-home-dashboard:ci pzm_home_dashboard

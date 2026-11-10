@@ -65,6 +65,14 @@ public sealed class GateEntity
     // Optional icon override (mdi:garage / mdi:gate). Client-side hint.
     [JsonPropertyName("icon")]
     public string? Icon { get; set; }
+
+    // true: a tap toggles the entity (a latching switch — on = engaged —
+    // that a second tap must be able to release). false: a tap only ever
+    // fires the "open" service (momentary relay). Unset: toggles when the
+    // gate's `contact` is the controlled entity itself, since showing a
+    // switch's own state as the gate status only makes sense if it latches.
+    [JsonPropertyName("toggle")]
+    public bool? Toggle { get; set; }
 }
 
 public sealed class ZoneEntity

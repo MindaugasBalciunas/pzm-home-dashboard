@@ -4,6 +4,35 @@ All notable changes to the **PZM Home Dashboard** add-on are listed here.
 The format follows Home Assistant's convention: the newest release comes first
 and version headers match the `version:` field in `config.yaml`.
 
+## 0.2.45
+
+Reliability and security pass, plus a move to supported runtimes.
+
+- **Layout can no longer be lost to a power cut.** `layout.json` is written
+  to a temp file and swapped in, the previous copy is kept as
+  `layout.json.bak` and used when the live file is unreadable, and an edit
+  made just before an add-on restart is flushed instead of dropped.
+- **Failed layout saves are shown.** A rejected save now raises a notice
+  instead of silently vanishing on the next reload.
+- **Memory leak fixed** in the layout live-update stream (one leaked waiter
+  per 15 s ping, per open dashboard).
+- **Cameras stop streaming while the screen is blanked**, so ffmpeg reaches
+  its idle shutdown; tiles reconnect on wake.
+- **Security — stricter cross-site guard.** State-changing requests must
+  come from the dashboard's own origin; browsers that send no
+  `Sec-Fetch-Site`, and other services on the same IP, are now covered.
+- **Solar 7-day bars: weekday letters** were a day early east of Greenwich;
+  dates are now derived in the browser's timezone.
+- **Gates: new `toggle` option.** Set `toggle: true` for a latching switch
+  so a second tap releases it (automatic when a gate's `contact` is its own
+  `entity`). **Breaking:** the backend no longer forces the "Gate opener"
+  gate to a fixed entity or remaps old contact ids — check that your saved
+  `gates` options point at the right entities.
+- **Runtimes:** .NET 10 and Node 22. **`i386` and `armhf` are no longer
+  offered** (no .NET images exist for them). `hassio_api` permission dropped.
+- Tests added (backend and frontend) and run in CI, which also builds the
+  add-on image.
+
 ## 0.2.44
 
 Optional sign-in for kiosk tablets, and the seasonal house photos are back.

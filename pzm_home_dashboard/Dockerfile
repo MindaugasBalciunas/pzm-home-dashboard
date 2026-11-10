@@ -1,15 +1,17 @@
 ARG BUILD_ARCH=amd64
 
 # ---------- stage 1: build React frontend (pre-rendered) ----------
-FROM node:20-alpine AS frontend
+# Node 22, not 24: the 24 images no longer ship for armv7, which this add-on
+# still builds for.
+FROM node:22-alpine AS frontend
 WORKDIR /src
 COPY frontend/package.json frontend/package-lock.json* ./
-RUN npm install
+RUN npm ci
 COPY frontend/ ./
 RUN npm run build && npm run prerender
 
 # ---------- stage 2: build C# backend ----------
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS backend
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS backend
 WORKDIR /src
 COPY backend/*.csproj ./
 RUN dotnet restore
@@ -17,9 +19,10 @@ COPY backend/ ./
 RUN dotnet publish -c Release -o /app/publish /p:UseAppHost=false
 
 # ---------- stage 3: runtime image ----------
-FROM mcr.microsoft.com/dotnet/aspnet:8.0-bookworm-slim
+# .NET 10 images are Ubuntu-based (Microsoft no longer publishes Debian ones).
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg ca-certificates tini jq \
+    && apt-get install -y --no-install-recommends ffmpeg ca-certificates tini \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

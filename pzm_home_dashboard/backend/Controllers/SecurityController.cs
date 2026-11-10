@@ -31,25 +31,19 @@ public sealed class SecurityController : ControllerBase
             ? Task.FromResult<HaStateDto?>(null)
             : ResolveAlarmAsync(sec.AlarmPanel!);
 
-        var gateTasks = sec.Gates.Select(async g =>
+        var gateTasks = sec.Gates.Select(async g => new
         {
-            var entity = EffectiveEntity(g.Name, g.Entity);
-            var contact = EffectiveContact(g.Contact);
-            var contactKind = EffectiveContactKind(contact, g.ContactKind);
-            return new
-            {
-                g.Name,
-                Entity = entity,
-                g.Icon,
-                Contact = contact,
-                ContactKind = contactKind,
-                state = string.IsNullOrWhiteSpace(entity)
-                    ? null
-                    : await _client.GetStateCachedAsync(entity!, ct),
-                contactState = string.IsNullOrWhiteSpace(contact)
-                    ? null
-                    : await _client.GetStateCachedAsync(contact!, ct),
-            };
+            g.Name,
+            g.Entity,
+            g.Icon,
+            g.Contact,
+            g.ContactKind,
+            state = string.IsNullOrWhiteSpace(g.Entity)
+                ? null
+                : await _client.GetStateCachedAsync(g.Entity, ct),
+            contactState = string.IsNullOrWhiteSpace(g.Contact)
+                ? null
+                : await _client.GetStateCachedAsync(g.Contact!, ct),
         }).ToArray();
 
         var zoneTasks = sec.Zones.Select(async z => new
@@ -86,15 +80,14 @@ public sealed class SecurityController : ControllerBase
             return NotFound(new { error = "Gate index out of range." });
         }
         var gate = gates[index];
-        var entity = EffectiveEntity(gate.Name, gate.Entity);
-        if (string.IsNullOrWhiteSpace(entity))
+        if (string.IsNullOrWhiteSpace(gate.Entity))
         {
             return BadRequest(new { error = "Gate has no entity configured." });
         }
 
-        var (domain, service) = ResolveGateService(entity!);
+        var (domain, service) = ResolveGateService(gate);
         var ok = await _client.CallServiceAsync(
-            domain, service, new { entity_id = entity }, ct);
+            domain, service, new { entity_id = gate.Entity }, ct);
         return ok ? Ok(new { ok = true }) : StatusCode(502, new { error = "HA call failed." });
     }
 
@@ -131,57 +124,22 @@ public sealed class SecurityController : ControllerBase
         return ok ? Ok(new { ok = true }) : StatusCode(502, new { error = "HA call failed." });
     }
 
-    // Same stale-options story as the contact remaps below: the Gate opener
-    // chip must control the opener's own switch, whatever entity the
-    // install's saved options still carry for it.
-    private static string? EffectiveEntity(string? name, string? entity)
-        => string.Equals(name, "Gate opener", StringComparison.OrdinalIgnoreCase)
-            ? "switch.gate_opener_switch_1"
-            : entity;
-
-    // Saved add-on options aren't refreshed when defaults change, and older
-    // installs still carry the Eldes garage zone as the gate contact — that
-    // zone tracks the alarm panel, not the physical door. Remap it to the
-    // dedicated door contact so the gate chip shows the actual door state
-    // (config.yaml defaults carry the same entity for fresh installs).
-    private static string? EffectiveContact(string? contact)
+    // Map a gate to the right press/toggle service. Momentary relays are
+    // best represented in HA as `switch` or `button`; pulse-style covers use
+    // `cover.open_cover`; `script`/`input_boolean` are common wrappers for
+    // alarm-panel outputs. A latching gate (see GateEntity.Toggle) toggles
+    // instead, so the same chip can release it again.
+    public static (string domain, string service) ResolveGateService(GateEntity gate)
     {
-        if (string.Equals(contact, "binary_sensor.esim364_garazo_vartai",
-                StringComparison.OrdinalIgnoreCase))
-            return "binary_sensor.garage_gates_contact_sensor_door";
-        // The access-control lock sensor turned out not to track the gate
-        // opener; the opener's own switch state does. Remap installs whose
-        // saved options still carry the old contact.
-        if (string.Equals(contact, "binary_sensor.access_control_lock",
-                StringComparison.OrdinalIgnoreCase))
-            return "switch.gate_opener_switch_1";
-        return contact;
-    }
-
-    // Keep the status wording in sync when a contact gets remapped: the
-    // opener switch reports on/off (engaged/idle), not locked/unlocked.
-    private static string? EffectiveContactKind(string? contact, string? kind)
-        => string.Equals(contact, "switch.gate_opener_switch_1",
-                StringComparison.OrdinalIgnoreCase)
-            ? "gate"
-            : kind;
-
-    // Map an entity's domain to the right press/toggle service. Momentary
-    // relays are best represented in HA as `switch` or `button`; pulse-style
-    // covers use `cover.open_cover`; `script`/`input_boolean` are common
-    // wrappers for Eldes outputs.
-    private static (string domain, string service) ResolveGateService(string entityId)
-    {
-        // The gate opener's switch latches (on = gate engaged) and its chip
-        // shows Open/Closed from that same switch — a tap must be able to
-        // close it again, so it toggles instead of the momentary turn_on
-        // the Eldes relays use.
-        if (string.Equals(entityId, "switch.gate_opener_switch_1",
-                StringComparison.OrdinalIgnoreCase))
-            return ("switch", "toggle");
-
+        var entityId = gate.Entity;
         var dot = entityId.IndexOf('.');
         var domain = dot > 0 ? entityId[..dot] : "switch";
+
+        var toggle = gate.Toggle
+            ?? string.Equals(gate.Contact, entityId, StringComparison.OrdinalIgnoreCase);
+        if (toggle && ToggleDomains.Contains(domain))
+            return (domain, "toggle");
+
         return domain switch
         {
             "switch"        => ("switch", "turn_on"),
@@ -193,4 +151,11 @@ public sealed class SecurityController : ControllerBase
             _               => (domain, "turn_on"),
         };
     }
+
+    // Domains with a real `toggle` service; anything else (button, script,
+    // lock) keeps its one-way action even when `toggle` is requested.
+    private static readonly HashSet<string> ToggleDomains = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "switch", "input_boolean", "light", "fan", "cover", "valve", "siren",
+    };
 }

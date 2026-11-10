@@ -28,3 +28,35 @@ export function tilePlacementStyle(col, row, colSpan, rowSpan) {
     zIndex: 3,
   };
 }
+
+// Find a free spot for a new tile, size wxh, scanning the grid top-to-bottom.
+export function findFreeSpot(overrides, w, h, gridCols = 48) {
+  const occupied = new Map(); // row -> Set<col>
+  // Floor/ceil so free-placed (fractional) tiles still block every grid
+  // cell they touch — the integer scan below only probes whole cells.
+  const mark = (col, row, colSpan, rowSpan) => {
+    for (let r = Math.floor(row); r < Math.ceil(row + rowSpan); r++) {
+      let set = occupied.get(r);
+      if (!set) { set = new Set(); occupied.set(r, set); }
+      for (let c = Math.floor(col); c < Math.ceil(col + colSpan); c++) set.add(c);
+    }
+  };
+  for (const v of Object.values(overrides)) {
+    if (!v || v.hidden) continue;
+    if (v.col && v.row && v.colSpan && v.rowSpan) mark(v.col, v.row, v.colSpan, v.rowSpan);
+  }
+  for (let row = 1; row < 200; row++) {
+    for (let col = 1; col <= gridCols - w + 1; col++) {
+      let free = true;
+      outer: for (let r = row; r < row + h; r++) {
+        const set = occupied.get(r);
+        if (!set) continue;
+        for (let c = col; c < col + w; c++) {
+          if (set.has(c)) { free = false; break outer; }
+        }
+      }
+      if (free) return { col, row };
+    }
+  }
+  return { col: 1, row: 1 };
+}

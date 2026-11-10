@@ -132,11 +132,16 @@ app.Use(async (context, next) =>
 // Sec-Fetch-Site, so refuse state-changing requests a different site
 // initiated. Same-origin (kiosk, ingress iframe) and non-browser clients
 // (no header) are unaffected.
+//
+// Sec-Fetch-Site alone isn't enough: older WebViews / Safari don't send it,
+// and it calls another service on the same IP (a different port) "same-site".
+// So the Origin header — which every browser attaches to a cross-origin POST
+// — must also name this very host:port.
 app.Use(async (context, next) =>
 {
     var method = context.Request.Method;
     if (!HttpMethods.IsGet(method) && !HttpMethods.IsHead(method) && !HttpMethods.IsOptions(method)
-        && string.Equals(context.Request.Headers["Sec-Fetch-Site"], "cross-site", StringComparison.OrdinalIgnoreCase))
+        && RequestOrigin.IsCrossOrigin(context.Request, DashboardAuth.IsIngress(context)))
     {
         var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
         logger.LogWarning(

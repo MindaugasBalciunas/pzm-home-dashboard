@@ -1,5 +1,5 @@
 name: PZM Home Dashboard
-version: "0.2.44"
+version: "0.2.45"
 slug: pzm_home_dashboard
 description: >-
   RTSP camera streams (transcoded on-demand to HLS via ffmpeg) plus a live
@@ -9,15 +9,12 @@ arch:
   - amd64
   - aarch64
   - armv7
-  - armhf
-  - i386
 init: false
 ingress: true
 ingress_port: 8099
 panel_icon: mdi:solar-power
 panel_title: PZM Home
 homeassistant_api: true
-hassio_api: true
 ports:
   8099/tcp: null
 ports_description:
@@ -118,6 +115,9 @@ options:
       # backend picks the right service (switch.turn_on / button.press /
       # cover.open_cover / script.turn_on / input_boolean.turn_on).
       # Add a `contact` entity_id (binary_sensor) to show open/closed state.
+      # Set `toggle: true` for a latching switch (on = engaged) so a second
+      # tap releases it; leave it out for momentary relays. When unset, a
+      # gate whose `contact` is its own `entity` toggles automatically.
       gates:
         - name: "Garage gates"
           entity: "switch.garage_gates"
@@ -131,14 +131,13 @@ options:
           contact: ""
           icon: "mdi:gate"
         - name: "Gate opener"
-          # Tap controls (toggles) the opener's own switch; the backend
-          # enforces this entity for the "Gate opener" gate even on installs
-          # whose saved options still carry an older one.
+          # A latching opener: the switch stays on while the gate is
+          # engaged, so a tap toggles it and the status chip reads the
+          # switch's own state.
           entity: "switch.gate_opener_switch_1"
-          # Status follows the opener's own switch state (on = engaged);
-          # the access-control lock sensor didn't track the gate.
           contact: "switch.gate_opener_switch_1"
           contact_kind: "gate"
+          toggle: true
           icon: "mdi:door"
       # Extra zones surfaced under the alarm panel — door/window contacts,
       # gas / fire / glass-break sensors. `kind` drives the localised status
@@ -226,6 +225,7 @@ schema:
           contact: str?
           contact_kind: str?
           icon: str?
+          toggle: bool?
       zones:
         - name: str
           entity: str

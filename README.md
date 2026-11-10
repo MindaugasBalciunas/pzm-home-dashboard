@@ -63,7 +63,7 @@ One-tap gates with live contact state, next to alarm arm / disarm.
 1. In Home Assistant → **Settings → Add-ons → Add-on Store → ⋮ → Repositories**,
    paste the URL of this Git repository and click **ADD**.
 2. Refresh the add-on store. **PZM Home Dashboard** appears in a new section.
-3. Click it, then **INSTALL**. First install pulls the .NET 8 SDK + Node 20 +
+3. Click it, then **INSTALL**. First install pulls the .NET 10 SDK + Node 22 +
    ffmpeg base images and takes a few minutes.
 4. Open the **Configuration** tab and fill in:
    - **cameras** — one entry per RTSP source. Fill in `url`, `username`,
@@ -77,7 +77,10 @@ One-tap gates with live contact state, next to alarm arm / disarm.
      Any of those domains works — the backend picks the correct service
      (`switch.turn_on`, `button.press`, `cover.open_cover`,
      `script.turn_on`, `input_boolean.turn_on`, `lock.unlock`). Add
-     `contact:` (a `binary_sensor` entity) to show open/closed state. The
+     `contact:` (a `binary_sensor` entity) to show open/closed state. For a
+     latching switch (on = engaged) add `toggle: true` so a second tap
+     releases it; a gate whose `contact` is its own `entity` toggles
+     without it. The
      shipped `zones` list is two placeholder examples — replace them with
      your own, or empty the list to hide the zone section.
    - Leave `home_assistant.use_supervisor: true`, and leave `base_url` and
@@ -140,7 +143,7 @@ pzm_home_dashboard/                The add-on itself
   config.yaml                        HAOS add-on manifest
   Dockerfile                         Multi-stage build (Node → .NET → runtime + ffmpeg)
   run.sh                             Add-on entrypoint
-  backend/                           ASP.NET Core 8 API
+  backend/                           ASP.NET Core 10 API
     Program.cs                         DI, LAN-only middleware, static SPA host
     Controllers/
       CamerasController.cs             /api/cameras · /{id}/snapshot
@@ -187,7 +190,7 @@ and camera passwords there.
 
 ```bash
 # One-time setup (macOS)
-brew install ffmpeg dotnet@8
+brew install ffmpeg dotnet   # .NET 10 SDK
 
 # Backend
 cd pzm_home_dashboard/backend
